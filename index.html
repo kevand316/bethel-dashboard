@@ -1456,19 +1456,34 @@ const sbHeaders = {
 async function sbGet(id) {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/bethel_data?id=eq.${id}&select=data`, { headers: sbHeaders });
+    console.log('[sbGet] status:', res.status, res.statusText);
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn('[sbGet] error response:', errText);
+      showToast('Failed to load — check connection');
+      return null;
+    }
     const rows = await res.json();
+    console.log('[sbGet] rows returned:', rows.length, rows);
     return rows.length ? rows[0].data : null;
-  } catch(e) { console.warn('Supabase read error:', e); showToast('Failed to load — check connection'); return null; }
+  } catch(e) { console.warn('[sbGet] network error:', e); showToast('Failed to load — check connection'); return null; }
 }
 
 async function sbSet(id, data) {
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/bethel_data?id=eq.${id}`, {
-      method: 'PATCH',
-      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ data, updated_at: new Date().toISOString() })
+    // Upsert: inserts if row missing, updates if it exists
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/bethel_data`, {
+      method: 'POST',
+      headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ id, data, updated_at: new Date().toISOString() })
     });
-  } catch(e) { console.warn('Supabase write error:', e); showToast('Failed to save — check connection'); }
+    console.log('[sbSet] status:', res.status, res.statusText);
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn('[sbSet] error response:', errText);
+      showToast('Failed to save — check connection');
+    }
+  } catch(e) { console.warn('[sbSet] network error:', e); showToast('Failed to save — check connection'); }
 }
 
 // Debounce so we don't hammer Supabase on every keystroke
