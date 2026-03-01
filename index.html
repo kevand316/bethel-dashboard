@@ -861,9 +861,48 @@ body::before {
 .delta-neg { color: #e74c3c; }
 .delta-zero { color: #445566; }
 .no-snaps-msg { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: #445566; text-align: center; padding: 3rem; }
+
+/* SUPABASE ERROR TOAST */
+#sb-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 2000;
+  background: #1a0f0f;
+  border: 1px solid var(--red);
+  color: #f5c6c2;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.65rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(0.5rem);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  max-width: 320px;
+}
+#sb-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+#sb-toast .toast-icon { color: var(--red); font-size: 0.9rem; flex-shrink: 0; }
+#sb-toast .toast-dismiss { margin-left: auto; color: var(--text-dim); font-size: 1rem; line-height: 1; }
+#sb-toast .toast-dismiss:hover { color: var(--text); }
 </style>
 </head>
 <body>
+
+<div id="sb-toast" onclick="dismissToast()">
+  <span class="toast-icon">⚠</span>
+  <span id="sb-toast-msg">Failed to save — check connection</span>
+  <span class="toast-dismiss">✕</span>
+</div>
 
 <div class="header">
   <div class="header-brand">
@@ -1390,6 +1429,20 @@ const DEFAULT_HOMES = [
   }
 ];
 
+// ── TOAST NOTIFICATIONS ──
+let toastTimer = null;
+function showToast(msg) {
+  const toast = document.getElementById('sb-toast');
+  document.getElementById('sb-toast-msg').textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(dismissToast, 5000);
+}
+function dismissToast() {
+  document.getElementById('sb-toast').classList.remove('show');
+  clearTimeout(toastTimer);
+}
+
 // ── SUPABASE PERSISTENCE ──
 const SUPABASE_URL = 'https://yqgccykbdihsjqlapghr.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxZ2NjeWtiZGloc2pxbGFwZ2hyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAyMTksImV4cCI6MjA4NzkxNjIxOX0.XHgok8xbYDKekprYI2htAZL622P7YcycTsQ5HuP-VUs';
@@ -1405,7 +1458,7 @@ async function sbGet(id) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/bethel_data?id=eq.${id}&select=data`, { headers: sbHeaders });
     const rows = await res.json();
     return rows.length ? rows[0].data : null;
-  } catch(e) { console.warn('Supabase read error:', e); return null; }
+  } catch(e) { console.warn('Supabase read error:', e); showToast('Failed to load — check connection'); return null; }
 }
 
 async function sbSet(id, data) {
@@ -1415,7 +1468,7 @@ async function sbSet(id, data) {
       headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
       body: JSON.stringify({ data, updated_at: new Date().toISOString() })
     });
-  } catch(e) { console.warn('Supabase write error:', e); }
+  } catch(e) { console.warn('Supabase write error:', e); showToast('Failed to save — check connection'); }
 }
 
 // Debounce so we don't hammer Supabase on every keystroke
