@@ -1,0 +1,2201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bethel Residency — Operations Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e14;
+  --bg2: #111620;
+  --bg3: #1a2030;
+  --border: #1e2d45;
+  --gold: #f0b429;
+  --gold-dim: #a07820;
+  --green: #2ecc71;
+  --green-dim: #1a7a43;
+  --red: #e74c3c;
+  --red-dim: #7a1f18;
+  --blue: #3498db;
+  --blue-dim: #1a4a6e;
+  --text: #e8edf5;
+  --text-mid: #8899aa;
+  --text-dim: #445566;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --display: 'Bebas Neue', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* GRID LINES BACKGROUND */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(30,45,69,0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30,45,69,0.3) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* HEADER */
+.header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  background: var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--display);
+  font-size: 1.1rem;
+  color: var(--bg);
+  letter-spacing: 1px;
+}
+
+.brand-text h1 {
+  font-family: var(--display);
+  font-size: 1.3rem;
+  letter-spacing: 3px;
+  color: var(--text);
+  line-height: 1;
+}
+
+.brand-text p {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--gold);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--green);
+  letter-spacing: 0.1em;
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.date-display {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-mid);
+  letter-spacing: 0.05em;
+}
+
+/* TABS */
+.tabs {
+  display: flex;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  position: relative;
+  z-index: 10;
+}
+
+.tab {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.85rem 1.5rem;
+  color: var(--text-dim);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.tab:hover { color: var(--text-mid); }
+.tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+/* MAIN */
+.main {
+  padding: 1.5rem 2rem 4rem;
+  position: relative;
+  z-index: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.view { display: none; }
+.view.active { display: block; }
+
+/* KPI ROW */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.kpi-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+  animation: fadeIn 0.4s ease both;
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+/* Financial group — amber */
+.kpi-card.gold {
+  background: linear-gradient(135deg, #1a1608 0%, var(--bg2) 60%);
+  border-color: #3d2e08;
+}
+.kpi-card.gold::before { background: linear-gradient(90deg, #f0b429, #e8820a); }
+
+/* People/occupancy group — teal */
+.kpi-card.blue {
+  background: linear-gradient(135deg, #061a1a 0%, var(--bg2) 60%);
+  border-color: #0a3030;
+}
+.kpi-card.blue::before { background: linear-gradient(90deg, #0fd4c8, #0891b2); }
+
+.kpi-card.green::before { background: var(--green); }
+.kpi-card.red::before { background: var(--red); }
+
+.kpi-label {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 0.6rem;
+}
+
+.kpi-value {
+  font-family: var(--display);
+  font-size: 2.2rem;
+  letter-spacing: 2px;
+  line-height: 1;
+  margin-bottom: 0.4rem;
+}
+
+.kpi-value.gold { color: #f0b429; }
+.kpi-value.green { color: var(--green); }
+.kpi-value.red { color: var(--red); }
+.kpi-value.blue { color: #0fd4c8; }
+.kpi-value.white { color: var(--text); }
+
+.kpi-sub {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-mid);
+}
+
+/* SECTION TITLES */
+.section-title {
+  font-family: var(--display);
+  font-size: 1rem;
+  letter-spacing: 4px;
+  color: var(--text-mid);
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* HOME CARDS GRID */
+.homes-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.home-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  animation: fadeIn 0.4s ease both;
+  transition: border-color 0.2s;
+}
+
+.home-card:hover { border-color: var(--gold-dim); }
+
+.home-card-header {
+  background: var(--bg3);
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.home-name {
+  font-family: var(--display);
+  font-size: 0.95rem;
+  letter-spacing: 2px;
+  color: var(--text);
+}
+
+.home-occ-badge {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 2px;
+}
+
+.occ-high { background: rgba(46,204,113,0.15); color: var(--green); border: 1px solid var(--green-dim); }
+.occ-mid { background: rgba(240,180,41,0.15); color: var(--gold); border: 1px solid var(--gold-dim); }
+.occ-low { background: rgba(231,76,60,0.15); color: var(--red); border: 1px solid var(--red-dim); }
+
+.home-stats {
+  padding: 0.85rem 1rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.home-stat label {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.home-stat span {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.home-stat span.pos { color: var(--green); }
+.home-stat span.neg { color: var(--red); }
+.home-stat span.gold { color: var(--gold); }
+
+/* BED GRID */
+.beds-section {
+  padding: 0.85rem 1rem;
+}
+
+.beds-label {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+}
+
+.bed-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.bed-cell {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid;
+  position: relative;
+}
+
+.bed-cell.occupied {
+  background: rgba(46,204,113,0.12);
+  border-color: var(--green-dim);
+  color: var(--green);
+}
+
+.bed-cell.vacant {
+  background: rgba(231,76,60,0.08);
+  border-color: var(--red-dim);
+  color: var(--red);
+}
+
+.bed-cell.manager {
+  background: rgba(240,180,41,0.12);
+  border-color: var(--gold-dim);
+  color: var(--gold);
+}
+
+.bed-cell.recup {
+  background: rgba(168,85,247,0.15);
+  border-color: #7c3aed;
+  color: #c084fc;
+}
+
+.bed-cell:hover { transform: scale(1.15); z-index: 2; }
+
+.home-revenue {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.home-revenue label {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.home-revenue span {
+  font-family: var(--display);
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+  color: var(--gold);
+}
+
+/* FINANCIAL VIEW */
+.fin-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.fin-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  animation: fadeIn 0.4s ease both;
+}
+
+.fin-panel-header {
+  background: var(--bg3);
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fin-panel-title {
+  font-family: var(--display);
+  font-size: 0.9rem;
+  letter-spacing: 3px;
+  color: var(--text);
+}
+
+.fin-panel-total {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gold);
+}
+
+/* EXPENSE TABLE */
+.expense-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.expense-table tr {
+  border-bottom: 1px solid rgba(30,45,69,0.5);
+  transition: background 0.15s;
+}
+
+.expense-table tr:hover { background: rgba(255,255,255,0.02); }
+.expense-table tr:last-child { border-bottom: none; }
+
+.expense-table td {
+  padding: 0.55rem 1.25rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text-mid);
+}
+
+.expense-table td:last-child {
+  text-align: right;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.expense-table td input {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  text-align: right;
+  width: 90px;
+  outline: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+  padding: 2px 0;
+}
+
+.expense-table td input:focus {
+  border-bottom-color: var(--gold);
+  color: var(--gold);
+}
+
+.expense-cat {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 0.5rem 1.25rem 0.2rem;
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid var(--border);
+}
+
+/* CASHFLOW SUMMARY */
+.cashflow-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+  animation: fadeIn 0.4s ease both;
+}
+
+.cashflow-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  divide-x: 1px solid var(--border);
+}
+
+.cashflow-item {
+  padding: 1.25rem 1.5rem;
+  border-right: 1px solid var(--border);
+  text-align: center;
+}
+
+.cashflow-item:last-child { border-right: none; }
+
+.cashflow-item label {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.cashflow-item .val {
+  font-family: var(--display);
+  font-size: 1.8rem;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+
+.cashflow-item .val.green { color: var(--green); }
+.cashflow-item .val.red { color: var(--red); }
+.cashflow-item .val.gold { color: var(--gold); }
+.cashflow-item .val.blue { color: var(--blue); }
+
+.cashflow-item .sub {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  margin-top: 0.3rem;
+}
+
+/* PROPERTY SELECTOR */
+.prop-selector {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.prop-btn {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.4rem 1rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text-mid);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.prop-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+.prop-btn.active { background: var(--gold); color: var(--bg); border-color: var(--gold); font-weight: 600; }
+
+/* BED TOOLTIP */
+.bed-tooltip {
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.6rem;
+  white-space: nowrap;
+  font-size: 0.6rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+
+.bed-cell:hover .bed-tooltip { opacity: 1; }
+
+/* MODAL */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.show { display: flex; }
+
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  width: 420px;
+  max-width: 95vw;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-header {
+  background: var(--bg3);
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  font-family: var(--display);
+  letter-spacing: 3px;
+  font-size: 0.9rem;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.modal-close:hover { color: var(--text); }
+
+.modal-body { padding: 1.25rem; }
+
+.modal-field {
+  margin-bottom: 1rem;
+}
+
+.modal-field label {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.modal-field input, .modal-field select {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--text);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 0.55rem 0.85rem;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.modal-field input:focus, .modal-field select:focus {
+  border-color: var(--gold);
+}
+
+.modal-field select option { background: var(--bg3); }
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.btn {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.6rem 1.25rem;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex: 1;
+}
+
+.btn-gold {
+  background: var(--gold);
+  color: var(--bg);
+  border-color: var(--gold);
+}
+
+.btn-gold:hover { background: #d4a012; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-mid);
+  border-color: var(--border);
+}
+
+.btn-ghost:hover { border-color: var(--text-mid); color: var(--text); }
+
+.btn-red {
+  background: transparent;
+  color: var(--red);
+  border-color: var(--red-dim);
+}
+
+.btn-red:hover { background: rgba(231,76,60,0.1); }
+
+/* OCCUPANCY BAR */
+.occ-bar-wrap {
+  height: 4px;
+  background: var(--bg3);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.occ-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+/* LEGEND */
+.legend {
+  display: flex;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-mid);
+  letter-spacing: 0.05em;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border: 1px solid;
+}
+
+.legend-dot.occupied { background: rgba(46,204,113,0.2); border-color: var(--green-dim); }
+.legend-dot.vacant { background: rgba(231,76,60,0.1); border-color: var(--red-dim); }
+.legend-dot.manager { background: rgba(240,180,41,0.2); border-color: var(--gold-dim); }
+.legend-dot.recup { background: rgba(168,85,247,0.2); border-color: #7c3aed; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 1100px) {
+  .kpi-row { grid-template-columns: repeat(3, 1fr); }
+  .homes-grid { grid-template-columns: repeat(3, 1fr); }
+  .fin-grid { grid-template-columns: 1fr; }
+  .cashflow-grid { grid-template-columns: repeat(2, 1fr); }
+  .cashflow-item:nth-child(2) { border-right: none; }
+}
+
+@media (max-width: 700px) {
+  .main { padding: 1rem; }
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .homes-grid { grid-template-columns: 1fr 1fr; }
+  .cashflow-grid { grid-template-columns: 1fr; }
+}
+
+/* ── PRINT PDF STYLES ── */
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { background: #0a0e14 !important; margin: 0; }
+  body::before { display: none; }
+  .header { position: static; border-bottom: 1px solid #1e2d45; page-break-inside: avoid; }
+  .tabs, .no-print { display: none !important; }
+  .main { padding: 1.5rem; display: block; }
+  .view { display: none !important; }
+  .view.print-active { display: block !important; }
+  .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; margin-bottom: 1.25rem; }
+  .homes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .home-card { page-break-inside: avoid; }
+  .kpi-card { page-break-inside: avoid; }
+  .print-timestamp { display: block !important; }
+  @page { margin: 0.5in; size: landscape; }
+}
+
+.print-timestamp {
+  display: none;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem;
+  color: #445566;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.5rem 0;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #1e2d45;
+}
+
+/* ── REPORTS TAB ── */
+.reports-toolbar { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.snapshot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.snapshot-card {
+  background: #111620; border: 1px solid #1e2d45; padding: 1.25rem;
+  cursor: pointer; transition: border-color 0.2s; position: relative;
+}
+.snapshot-card:hover { border-color: #f0b429; }
+.snapshot-card.selected { border-color: #f0b429; background: rgba(240,180,41,0.05); }
+.snapshot-card .snap-date { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 3px; color: #e8edf5; margin-bottom: 0.2rem; }
+.snapshot-card .snap-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; color: #f0b429; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 0.85rem; }
+.snapshot-card .snap-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.snap-stat label { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; color: #445566; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2px; }
+.snap-stat span { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; font-weight: 600; color: #f0b429; }
+.snap-delete { position: absolute; top: 0.6rem; right: 0.6rem; background: none; border: none; color: #445566; cursor: pointer; font-size: 0.8rem; padding: 0.2rem 0.4rem; transition: color 0.15s; }
+.snap-delete:hover { color: #e74c3c; }
+.compare-panel { background: #111620; border: 1px solid #1e2d45; overflow: hidden; margin-top: 1.5rem; }
+.compare-header { background: #1a2030; padding: 0.85rem 1.25rem; border-bottom: 1px solid #1e2d45; display: flex; align-items: center; justify-content: space-between; }
+.compare-table { width: 100%; border-collapse: collapse; }
+.compare-table th, .compare-table td { padding: 0.7rem 1.25rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; border-bottom: 1px solid rgba(30,45,69,0.5); text-align: right; }
+.compare-table th:first-child, .compare-table td:first-child { text-align: left; color: #8899aa; }
+.compare-table thead th { font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: #445566; font-weight: 400; }
+.delta-pos { color: #2ecc71; }
+.delta-neg { color: #e74c3c; }
+.delta-zero { color: #445566; }
+.no-snaps-msg { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: #445566; text-align: center; padding: 3rem; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-brand">
+    <div class="brand-mark">BR</div>
+    <div class="brand-text">
+      <h1>BETHEL RESIDENCY</h1>
+      <p>Operations Dashboard</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <div class="date-display" id="dateDisplay"></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('occupancy')">Overview</button>
+  <button class="tab" onclick="switchTab('ops')">Operations</button>
+  <button class="tab" onclick="switchTab('projections')">Projections</button>
+  <button class="tab" onclick="switchTab('reports')">Reports</button>
+  <button class="no-print" onclick="printOverview()" style="margin-left:auto;font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⬇ Save PDF</button>
+  <button class="no-print" onclick="saveSnapshot()" style="font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:var(--gold);border:1px solid var(--gold);color:var(--bg);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#d4a012'" onmouseout="this.style.background='var(--gold)'">📸 Save Snapshot</button>
+</div>
+
+<div class="main">
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- OCCUPANCY VIEW -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="view active" id="view-occupancy">
+
+    <div class="print-timestamp" id="printTimestamp"></div>
+    <div class="kpi-row" id="kpiRow"></div>
+
+    <div class="section-title">Property Overview</div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot occupied"></div>Occupied</div>
+      <div class="legend-item"><div class="legend-dot vacant"></div>Vacant</div>
+      <div class="legend-item"><div class="legend-dot manager"></div>House Manager</div>
+      <div class="legend-item"><div class="legend-dot recup"></div>Recuperative Care</div>
+    </div>
+
+    <div class="homes-grid" id="homesGrid"></div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- CLIENT FINANCIALS VIEW -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="view" id="view-ops">
+
+    <!-- Home sub-tabs -->
+    <div class="prop-selector" id="cfPropSelector"></div>
+
+    <!-- Summary KPIs -->
+    <div class="cashflow-box">
+      <div class="cashflow-grid">
+        <div class="cashflow-item">
+          <label>Monthly Revenue</label>
+          <div class="val gold" id="cf-revenue">$0</div>
+          <div class="sub" id="cf-occ-sub">0 clients</div>
+        </div>
+        <div class="cashflow-item">
+          <label>Total Expenses</label>
+          <div class="val red" id="cf-expenses">$0</div>
+          <div class="sub" id="cf-exp-items">0 line items</div>
+        </div>
+        <div class="cashflow-item">
+          <label>Monthly Cashflow</label>
+          <div class="val green" id="cf-cashflow">$0</div>
+          <div class="sub" id="cf-margin-sub">0% margin</div>
+        </div>
+        <div class="cashflow-item">
+          <label>Annual Cashflow</label>
+          <div class="val blue" id="cf-annual">$0</div>
+          <div class="sub" id="cf-coc-sub">0% CoC return</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two-column layout: Clients left, Expenses right -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-top:1.25rem">
+
+      <!-- LEFT: Client / Bed roster -->
+      <div>
+        <div style="background:var(--bg2);border:1px solid var(--border);overflow:hidden;">
+          <div style="background:var(--bg3);padding:0.75rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+            <div class="fin-panel-title">Clients & Beds</div>
+            <div class="fin-panel-total" id="cf-rev-total">$0 revenue</div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;" id="cfClientTable"></table>
+          <div style="padding:0.75rem 1.25rem;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-family:var(--mono);font-size:0.65rem;color:var(--text-dim)" id="cf-bed-count">0 beds</div>
+            <button id="cfAddBedBtn" style="font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.45rem 1.1rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;display:flex;align-items:center;gap:0.5rem;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'"><span style="font-size:1rem;line-height:1">+</span> Add Bed</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Expenses -->
+      <div>
+        <!-- Add expense form -->
+        <div style="background:var(--bg2);border:1px solid var(--border);margin-bottom:1rem;overflow:hidden;">
+          <div style="background:var(--bg3);padding:0.75rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+            <div class="fin-panel-title">Add Expense</div>
+            <div class="fin-panel-total" id="cf-exp-total">$0 total</div>
+          </div>
+          <div style="padding:1rem;display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;">
+            <div style="grid-column:1/-1">
+              <div style="font-family:var(--mono);font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.35rem;">Expense Name</div>
+              <input type="text" id="newExpName" placeholder="e.g. Cleaning Service..." style="font-family:var(--mono);font-size:0.8rem;color:var(--text);background:var(--bg3);border:1px solid var(--border);padding:0.5rem 0.75rem;width:100%;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border)'">
+            </div>
+            <div>
+              <div style="font-family:var(--mono);font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.35rem;">Category</div>
+              <select id="newExpCat" style="font-family:var(--mono);font-size:0.78rem;color:var(--text);background:var(--bg3);border:1px solid var(--border);padding:0.5rem 0.75rem;width:100%;outline:none;appearance:none;" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border)'">
+                <option>Housing</option><option>Utilities</option><option>Food</option>
+                <option>Supplies</option><option>Maintenance</option><option>Insurance</option>
+                <option>Staff</option><option>Admin</option><option>Software</option><option>Other</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-family:var(--mono);font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.35rem;">Monthly Amount</div>
+              <div style="display:flex;gap:0.5rem;">
+                <input type="number" id="newExpAmount" placeholder="$0" style="font-family:var(--mono);font-size:0.8rem;color:var(--text);background:var(--bg3);border:1px solid var(--border);padding:0.5rem 0.75rem;width:100%;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border)'">
+                <button onclick="addExpense()" style="font-family:var(--mono);font-size:0.7rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:0.5rem 1rem;background:var(--gold);color:var(--bg);border:1px solid var(--gold);cursor:pointer;white-space:nowrap;transition:background 0.15s;" onmouseover="this.style.background='#d4a012'" onmouseout="this.style.background='var(--gold)'">+ Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expense line items -->
+        <div id="expenseLineItems"></div>
+
+        <!-- Push all to all homes -->
+        <button onclick="pushAllExpensesToAllHomes()" style="width:100%;margin-top:0.75rem;font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.65rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:0.6rem;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⬆ Push All Expenses to All Homes</button>
+      </div>
+
+    </div>
+  </div>
+
+
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- PROJECTIONS VIEW -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="view" id="view-projections">
+
+    <div class="section-title">Home-by-Home Breakdown</div>
+
+    <div style="background:var(--bg2);border:1px solid var(--border);overflow:hidden;">
+      <table class="expense-table" style="width:100%">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem">Home</td>
+            <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Beds</td>
+            <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Occ %</td>
+            <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Revenue</td>
+            <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Expenses</td>
+            <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Cashflow</td>
+            <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Annual</td>
+          </tr>
+        </thead>
+        <tbody id="projTable"></tbody>
+        <tfoot id="projTotals"></tfoot>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- REPORTS VIEW -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="view" id="view-reports">
+
+    <div class="reports-toolbar">
+      <div style="flex:1">
+        <div style="font-family:var(--display);font-size:1.1rem;letter-spacing:3px;color:var(--text)">SAVED SNAPSHOTS</div>
+        <div style="font-family:var(--mono);font-size:0.62rem;color:var(--text-dim);margin-top:2px">Click any two snapshots to compare · newest first</div>
+      </div>
+      <button onclick="saveSnapshot()" style="font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.55rem 1.25rem;background:var(--gold);border:1px solid var(--gold);color:var(--bg);cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#d4a012'" onmouseout="this.style.background='var(--gold)'">📸 Save New Snapshot</button>
+      <button onclick="clearAllSnapshots()" style="font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.55rem 1.25rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Clear All</button>
+    </div>
+
+    <div class="snapshot-grid" id="snapshotGrid"></div>
+
+    <div class="compare-panel" id="comparePanel" style="display:none">
+      <div class="compare-header">
+        <div style="font-family:var(--mono);font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold)">Comparison</div>
+        <div style="font-family:var(--mono);font-size:0.65rem;color:var(--text-dim)" id="compareLabel">Select two snapshots</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="compare-table" id="compareTable"></table>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+
+<div class="modal-overlay" id="bedModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Bed <span id="modalBedId"></span></h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label>Status</label>
+        <select id="modalStatus">
+          <option value="occupied">Occupied</option>
+          <option value="recup">Recuperative Care ($3,000+)</option>
+          <option value="vacant">Vacant</option>
+          <option value="manager">House Manager</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Client Name</label>
+        <input type="text" id="modalName" placeholder="First Last">
+      </div>
+      <div class="modal-field">
+        <label>Monthly Rate ($)</label>
+        <input type="number" id="modalRate" placeholder="850">
+      </div>
+      <div class="modal-field">
+        <label>Move-in Date</label>
+        <input type="date" id="modalMoveIn">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-gold" onclick="saveBed()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DATA MODEL
+// ═══════════════════════════════════════════════════════
+
+const STARTUP_COSTS = 14000;
+
+// 5 homes with real data
+const DEFAULT_HOMES = [
+  {
+    id: 1, name: '20862 Walking Beam Dr.', address: '20862 Walking Beam Dr.',
+    startupCost: 14000,
+    expenses: [
+      { cat: 'Housing', name: 'Rent', amount: 5000 },
+      { cat: 'Housing', name: 'House Support (÷3)', amount: 300 },
+      { cat: 'Staff', name: 'Virtual Assistant', amount: 200 },
+      { cat: 'Admin', name: 'Accounting', amount: 60 },
+      { cat: 'Insurance', name: 'General Liability Insurance', amount: 0 },
+      { cat: 'Utilities', name: 'RPU (Water, Electricity, Trash)', amount: 200 },
+      { cat: 'Maintenance', name: 'Maintenance & Repair Reserve', amount: 150 },
+      { cat: 'Utilities', name: 'SoCal Gas', amount: 100 },
+      { cat: 'Food', name: 'Recup Groceries', amount: 250 },
+      { cat: 'Food', name: 'Birthday/Holiday Dinner', amount: 50 },
+      { cat: 'Staff', name: 'Emergency Transportation', amount: 50 },
+      { cat: 'Maintenance', name: 'Landscaping', amount: 60 },
+      { cat: 'Utilities', name: 'WiFi', amount: 65 },
+      { cat: 'Supplies', name: 'Toilet Paper', amount: 50 },
+      { cat: 'Supplies', name: 'Paper Towels', amount: 50 },
+      { cat: 'Software', name: 'Netflix*', amount: 30 },
+      { cat: 'Supplies', name: 'Detergent', amount: 25 },
+      { cat: 'Supplies', name: 'Trash Bags', amount: 20 },
+      { cat: 'Supplies', name: 'Pin-Sol', amount: 20 },
+      { cat: 'Admin', name: 'GoHighLevel', amount: 20 },
+      { cat: 'Admin', name: 'Domain/Email Hosting', amount: 10 },
+      { cat: 'Insurance', name: 'Security Camera*', amount: 10 },
+      { cat: 'Supplies', name: 'Dish Washing Soap', amount: 10 },
+      { cat: 'Supplies', name: 'Hand Wash Soap', amount: 10 },
+      { cat: 'Supplies', name: 'Bleach', amount: 10 },
+      { cat: 'Admin', name: 'Office Supplies', amount: 10 },
+      { cat: 'Admin', name: 'Printer Paper', amount: 5 },
+      { cat: 'Software', name: 'ChatGPT', amount: 5 },
+      { cat: 'Software', name: 'Perplexity', amount: 5 },
+      { cat: 'Software', name: 'Lovable', amount: 5 },
+      { cat: 'Admin', name: 'Printer Ink', amount: 5 },
+      { cat: 'Supplies', name: 'Toilet Bowl Cleaner', amount: 5 },
+      { cat: 'Supplies', name: 'Windex', amount: 5 },
+      { cat: 'Supplies', name: 'Bathroom Cleaner', amount: 5 },
+      { cat: 'Maintenance', name: 'Pest Control', amount: 5 },
+      { cat: 'Supplies', name: 'Water Filters', amount: 5 },
+      { cat: 'Supplies', name: 'Batteries', amount: 5 },
+      { cat: 'Supplies', name: 'Sponges', amount: 5 },
+    ],
+    beds: [
+      { id: 1, status: 'manager', name: 'House Manager', rate: 0, moveIn: '' },
+      { id: 2, status: 'occupied', name: 'Client', rate: 825, moveIn: '' },
+      { id: 3, status: 'occupied', name: 'Client', rate: 1600, moveIn: '' },
+      { id: 4, status: 'occupied', name: 'Client', rate: 3800, moveIn: '' },
+      { id: 5, status: 'occupied', name: 'Client', rate: 850, moveIn: '' },
+      { id: 6, status: 'occupied', name: 'Client', rate: 850, moveIn: '' },
+      { id: 7, status: 'occupied', name: 'Client', rate: 850, moveIn: '' },
+      { id: 8, status: 'occupied', name: 'Client', rate: 850, moveIn: '' },
+      { id: 9, status: 'occupied', name: 'Client', rate: 850, moveIn: '' },
+      { id: 10, status: 'occupied', name: 'Client', rate: 850, moveIn: '' },
+      { id: 11, status: 'occupied', name: 'Client', rate: 850, moveIn: '' },
+      { id: 12, status: 'vacant', name: '', rate: 850, moveIn: '' },
+    ]
+  },
+  {
+    id: 2, name: '134 W Manfield St.', address: '134 W Manfield St.',
+    startupCost: 8300,
+    expenses: [
+      { cat: 'Housing', name: 'Rent', amount: 3300 },
+      { cat: 'Housing', name: 'House Support (÷3)', amount: 300 },
+      { cat: 'Admin', name: 'Accounting', amount: 60 },
+      { cat: 'Insurance', name: 'General Liability Insurance', amount: 0 },
+      { cat: 'Utilities', name: 'RPU (Water, Electricity, Trash)', amount: 600 },
+      { cat: 'Maintenance', name: 'Maintenance & Repair Reserve', amount: 150 },
+      { cat: 'Utilities', name: 'SoCal Gas', amount: 75 },
+      { cat: 'Food', name: 'Birthday/Holiday Dinner', amount: 50 },
+      { cat: 'Utilities', name: 'WiFi', amount: 65 },
+      { cat: 'Supplies', name: 'Toilet Paper', amount: 50 },
+      { cat: 'Supplies', name: 'Paper Towels', amount: 50 },
+      { cat: 'Software', name: 'Netflix*', amount: 30 },
+      { cat: 'Supplies', name: 'Detergent', amount: 25 },
+      { cat: 'Supplies', name: 'Trash Bags', amount: 20 },
+      { cat: 'Supplies', name: 'Pin-Sol', amount: 20 },
+      { cat: 'Admin', name: 'GoHighLevel', amount: 20 },
+      { cat: 'Admin', name: 'Domain/Email Hosting', amount: 10 },
+      { cat: 'Insurance', name: 'Security Camera*', amount: 10 },
+      { cat: 'Supplies', name: 'Dish Washing Soap', amount: 10 },
+      { cat: 'Supplies', name: 'Hand Wash Soap', amount: 10 },
+      { cat: 'Supplies', name: 'Bleach', amount: 10 },
+      { cat: 'Admin', name: 'Office Supplies', amount: 10 },
+      { cat: 'Admin', name: 'Printer Paper', amount: 5 },
+      { cat: 'Software', name: 'ChatGPT', amount: 5 },
+      { cat: 'Software', name: 'Perplexity', amount: 5 },
+      { cat: 'Software', name: 'Lovable', amount: 5 },
+      { cat: 'Admin', name: 'Printer Ink', amount: 5 },
+      { cat: 'Supplies', name: 'Toilet Bowl Cleaner', amount: 5 },
+      { cat: 'Supplies', name: 'Windex', amount: 5 },
+      { cat: 'Supplies', name: 'Bathroom Cleaner', amount: 5 },
+      { cat: 'Maintenance', name: 'Pest Control', amount: 5 },
+      { cat: 'Supplies', name: 'Water Filters', amount: 5 },
+      { cat: 'Supplies', name: 'Batteries', amount: 5 },
+      { cat: 'Supplies', name: 'Sponges', amount: 5 },
+    ],
+    beds: [
+      { id: 1, status: 'manager', name: 'House Manager', rate: 0, moveIn: '' },
+      { id: 2, status: 'occupied', name: 'Client', rate: 0, moveIn: '' },
+      { id: 3, status: 'occupied', name: 'Client', rate: 700, moveIn: '' },
+      { id: 4, status: 'occupied', name: 'Client', rate: 825, moveIn: '' },
+      { id: 5, status: 'occupied', name: 'Client', rate: 825, moveIn: '' },
+      { id: 6, status: 'occupied', name: 'Client', rate: 825, moveIn: '' },
+      { id: 7, status: 'occupied', name: 'Client', rate: 825, moveIn: '' },
+    ]
+  },
+  {
+    id: 3, name: '5975 Grand Ave.', address: '5975 Grand Ave.',
+    startupCost: 8300,
+    expenses: [
+      { cat: 'Housing', name: 'Rent', amount: 3100 },
+      { cat: 'Housing', name: 'House Support (÷3)', amount: 300 },
+      { cat: 'Admin', name: 'Accounting', amount: 60 },
+      { cat: 'Insurance', name: 'General Liability Insurance', amount: 0 },
+      { cat: 'Utilities', name: 'RPU (Water, Electricity, Trash)', amount: 500 },
+      { cat: 'Maintenance', name: 'Maintenance & Repair Reserve', amount: 150 },
+      { cat: 'Utilities', name: 'SoCal Gas', amount: 75 },
+      { cat: 'Food', name: 'Recup Groceries', amount: 250 },
+      { cat: 'Food', name: 'Birthday/Holiday Dinner', amount: 50 },
+      { cat: 'Maintenance', name: 'Landscaping', amount: 60 },
+      { cat: 'Utilities', name: 'WiFi', amount: 65 },
+      { cat: 'Supplies', name: 'Toilet Paper', amount: 50 },
+      { cat: 'Supplies', name: 'Paper Towels', amount: 50 },
+      { cat: 'Software', name: 'Netflix*', amount: 30 },
+      { cat: 'Supplies', name: 'Detergent', amount: 25 },
+      { cat: 'Supplies', name: 'Trash Bags', amount: 20 },
+      { cat: 'Supplies', name: 'Pin-Sol', amount: 20 },
+      { cat: 'Admin', name: 'GoHighLevel', amount: 20 },
+      { cat: 'Admin', name: 'Domain/Email Hosting', amount: 10 },
+      { cat: 'Insurance', name: 'Security Camera*', amount: 10 },
+      { cat: 'Supplies', name: 'Dish Washing Soap', amount: 10 },
+      { cat: 'Supplies', name: 'Hand Wash Soap', amount: 10 },
+      { cat: 'Supplies', name: 'Bleach', amount: 10 },
+      { cat: 'Admin', name: 'Office Supplies', amount: 10 },
+      { cat: 'Admin', name: 'Printer Paper', amount: 5 },
+      { cat: 'Software', name: 'ChatGPT', amount: 5 },
+      { cat: 'Software', name: 'Perplexity', amount: 5 },
+      { cat: 'Software', name: 'Lovable', amount: 5 },
+      { cat: 'Admin', name: 'Printer Ink', amount: 5 },
+      { cat: 'Supplies', name: 'Toilet Bowl Cleaner', amount: 5 },
+      { cat: 'Supplies', name: 'Windex', amount: 5 },
+      { cat: 'Supplies', name: 'Bathroom Cleaner', amount: 5 },
+      { cat: 'Maintenance', name: 'Pest Control', amount: 5 },
+      { cat: 'Supplies', name: 'Water Filters', amount: 5 },
+      { cat: 'Supplies', name: 'Batteries', amount: 5 },
+      { cat: 'Supplies', name: 'Sponges', amount: 5 },
+    ],
+    beds: [
+      { id: 1, status: 'occupied', name: 'Client', rate: 400, moveIn: '' },
+      { id: 2, status: 'occupied', name: 'Client', rate: 800, moveIn: '' },
+      { id: 3, status: 'occupied', name: 'Client', rate: 800, moveIn: '' },
+      { id: 4, status: 'occupied', name: 'Client', rate: 800, moveIn: '' },
+      { id: 5, status: 'occupied', name: 'Client', rate: 800, moveIn: '' },
+      { id: 6, status: 'occupied', name: 'Client', rate: 800, moveIn: '' },
+      { id: 7, status: 'vacant', name: '', rate: 800, moveIn: '' },
+      { id: 8, status: 'vacant', name: '', rate: 800, moveIn: '' },
+      { id: 9, status: 'occupied', name: 'Referral Bed', rate: 3000, moveIn: '' },
+    ]
+  },
+  {
+    id: 4, name: '775 Libby Dr.', address: '775 Libby Dr.',
+    startupCost: 18000,
+    expenses: [
+      { cat: 'Housing', name: 'Rent', amount: 4500 },
+      { cat: 'Admin', name: 'Accounting', amount: 60 },
+      { cat: 'Insurance', name: 'General Liability Insurance', amount: 0 },
+      { cat: 'Utilities', name: 'RPU (Water, Electricity, Trash)', amount: 500 },
+      { cat: 'Utilities', name: 'SoCal Gas', amount: 200 },
+      { cat: 'Maintenance', name: 'Maintenance & Repair Reserve', amount: 150 },
+      { cat: 'Food', name: 'Recup Groceries', amount: 250 },
+      { cat: 'Food', name: 'Birthday/Holiday Dinner', amount: 50 },
+      { cat: 'Staff', name: 'Emergency Transportation', amount: 50 },
+      { cat: 'Maintenance', name: 'Landscaping', amount: 60 },
+      { cat: 'Utilities', name: 'WiFi', amount: 65 },
+      { cat: 'Supplies', name: 'Toilet Paper', amount: 50 },
+      { cat: 'Supplies', name: 'Paper Towels', amount: 50 },
+      { cat: 'Software', name: 'Netflix*', amount: 30 },
+      { cat: 'Supplies', name: 'Detergent', amount: 25 },
+      { cat: 'Supplies', name: 'Trash Bags', amount: 20 },
+      { cat: 'Supplies', name: 'Pin-Sol', amount: 20 },
+      { cat: 'Admin', name: 'GoHighLevel', amount: 20 },
+      { cat: 'Admin', name: 'Domain/Email Hosting', amount: 10 },
+      { cat: 'Insurance', name: 'Security Camera*', amount: 10 },
+      { cat: 'Supplies', name: 'Dish Washing Soap', amount: 10 },
+      { cat: 'Supplies', name: 'Hand Wash Soap', amount: 10 },
+      { cat: 'Supplies', name: 'Bleach', amount: 10 },
+      { cat: 'Admin', name: 'Office Supplies', amount: 10 },
+      { cat: 'Admin', name: 'Printer Paper', amount: 5 },
+      { cat: 'Software', name: 'ChatGPT', amount: 5 },
+      { cat: 'Software', name: 'Perplexity', amount: 5 },
+      { cat: 'Software', name: 'Lovable', amount: 5 },
+      { cat: 'Admin', name: 'Printer Ink', amount: 5 },
+      { cat: 'Supplies', name: 'Toilet Bowl Cleaner', amount: 5 },
+      { cat: 'Supplies', name: 'Windex', amount: 5 },
+      { cat: 'Supplies', name: 'Bathroom Cleaner', amount: 5 },
+      { cat: 'Maintenance', name: 'Pest Control', amount: 5 },
+      { cat: 'Supplies', name: 'Water Filters', amount: 5 },
+      { cat: 'Supplies', name: 'Batteries', amount: 5 },
+      { cat: 'Supplies', name: 'Sponges', amount: 5 },
+    ],
+    beds: [
+      { id: 1,  status: 'occupied', name: 'Client', rate: 425,  moveIn: '' },
+      { id: 2,  status: 'occupied', name: 'Client', rate: 3800, moveIn: '' },
+      { id: 3,  status: 'occupied', name: 'Client', rate: 800,  moveIn: '' },
+      { id: 4,  status: 'occupied', name: 'Client', rate: 850,  moveIn: '' },
+      { id: 5,  status: 'occupied', name: 'Client', rate: 850,  moveIn: '' },
+      { id: 6,  status: 'occupied', name: 'Client', rate: 850,  moveIn: '' },
+      { id: 7,  status: 'occupied', name: 'Client', rate: 850,  moveIn: '' },
+      { id: 8,  status: 'occupied', name: 'Client', rate: 850,  moveIn: '' },
+      { id: 9,  status: 'occupied', name: 'Client', rate: 850,  moveIn: '' },
+      { id: 10, status: 'occupied', name: 'Client', rate: 850,  moveIn: '' },
+      { id: 11, status: 'occupied', name: 'Client', rate: 900,  moveIn: '' },
+      { id: 12, status: 'vacant',   name: '',         rate: 850,  moveIn: '' },
+      { id: 13, status: 'vacant',   name: '',         rate: 850,  moveIn: '' },
+      { id: 14, status: 'vacant',   name: '',         rate: 850,  moveIn: '' },
+      { id: 15, status: 'vacant',   name: '',         rate: 850,  moveIn: '' },
+      { id: 16, status: 'vacant',   name: '',         rate: 850,  moveIn: '' },
+    ]
+  },
+  {
+    id: 5, name: '782 Libby Dr.', address: '782 Libby Dr.',
+    startupCost: 14000,
+    expenses: [
+      { cat: 'Housing', name: 'Rent', amount: 4750 },
+      { cat: 'Admin', name: 'Accounting', amount: 60 },
+      { cat: 'Insurance', name: 'General Liability Insurance', amount: 0 },
+      { cat: 'Utilities', name: 'RPU (Water, Electricity, Trash)', amount: 500 },
+      { cat: 'Utilities', name: 'SoCal Gas', amount: 200 },
+      { cat: 'Maintenance', name: 'Maintenance & Repair Reserve', amount: 150 },
+      { cat: 'Food', name: 'Recup Groceries', amount: 250 },
+      { cat: 'Food', name: 'Birthday/Holiday Dinner', amount: 50 },
+      { cat: 'Staff', name: 'Emergency Transportation', amount: 50 },
+      { cat: 'Maintenance', name: 'Landscaping', amount: 60 },
+      { cat: 'Utilities', name: 'WiFi', amount: 65 },
+      { cat: 'Supplies', name: 'Toilet Paper', amount: 50 },
+      { cat: 'Supplies', name: 'Paper Towels', amount: 50 },
+      { cat: 'Software', name: 'Netflix*', amount: 30 },
+      { cat: 'Supplies', name: 'Detergent', amount: 25 },
+      { cat: 'Supplies', name: 'Trash Bags', amount: 20 },
+      { cat: 'Supplies', name: 'Pin-Sol', amount: 20 },
+      { cat: 'Admin', name: 'GoHighLevel', amount: 20 },
+      { cat: 'Admin', name: 'Domain/Email Hosting', amount: 10 },
+      { cat: 'Insurance', name: 'Security Camera*', amount: 10 },
+      { cat: 'Supplies', name: 'Dish Washing Soap', amount: 10 },
+      { cat: 'Supplies', name: 'Hand Wash Soap', amount: 10 },
+      { cat: 'Supplies', name: 'Bleach', amount: 10 },
+      { cat: 'Admin', name: 'Office Supplies', amount: 10 },
+      { cat: 'Admin', name: 'Printer Paper', amount: 5 },
+      { cat: 'Software', name: 'ChatGPT', amount: 5 },
+      { cat: 'Software', name: 'Perplexity', amount: 5 },
+      { cat: 'Software', name: 'Lovable', amount: 5 },
+      { cat: 'Admin', name: 'Printer Ink', amount: 5 },
+      { cat: 'Supplies', name: 'Toilet Bowl Cleaner', amount: 5 },
+      { cat: 'Supplies', name: 'Windex', amount: 5 },
+      { cat: 'Supplies', name: 'Bathroom Cleaner', amount: 5 },
+      { cat: 'Maintenance', name: 'Pest Control', amount: 5 },
+      { cat: 'Supplies', name: 'Water Filters', amount: 5 },
+      { cat: 'Supplies', name: 'Batteries', amount: 5 },
+      { cat: 'Supplies', name: 'Sponges', amount: 5 },
+    ],
+    beds: [
+      { id: 1,  status: 'occupied', name: 'Client', rate: 425,  moveIn: '' },
+      { id: 2,  status: 'occupied', name: 'Client', rate: 850,  moveIn: '' },
+      { id: 3,  status: 'occupied', name: 'Client', rate: 850,  moveIn: '' },
+      { id: 4,  status: 'occupied', name: 'Client', rate: 850,  moveIn: '' },
+      { id: 5,  status: 'occupied', name: 'Client', rate: 850,  moveIn: '' },
+      { id: 6,  status: 'occupied', name: 'Client', rate: 850,  moveIn: '' },
+      { id: 7,  status: 'occupied', name: 'Client', rate: 850,  moveIn: '' },
+      { id: 8,  status: 'occupied', name: 'Client', rate: 850,  moveIn: '' },
+      { id: 9,  status: 'occupied', name: 'Client', rate: 900,  moveIn: '' },
+      { id: 10, status: 'occupied', name: 'Client', rate: 900,  moveIn: '' },
+      { id: 11, status: 'occupied', name: 'Client', rate: 900,  moveIn: '' },
+      { id: 12, status: 'vacant',   name: '',         rate: 850,  moveIn: '' },
+      { id: 13, status: 'vacant',   name: '',         rate: 850,  moveIn: '' },
+      { id: 14, status: 'vacant',   name: '',         rate: 850,  moveIn: '' },
+      { id: 15, status: 'vacant',   name: '',         rate: 850,  moveIn: '' },
+    ]
+  }
+];
+
+// ── SUPABASE PERSISTENCE ──
+const SUPABASE_URL = 'https://yqgccykbdihsjqlapghr.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxZ2NjeWtiZGloc2pxbGFwZ2hyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAyMTksImV4cCI6MjA4NzkxNjIxOX0.XHgok8xbYDKekprYI2htAZL622P7YcycTsQ5HuP-VUs';
+
+const sbHeaders = {
+  'Content-Type': 'application/json',
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`
+};
+
+async function sbGet(id) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/bethel_data?id=eq.${id}&select=data`, { headers: sbHeaders });
+    const rows = await res.json();
+    return rows.length ? rows[0].data : null;
+  } catch(e) { console.warn('Supabase read error:', e); return null; }
+}
+
+async function sbSet(id, data) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/bethel_data?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ data, updated_at: new Date().toISOString() })
+    });
+  } catch(e) { console.warn('Supabase write error:', e); }
+}
+
+// Debounce so we don't hammer Supabase on every keystroke
+let persistTimer = null;
+function persistData() {
+  clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => sbSet('homes', homes), 800);
+}
+
+let homes = JSON.parse(JSON.stringify(DEFAULT_HOMES));
+let currentHome = 0;
+let editingBed = null;
+
+// Load from Supabase on startup
+async function initData() {
+  const saved = await sbGet('homes');
+  if (saved && Array.isArray(saved) && saved.length > 0 && saved[0].beds) {
+    homes = saved;
+  }
+  // Apply recup status
+  homes.forEach(home => {
+    home.beds.forEach(bed => {
+      if (bed.status !== 'vacant' && bed.status !== 'manager' && bed.rate >= 3000) {
+        bed.status = 'recup';
+      }
+    });
+  });
+  renderAll();
+}
+
+// ═══════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + Math.round(n).toLocaleString();
+const pct = (a, b) => b === 0 ? '0%' : Math.round((a/b)*100) + '%';
+
+function homeRevenue(home) {
+  return home.beds.reduce((s, b) => s + (b.status !== 'vacant' ? b.rate : 0), 0);
+}
+
+function homeExpenses(home) {
+  return home.expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+}
+
+function homeCashflow(home) {
+  return homeRevenue(home) - homeExpenses(home);
+}
+
+function homeOccupied(home) {
+  return home.beds.filter(b => b.status !== 'vacant').length;
+}
+
+// Auto-set recup status when rate >= 3000
+function autoStatus(bed) {
+  if (bed.status === 'vacant' || bed.status === 'manager') return bed.status;
+  return bed.rate >= 3000 ? 'recup' : 'occupied';
+}
+
+function homeOccPct(home) {
+  return Math.round((homeOccupied(home) / home.beds.length) * 100);
+}
+
+function occClass(pct) {
+  if (pct >= 90) return 'occ-high';
+  if (pct >= 70) return 'occ-mid';
+  return 'occ-low';
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER KPI ROW
+// ═══════════════════════════════════════════════════════
+function renderKPIs() {
+  const totalBeds = homes.reduce((s, h) => s + h.beds.length, 0);
+  const totalOcc = homes.reduce((s, h) => s + homeOccupied(h), 0);
+  const totalRev = homes.reduce((s, h) => s + homeRevenue(h), 0);
+  const totalExp = homes.reduce((s, h) => s + homeExpenses(h), 0);
+  const totalCF = totalRev - totalExp;
+  const occPct = Math.round((totalOcc / totalBeds) * 100);
+  const totalClients = homes.reduce((s, h) => s + h.beds.filter(b => b.status !== 'vacant' && b.status !== 'manager').length, 0);
+  const totalRecup = homes.reduce((s, h) => s + h.beds.filter(b => b.status === 'recup').length, 0);
+  const totalVacant = totalBeds - totalOcc;
+  const margin = totalRev > 0 ? Math.round((totalCF / totalRev) * 100) : 0;
+
+  $('kpiRow').innerHTML = `
+    <div class="kpi-card gold" style="animation-delay:0s">
+      <div class="kpi-label">Portfolio Revenue</div>
+      <div class="kpi-value gold">${fmt(totalRev)}</div>
+      <div class="kpi-sub">per month · all homes</div>
+    </div>
+    <div class="kpi-card gold" style="animation-delay:0.07s">
+      <div class="kpi-label">Total Expenses</div>
+      <div class="kpi-value gold">${fmt(totalExp)}</div>
+      <div class="kpi-sub">operating costs</div>
+    </div>
+    <div class="kpi-card gold" style="animation-delay:0.14s">
+      <div class="kpi-label">Net Cashflow</div>
+      <div class="kpi-value gold">${fmt(totalCF)}</div>
+      <div class="kpi-sub">${fmt(totalCF * 12)} annually</div>
+    </div>
+    <div class="kpi-card gold" style="animation-delay:0.21s">
+      <div class="kpi-label">Profit Margin</div>
+      <div class="kpi-value gold">${margin}%</div>
+      <div class="kpi-sub">${margin >= 0 ? 'positive margin' : 'negative margin'}</div>
+    </div>
+    <div class="kpi-card blue" style="animation-delay:0.28s">
+      <div class="kpi-label">Total Beds</div>
+      <div class="kpi-value blue">${totalBeds}</div>
+      <div class="kpi-sub">across ${homes.length} properties</div>
+    </div>
+    <div class="kpi-card blue" style="animation-delay:0.35s">
+      <div class="kpi-label">Total Clients</div>
+      <div class="kpi-value blue">${totalClients}</div>
+      <div class="kpi-sub">across all homes</div>
+    </div>
+    <div class="kpi-card blue" style="animation-delay:0.42s">
+      <div class="kpi-label">Recuperative Clients</div>
+      <div class="kpi-value blue">${totalRecup}</div>
+      <div class="kpi-sub">of ${totalClients} total clients</div>
+    </div>
+    <div class="kpi-card blue" style="animation-delay:0.49s">
+      <div class="kpi-label">Open Beds</div>
+      <div class="kpi-value blue">${totalVacant}</div>
+      <div class="kpi-sub">${fmt(totalVacant * 850)} revenue gap</div>
+    </div>
+    <div class="kpi-card blue" style="animation-delay:0.56s">
+      <div class="kpi-label">Occupancy Rate</div>
+      <div class="kpi-value blue">${occPct}%</div>
+      <div class="kpi-sub">${totalOcc} of ${totalBeds} beds filled</div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER HOMES GRID
+// ═══════════════════════════════════════════════════════
+function renderHomes() {
+  $('homesGrid').innerHTML = homes.map((home, hi) => {
+    const occ = homeOccupied(home);
+    const total = home.beds.length;
+    const occP = homeOccPct(home);
+    const rev = homeRevenue(home);
+    const exp = homeExpenses(home);
+    const cf = homeCashflow(home);
+    const oc = occClass(occP);
+
+    const bedCells = home.beds.map((bed, bi) => {
+      const st = autoStatus(bed);
+      return `
+      <div class="bed-cell ${st}" onclick="openBedModal(${hi}, ${bi})" title="${bed.name || 'Vacant'} — ${bed.rate ? fmt(bed.rate)+'/mo' : 'No rate'}">
+        ${bed.id}
+        <div class="bed-tooltip">${st === 'vacant' ? 'VACANT' : st === 'recup' ? '⚕ '+(bed.name||'Recup')+' · '+fmt(bed.rate) : (bed.name || 'Client')}${st !== 'recup' && bed.rate ? ' · '+fmt(bed.rate) : ''}</div>
+      </div>
+    `}).join('');
+
+    const barColor = occP >= 90 ? 'var(--green)' : occP >= 70 ? 'var(--gold)' : 'var(--red)';
+
+    return `
+      <div class="home-card" style="animation-delay:${hi*0.08}s">
+        <div class="home-card-header">
+          <div class="home-name">${home.name}</div>
+          <div class="home-occ-badge ${oc}">${occP}%</div>
+        </div>
+        <div class="home-stats">
+          <div class="home-stat">
+            <label>Beds</label>
+            <span>${occ}/${total} filled</span>
+          </div>
+          <div class="home-stat">
+            <label>Revenue</label>
+            <span class="gold">${fmt(rev)}</span>
+          </div>
+          <div class="home-stat">
+            <label>Expenses</label>
+            <span class="neg">${fmt(exp)}</span>
+          </div>
+          <div class="home-stat">
+            <label>Cashflow</label>
+            <span class="${cf >= 0 ? 'pos' : 'neg'}">${fmt(cf)}</span>
+          </div>
+        </div>
+        <div class="occ-bar-wrap" style="margin:0 1rem 0.75rem"><div class="occ-bar" style="width:${occP}%;background:${barColor}"></div></div>
+        <div class="beds-section">
+          <div class="bed-grid">${bedCells}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// CLIENT FINANCIALS (OPERATIONS TAB)
+// ═══════════════════════════════════════════════════════
+function renderCF() {
+  const home = homes[currentHome];
+  const rev = homeRevenue(home);
+  const exp = homeExpenses(home);
+  const cf = rev - exp;
+  const annual = cf * 12;
+  const margin = rev > 0 ? Math.round((cf/rev)*100) : 0;
+  const coc = home.startupCost > 0 ? Math.round((annual / home.startupCost) * 100) : 0;
+  const occ = homeOccupied(home);
+
+  // Home sub-tabs
+  $('cfPropSelector').innerHTML = homes.map((h, i) => `
+    <button class="prop-btn ${i === currentHome ? 'active' : ''}" onclick="selectHome(${i})">${h.name}</button>
+  `).join('');
+
+  // KPI summary
+  $('cf-revenue').textContent = fmt(rev);
+  $('cf-expenses').textContent = fmt(exp);
+  $('cf-cashflow').textContent = fmt(cf);
+  $('cf-annual').textContent = fmt(annual);
+  $('cf-occ-sub').textContent = `${occ} clients`;
+  $('cf-exp-items').textContent = `${home.expenses.length} line items`;
+  $('cf-margin-sub').textContent = `${margin}% profit margin`;
+  $('cf-coc-sub').textContent = `${coc}% CoC return`;
+  $('cf-cashflow').style.color = cf >= 0 ? 'var(--green)' : 'var(--red)';
+  $('cf-annual').style.color = cf >= 0 ? 'var(--blue)' : 'var(--red)';
+
+  // ── CLIENT TABLE ──
+  $('cf-rev-total').textContent = fmt(rev) + ' revenue';
+  $('cf-bed-count').textContent = `${home.beds.length} total bed${home.beds.length !== 1 ? 's' : ''}`;
+  $('cfAddBedBtn').onclick = () => addBed(currentHome);
+
+  const hi = currentHome;
+  $('cfClientTable').innerHTML = `
+    <thead>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:0.5rem 1.25rem;font-family:var(--mono);font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim)">Client</td>
+        <td style="padding:0.5rem 1.25rem;font-family:var(--mono);font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim)">Type</td>
+        <td style="padding:0.5rem 1.25rem;text-align:right;font-family:var(--mono);font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim)">Rate</td>
+        <td style="padding:0.5rem 0.75rem;text-align:right"></td>
+      </tr>
+    </thead>
+    <tbody>
+      ${home.beds.map((bed, bi) => {
+        if (bed.status === 'vacant') return `
+          <tr style="opacity:0.4;border-bottom:1px solid rgba(30,45,69,0.4)">
+            <td style="padding:0.65rem 1.25rem">
+              <div style="display:flex;align-items:center;gap:0.75rem">
+                <div style="width:8px;height:8px;border-radius:50%;background:var(--red-dim);border:1px solid var(--red);flex-shrink:0"></div>
+                <span style="font-family:var(--mono);font-size:0.75rem;color:var(--text-dim)">Bed ${bed.id} — Vacant</span>
+              </div>
+            </td>
+            <td></td><td></td>
+            <td style="padding:0.65rem 0.75rem;text-align:right">
+              <div style="display:flex;gap:0.4rem;justify-content:flex-end">
+                <button onclick="openBedModal(${hi},${bi})" style="font-family:var(--mono);font-size:0.6rem;letter-spacing:0.08em;text-transform:uppercase;padding:0.25rem 0.6rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Fill</button>
+                <button onclick="removeBed(${hi},${bi})" style="font-family:var(--mono);font-size:0.6rem;padding:0.25rem 0.4rem;background:transparent;border:1px solid transparent;color:var(--text-dim);cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--red-dim)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='transparent';this.style.color='var(--text-dim)'">✕</button>
+              </div>
+            </td>
+          </tr>`;
+
+        const isRecup = bed.status === 'recup';
+        const isMgr = bed.status === 'manager';
+        const dotColor = isRecup ? '#c084fc' : isMgr ? 'var(--gold)' : 'var(--green)';
+        const dotBorder = isRecup ? '#7c3aed' : isMgr ? 'var(--gold-dim)' : 'var(--green-dim)';
+        const rateColor = isRecup ? '#c084fc' : isMgr ? 'var(--text-dim)' : 'var(--green)';
+        const label = isRecup ? 'Recup Care' : isMgr ? 'Manager' : 'Client';
+
+        return `
+          <tr style="border-bottom:1px solid rgba(30,45,69,0.4);transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+            <td style="padding:0.6rem 1.25rem">
+              <div style="display:flex;align-items:center;gap:0.75rem">
+                <div style="width:8px;height:8px;border-radius:50%;background:${dotColor};border:1px solid ${dotBorder};flex-shrink:0;opacity:0.8"></div>
+                <div style="flex:1;min-width:0">
+                  <input type="text" value="${bed.name || ''}" placeholder="${isMgr ? 'House Manager' : 'Client name...'}"
+                    onchange="updateClientName(${hi},${bi},this.value)"
+                    style="font-family:var(--sans);font-size:0.8rem;color:var(--text);font-weight:500;background:transparent;border:none;border-bottom:1px solid transparent;width:100%;outline:none;padding:2px 0;transition:all 0.2s;"
+                    onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='transparent'">
+                  <div style="font-family:var(--mono);font-size:0.6rem;color:var(--text-dim);margin-top:1px">Bed ${bed.id}${bed.moveIn ? ' · '+bed.moveIn : ''}</div>
+                </div>
+              </div>
+            </td>
+            <td style="padding:0.6rem 0.75rem;font-family:var(--mono);font-size:0.65rem;letter-spacing:0.06em;color:var(--text-dim);text-transform:uppercase;white-space:nowrap">${label}</td>
+            <td style="padding:0.6rem 0.75rem;text-align:right">
+              ${isMgr ? '<span style="font-family:var(--mono);font-size:0.82rem;color:var(--text-dim)">—</span>' : `
+              <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px">
+                <span style="font-family:var(--mono);font-size:0.72rem;color:var(--text-dim)">$</span>
+                <input type="number" value="${bed.rate}" onchange="updateClientRate(${hi},${bi},this.value)"
+                  style="font-family:var(--mono);font-size:0.82rem;font-weight:600;color:${rateColor};background:transparent;border:none;border-bottom:1px solid var(--border);width:65px;text-align:right;outline:none;padding:2px 0;transition:border-color 0.2s;"
+                  onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border)'">
+                <span style="font-family:var(--mono);font-size:0.58rem;color:var(--text-dim)">/mo</span>
+              </div>`}
+            </td>
+            <td style="padding:0.6rem 0.75rem;text-align:right">
+              <div style="display:flex;gap:0.35rem;justify-content:flex-end">
+                <button onclick="openBedModal(${hi},${bi})" style="font-family:var(--mono);font-size:0.6rem;letter-spacing:0.08em;text-transform:uppercase;padding:0.25rem 0.6rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Edit</button>
+                <button onclick="removeBed(${hi},${bi})" style="font-family:var(--mono);font-size:0.6rem;padding:0.25rem 0.4rem;background:transparent;border:1px solid transparent;color:var(--text-dim);cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--red-dim)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='transparent';this.style.color='var(--text-dim)'">✕</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('')}
+    </tbody>
+  `;
+
+  // ── EXPENSE LINE ITEMS ──
+  $('cf-exp-total').textContent = fmt(exp) + ' total';
+  const cats = [...new Set(home.expenses.map(e => e.cat))];
+  let expHtml = '';
+  cats.forEach(cat => {
+    const catItems = home.expenses.filter(e => e.cat === cat);
+    const catTotal = catItems.reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
+    expHtml += `
+      <div style="background:var(--bg2);border:1px solid var(--border);margin-bottom:0.75rem;overflow:hidden;">
+        <div style="background:var(--bg3);padding:0.6rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-family:var(--mono);font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold)">${cat}</div>
+          <div style="font-family:var(--mono);font-size:0.7rem;font-weight:600;color:var(--text-mid)">${fmt(catTotal)}/mo</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;">`;
+    catItems.forEach(item => {
+      const realIdx = home.expenses.indexOf(item);
+      expHtml += `
+        <tr style="border-bottom:1px solid rgba(30,45,69,0.5);transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+          <td style="padding:0.5rem 1rem;width:55%">
+            <input type="text" value="${item.name}" onchange="updateExpenseName(${hi},${realIdx},this.value)"
+              style="font-family:var(--mono);font-size:0.75rem;color:var(--text-mid);background:transparent;border:none;border-bottom:1px solid transparent;width:100%;outline:none;padding:1px 0;transition:all 0.2s;"
+              onfocus="this.style.borderColor='var(--gold)';this.style.color='var(--text)'" onblur="this.style.borderColor='transparent';this.style.color='var(--text-mid)'">
+          </td>
+          <td style="padding:0.5rem 0.5rem;text-align:right;width:35%">
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:3px">
+              <span style="font-family:var(--mono);font-size:0.72rem;color:var(--text-dim)">$</span>
+              <input type="number" value="${item.amount}" onchange="updateExpenseLine(${hi},${realIdx},this.value)"
+                style="font-family:var(--mono);font-size:0.78rem;color:var(--text);background:transparent;border:none;border-bottom:1px solid var(--border);width:60px;text-align:right;outline:none;padding:1px 0;transition:border-color 0.2s;"
+                onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border)'">
+            </div>
+          </td>
+          <td style="padding:0.5rem 0.5rem;text-align:right;width:10%">
+            <div style="display:flex;gap:0.25rem;justify-content:flex-end;">
+              <button onclick="pushExpenseToAllHomes(${hi},${realIdx})" title="Push to all homes"
+                style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:0.7rem;padding:0.15rem 0.3rem;transition:all 0.15s;line-height:1;"
+                onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text-dim)'">⬆</button>
+              <button onclick="deleteExpense(${hi},${realIdx})"
+                style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:0.8rem;padding:0.15rem 0.3rem;transition:all 0.15s;line-height:1;"
+                onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">✕</button>
+            </div>
+          </td>
+        </tr>`;
+    });
+    expHtml += `</table></div>`;
+  });
+  $('expenseLineItems').innerHTML = expHtml;
+}
+
+function openBedModal(hi, bi) {
+  editingBed = { hi, bi };
+  const bed = homes[hi].beds[bi];
+  $('modalBedId').textContent = `${homes[hi].name} · Bed ${bed.id}`;
+  $('modalStatus').value = bed.status;
+  $('modalName').value = bed.name || '';
+  $('modalRate').value = bed.rate || '';
+  $('modalMoveIn').value = bed.moveIn || '';
+  $('bedModal').classList.add('show');
+}
+
+function closeModal() {
+  $('bedModal').classList.remove('show');
+  editingBed = null;
+}
+
+function saveBed() {
+  if (!editingBed) return;
+  const { hi, bi } = editingBed;
+  const rate = parseFloat($('modalRate').value) || 0;
+  let status = $('modalStatus').value;
+  if (status === 'occupied' && rate >= 3000) status = 'recup';
+  if (status === 'recup' && rate < 3000) status = 'occupied';
+  homes[hi].beds[bi].status = status;
+  homes[hi].beds[bi].name = $('modalName').value;
+  homes[hi].beds[bi].rate = rate;
+  homes[hi].beds[bi].moveIn = $('modalMoveIn').value;
+  closeModal();
+  renderAll();
+  if ($('view-ops').classList.contains('active')) renderCF();
+}
+
+$('bedModal').addEventListener('click', e => { if (e.target === $('bedModal')) closeModal(); });
+
+// ── PUSH EXPENSE TO ALL HOMES ──
+function pushExpenseToAllHomes(sourceHi, expIdx) {
+  const source = homes[sourceHi].expenses[expIdx];
+  if (!confirm(`Push "${source.name}" ($${source.amount}/mo) to all other homes?\n\nThis will add or update this expense across all 5 properties.`)) return;
+  homes.forEach((home, hi) => {
+    if (hi === sourceHi) return;
+    const existing = home.expenses.findIndex(e => e.name === source.name);
+    if (existing >= 0) {
+      home.expenses[existing].amount = source.amount;
+      home.expenses[existing].cat = source.cat;
+    } else {
+      home.expenses.push({ cat: source.cat, name: source.name, amount: source.amount });
+    }
+  });
+  renderAll();
+  renderCF();
+}
+
+
+function selectHome(i) {
+  currentHome = i;
+  renderCF();
+}
+
+function addBed(hi) {
+  const home = homes[hi];
+  home.beds.push({ id: home.beds.length + 1, status: 'vacant', name: '', rate: 850, moveIn: '' });
+  renderAll();
+  if ($('view-ops').classList.contains('active')) renderCF();
+}
+
+function removeBed(hi, bi) {
+  if (homes[hi].beds.length <= 1) return;
+  homes[hi].beds.splice(bi, 1);
+  homes[hi].beds.forEach((b, i) => b.id = i + 1);
+  renderAll();
+  if ($('view-ops').classList.contains('active')) renderCF();
+}
+
+function updateClientName(hi, bi, val) {
+  homes[hi].beds[bi].name = val;
+  renderKPIs();
+  renderHomes();
+  if ($('view-projections').classList.contains('active')) renderProjections();
+}
+
+function updateClientRate(hi, bi, val) {
+  const rate = parseFloat(val) || 0;
+  homes[hi].beds[bi].rate = rate;
+  const bed = homes[hi].beds[bi];
+  if (bed.status !== 'vacant' && bed.status !== 'manager') {
+    bed.status = rate >= 3000 ? 'recup' : 'occupied';
+  }
+  renderAll();
+}
+
+function updateExpenseLine(hi, ei, val) {
+  homes[hi].expenses[ei].amount = parseFloat(val) || 0;
+  if ($('view-ops').classList.contains('active')) renderCF();
+  renderAll();
+}
+
+function updateExpenseName(hi, ei, val) {
+  homes[hi].expenses[ei].name = val;
+}
+
+function updateExpenseCat(hi, ei, val) {
+  homes[hi].expenses[ei].cat = val;
+  if ($('view-ops').classList.contains('active')) renderCF();
+}
+
+function addExpense() {
+  const name = $('newExpName').value.trim();
+  const cat = $('newExpCat').value;
+  const amount = parseFloat($('newExpAmount').value) || 0;
+  if (!name) {
+    $('newExpName').style.borderColor = 'var(--red)';
+    setTimeout(() => $('newExpName').style.borderColor = 'var(--border)', 1500);
+    return;
+  }
+  homes[currentHome].expenses.push({ cat, name, amount });
+  $('newExpName').value = '';
+  $('newExpAmount').value = '';
+  renderCF();
+  renderAll();
+}
+
+function deleteExpense(hi, ei) {
+  if (homes[hi].expenses.length <= 1) return;
+  homes[hi].expenses.splice(ei, 1);
+  renderCF();
+  renderAll();
+}
+
+if ($('newExpName')) $('newExpName').addEventListener('keydown', e => { if (e.key === 'Enter') addExpense(); });
+if ($('newExpAmount')) $('newExpAmount').addEventListener('keydown', e => { if (e.key === 'Enter') addExpense(); });
+
+// ═══════════════════════════════════════════════════════
+// PUSH ALL EXPENSES TO ALL HOMES
+// ═══════════════════════════════════════════════════════
+function pushAllExpensesToAllHomes() {
+  const sourceHome = homes[currentHome];
+  const count = sourceHome.expenses.length;
+  if (!confirm(`Push all ${count} expenses from "${sourceHome.name}" to every other home?\n\nExisting expenses with matching names will be updated. New ones will be added.`)) return;
+  homes.forEach((home, hi) => {
+    if (hi === currentHome) return;
+    sourceHome.expenses.forEach(src => {
+      const existing = home.expenses.findIndex(e => e.name === src.name);
+      if (existing >= 0) {
+        home.expenses[existing].amount = src.amount;
+        home.expenses[existing].cat = src.cat;
+      } else {
+        home.expenses.push({ cat: src.cat, name: src.name, amount: src.amount });
+      }
+    });
+  });
+  renderAll();
+  renderCF();
+}
+
+// ═══════════════════════════════════════════════════════
+// PRINT / PDF
+// ═══════════════════════════════════════════════════════
+function printOverview() {
+  const ts = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  $('printTimestamp').textContent = `Bethel Residency · Overview Report · ${ts}`;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('print-active'));
+  $('view-occupancy').classList.add('print-active');
+  // Give browser a tick to apply styles before printing
+  setTimeout(() => {
+    window.print();
+    // Clean up after print dialog closes
+    window.addEventListener('afterprint', () => {
+      $('view-occupancy').classList.remove('print-active');
+    }, { once: true });
+  }, 150);
+}
+
+// ═══════════════════════════════════════════════════════
+// SNAPSHOTS / REPORTS
+// ═══════════════════════════════════════════════════════
+let selectedSnaps = [];
+
+async function getSnapshots() {
+  const data = await sbGet('snapshots');
+  return Array.isArray(data) ? data : [];
+}
+async function saveSnapshots(snaps) {
+  await sbSet('snapshots', snaps);
+}
+
+async function saveSnapshot() {
+  const label = prompt('Label this snapshot (e.g. "January 2026"):');
+  if (!label) return;
+  const totalBeds = homes.reduce((s, h) => s + h.beds.length, 0);
+  const totalOcc  = homes.reduce((s, h) => s + homeOccupied(h), 0);
+  const totalRev  = homes.reduce((s, h) => s + homeRevenue(h), 0);
+  const totalExp  = homes.reduce((s, h) => s + homeExpenses(h), 0);
+  const totalCF   = totalRev - totalExp;
+  const totalClients = homes.reduce((s, h) => s + h.beds.filter(b => b.status !== 'vacant' && b.status !== 'manager').length, 0);
+  const totalRecup   = homes.reduce((s, h) => s + h.beds.filter(b => b.status === 'recup').length, 0);
+  const totalVacant  = totalBeds - totalOcc;
+  const snap = {
+    id: Date.now(), label, date: new Date().toISOString(),
+    data: {
+      revenue: totalRev, expenses: totalExp, cashflow: totalCF,
+      annual: totalCF * 12,
+      margin: totalRev > 0 ? Math.round((totalCF / totalRev) * 100) : 0,
+      beds: totalBeds, clients: totalClients, recup: totalRecup,
+      vacant: totalVacant, occPct: Math.round((totalOcc / totalBeds) * 100),
+      homeBreakdown: homes.map(h => ({
+        name: h.name, revenue: homeRevenue(h), expenses: homeExpenses(h),
+        cashflow: homeCashflow(h), beds: h.beds.length,
+        occ: homeOccupied(h), occPct: homeOccPct(h)
+      }))
+    }
+  };
+  const snaps = await getSnapshots();
+  snaps.unshift(snap);
+  await saveSnapshots(snaps);
+  selectedSnaps = [];
+  if ($('view-reports').classList.contains('active')) renderReports();
+  alert(`Snapshot "${label}" saved!`);
+}
+
+async function deleteSnapshot(id) {
+  const snaps = (await getSnapshots()).filter(s => s.id !== id);
+  await saveSnapshots(snaps);
+  selectedSnaps = selectedSnaps.filter(s => s.id !== id);
+  renderReports();
+}
+
+async function clearAllSnapshots() {
+  if (!confirm('Delete all saved snapshots? This cannot be undone.')) return;
+  await sbSet('snapshots', []);
+  selectedSnaps = [];
+  renderReports();
+}
+
+async function toggleSelectSnap(id) {
+  const snaps = await getSnapshots();
+  const snap = snaps.find(s => s.id === id);
+  if (!snap) return;
+  const idx = selectedSnaps.findIndex(s => s.id === id);
+  if (idx >= 0) {
+    selectedSnaps.splice(idx, 1);
+  } else {
+    if (selectedSnaps.length >= 2) selectedSnaps.shift();
+    selectedSnaps.push(snap);
+  }
+  renderReports();
+}
+
+function delta(a, b, isMoney) {
+  const diff = b - a;
+  const pct = a !== 0 ? Math.round((diff / Math.abs(a)) * 100) : 0;
+  const cls = diff > 0 ? 'delta-pos' : diff < 0 ? 'delta-neg' : 'delta-zero';
+  const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '—';
+  const val = isMoney ? fmt(Math.abs(diff)) : Math.abs(diff);
+  if (diff === 0) return `<span class="delta-zero">—</span>`;
+  return `<span class="${cls}">${arrow} ${val} (${Math.abs(pct)}%)</span>`;
+}
+
+async function renderReports() {
+  const snaps = await getSnapshots();
+  const grid = $('snapshotGrid');
+
+  if (!snaps.length) {
+    grid.innerHTML = `<div class="no-snaps-msg" style="grid-column:1/-1">No snapshots yet — save one from the Overview tab using the 📸 button above.</div>`;
+    $('comparePanel').style.display = 'none';
+    return;
+  }
+
+  grid.innerHTML = snaps.map(s => {
+    const isSelected = selectedSnaps.some(x => x.id === s.id);
+    const d = s.data;
+    const snapDate = new Date(s.date).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    return `
+      <div class="snapshot-card ${isSelected ? 'selected' : ''}" onclick="toggleSelectSnap(${s.id})">
+        <button class="snap-delete no-print" onclick="event.stopPropagation();deleteSnapshot(${s.id})">✕</button>
+        <div class="snap-date">${s.label}</div>
+        <div class="snap-label">${snapDate}</div>
+        <div class="snap-stats">
+          <div class="snap-stat"><label>Revenue</label><span>${fmt(d.revenue)}</span></div>
+          <div class="snap-stat"><label>Cashflow</label><span style="color:${d.cashflow>=0?'var(--green)':'var(--red)'}">${fmt(d.cashflow)}</span></div>
+          <div class="snap-stat"><label>Clients</label><span>${d.clients}</span></div>
+          <div class="snap-stat"><label>Occupancy</label><span>${d.occPct}%</span></div>
+        </div>
+        ${isSelected ? '<div style="margin-top:0.75rem;font-family:var(--mono);font-size:0.6rem;color:var(--gold);letter-spacing:0.1em">✓ SELECTED FOR COMPARISON</div>' : ''}
+      </div>`;
+  }).join('');
+
+  // Compare panel
+  if (selectedSnaps.length === 2) {
+    const [older, newer] = selectedSnaps[0].date < selectedSnaps[1].date
+      ? [selectedSnaps[0], selectedSnaps[1]]
+      : [selectedSnaps[1], selectedSnaps[0]];
+    const a = older.data, b = newer.data;
+
+    $('compareLabel').textContent = `${older.label}  →  ${newer.label}`;
+    $('comparePanel').style.display = 'block';
+
+    const rows = [
+      ['Portfolio Revenue',  fmt(a.revenue),  fmt(b.revenue),  delta(a.revenue,  b.revenue,  true)],
+      ['Total Expenses',     fmt(a.expenses), fmt(b.expenses), delta(a.expenses, b.expenses, true)],
+      ['Net Cashflow',       fmt(a.cashflow), fmt(b.cashflow), delta(a.cashflow, b.cashflow, true)],
+      ['Annual Cashflow',    fmt(a.annual),   fmt(b.annual),   delta(a.annual,   b.annual,   true)],
+      ['Profit Margin',      a.margin+'%',    b.margin+'%',    delta(a.margin,   b.margin,   false)],
+      ['Total Beds',         a.beds,          b.beds,          delta(a.beds,     b.beds,     false)],
+      ['Total Clients',      a.clients,       b.clients,       delta(a.clients,  b.clients,  false)],
+      ['Recuperative Clients', a.recup,       b.recup,         delta(a.recup,    b.recup,    false)],
+      ['Open Beds',          a.vacant,        b.vacant,        delta(a.vacant,   b.vacant,   false)],
+      ['Occupancy Rate',     a.occPct+'%',    b.occPct+'%',    delta(a.occPct,   b.occPct,   false)],
+    ];
+
+    // Home breakdown rows
+    const homeRows = (a.homeBreakdown || []).map((ah, i) => {
+      const bh = (b.homeBreakdown || [])[i];
+      if (!bh) return '';
+      return `
+        <tr style="background:rgba(255,255,255,0.015)">
+          <td style="color:var(--gold);font-size:0.7rem">${ah.name}</td>
+          <td>${fmt(ah.revenue)}</td><td>${fmt(bh.revenue)}</td>
+          <td>${delta(ah.revenue, bh.revenue, true)}</td>
+        </tr>
+        <tr>
+          <td style="padding-left:2rem;color:var(--text-dim);font-size:0.68rem">↳ Cashflow</td>
+          <td>${fmt(ah.cashflow)}</td><td>${fmt(bh.cashflow)}</td>
+          <td>${delta(ah.cashflow, bh.cashflow, true)}</td>
+        </tr>
+        <tr>
+          <td style="padding-left:2rem;color:var(--text-dim);font-size:0.68rem">↳ Occupancy</td>
+          <td>${ah.occPct}%</td><td>${bh.occPct}%</td>
+          <td>${delta(ah.occPct, bh.occPct, false)}</td>
+        </tr>`;
+    }).join('');
+
+    $('compareTable').innerHTML = `
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>${older.label}</th>
+          <th>${newer.label}</th>
+          <th>Change</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(([label, av, bv, dv]) => `
+          <tr>
+            <td>${label}</td>
+            <td style="color:var(--text-mid)">${av}</td>
+            <td style="color:var(--text)">${bv}</td>
+            <td>${dv}</td>
+          </tr>`).join('')}
+        <tr><td colspan="4" style="padding-top:1rem;font-size:0.6rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim)">Home Breakdown</td></tr>
+        ${homeRows}
+      </tbody>`;
+  } else {
+    $('comparePanel').style.display = 'none';
+  }
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  event.target.classList.add('active');
+  $('view-' + name).classList.add('active');
+  if (name === 'ops') renderCF();
+  if (name === 'projections') renderProjections();
+  if (name === 'reports') renderReports();
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════════════════════
+function renderAll() {
+  persistData();
+  renderKPIs();
+  renderHomes();
+  renderProjections();
+  if ($('view-ops').classList.contains('active')) renderCF();
+}
+
+
+// ═══════════════════════════════════════════════════════
+// RENDER PROJECTIONS
+// ═══════════════════════════════════════════════════════
+function renderProjections() {
+  const totalRev = homes.reduce((s, h) => s + homeRevenue(h), 0);
+  const totalExp = homes.reduce((s, h) => s + homeExpenses(h), 0);
+  const totalCF = totalRev - totalExp;
+  const totalAnnual = totalCF * 12;
+
+  $('projTable').innerHTML = homes.map(home => {
+    const rev = homeRevenue(home);
+    const exp = homeExpenses(home);
+    const cf = homeCashflow(home);
+    const annual = cf * 12;
+    const occP = homeOccPct(home);
+    const cfColor = cf >= 0 ? 'var(--green)' : 'var(--red)';
+
+    return `
+      <tr>
+        <td style="color:var(--text)">${home.name}</td>
+        <td style="text-align:right">${homeOccupied(home)}/${home.beds.length}</td>
+        <td style="text-align:right;color:${occP>=90?'var(--green)':occP>=70?'var(--gold)':'var(--red)'}">${occP}%</td>
+        <td style="text-align:right;color:var(--gold)">${fmt(rev)}</td>
+        <td style="text-align:right;color:var(--red)">${fmt(exp)}</td>
+        <td style="text-align:right;color:${cfColor};font-weight:600">${fmt(cf)}</td>
+        <td style="text-align:right;color:${cfColor}">${fmt(annual)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  $('projTotals').innerHTML = `
+    <tr style="border-top:2px solid var(--border);background:var(--bg3)">
+      <td style="color:var(--gold);font-weight:600;font-family:var(--display);letter-spacing:2px;font-size:0.85rem">TOTAL</td>
+      <td style="text-align:right;color:var(--text)">
+        ${homes.reduce((s,h)=>s+homeOccupied(h),0)}/${homes.reduce((s,h)=>s+h.beds.length,0)}
+      </td>
+      <td style="text-align:right;color:var(--blue)">
+        ${Math.round(homes.reduce((s,h)=>s+homeOccupied(h),0)/homes.reduce((s,h)=>s+h.beds.length,0)*100)}%
+      </td>
+      <td style="text-align:right;color:var(--gold);font-weight:600">${fmt(totalRev)}</td>
+      <td style="text-align:right;color:var(--red);font-weight:600">${fmt(totalExp)}</td>
+      <td style="text-align:right;color:var(--green);font-weight:600">${fmt(totalCF)}</td>
+      <td style="text-align:right;color:var(--green);font-weight:600">${fmt(totalAnnual)}</td>
+    </tr>
+  `;
+}
+
+// Date
+function updateDate() {
+  $('dateDisplay').textContent = new Date().toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+  });
+}
+
+updateDate();
+setInterval(updateDate, 60000);
+initData(); // loads from Supabase then renders
+</script>
+</body>
+</html>
