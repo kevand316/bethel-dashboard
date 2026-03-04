@@ -1719,8 +1719,13 @@ function renderCF() {
 
   // Home sub-tabs
   $('cfPropSelector').innerHTML = homes.map((h, i) => `
-    <button class="prop-btn ${i === currentHome ? 'active' : ''}" onclick="selectHome(${i})">${h.name}</button>
-  `).join('');
+    <span style="display:inline-flex;align-items:center;gap:0.2rem;">
+      <button class="prop-btn ${i === currentHome ? 'active' : ''}" onclick="selectHome(${i})">${h.name}</button>
+      <button onclick="renameHome(${i})" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:0.75rem;padding:0.15rem 0.3rem;line-height:1;opacity:0.45;transition:all 0.15s;" title="Rename home" onmouseover="this.style.opacity='1';this.style.color='var(--gold)'" onmouseout="this.style.opacity='0.45';this.style.color='var(--text-dim)'">✎</button>
+    </span>
+  `).join('') + `
+    <button class="prop-btn" onclick="addHome()" style="border-style:dashed;color:var(--text-dim);" title="Add new home" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">+ Add Home</button>
+  `;
 
   // KPI summary
   $('cf-revenue').textContent = fmt(rev);
@@ -1942,6 +1947,32 @@ function pushExpenseToAllHomes(sourceHi, expIdx) {
 
 function selectHome(i) {
   currentHome = i;
+  renderCF();
+}
+
+function renameHome(hi) {
+  const newName = prompt('Rename home:', homes[hi].name);
+  if (newName && newName.trim()) {
+    homes[hi].name = newName.trim();
+    homes[hi].address = newName.trim();
+    renderAll();
+    renderCF();
+  }
+}
+
+function addHome() {
+  const name = prompt('New home address/name:');
+  if (!name || !name.trim()) return;
+  homes.push({
+    id: homes.length + 1,
+    name: name.trim(),
+    address: name.trim(),
+    startupCost: 0,
+    expenses: [],
+    beds: [{ id: 1, status: 'vacant', name: '', rate: 850, moveIn: '' }]
+  });
+  currentHome = homes.length - 1;
+  renderAll();
   renderCF();
 }
 
