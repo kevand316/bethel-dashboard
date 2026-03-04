@@ -1804,10 +1804,27 @@ function renderCF() {
 
   // ── EXPENSE LINE ITEMS ──
   $('cf-exp-total').textContent = fmt(exp) + ' total';
-  const cats = [...new Set(home.expenses.map(e => e.cat))];
+  const CAT_ORDER = ['Housing','Staff','Admin','Insurance','Utilities','Maintenance','Food','Software','Supplies'];
+  const ITEM_ORDER = [
+    'Rent','House Support (÷3)','Virtual Assistant','Accounting','General Liability Insurance',
+    'RPU (Water, Electricity, Trash)','Maintenance & Repair Reserve','SoCal Gas','Recup Groceries',
+    'Birthday/Holiday Dinner','Emergency Transportation','Landscaping','WiFi','Toilet Paper',
+    'Paper Towels','Netflix*','Detergent','Trash Bags','Pin-Sol','GoHighLevel','Domain/Email Hosting',
+    'Security Camera*','Dish Washing Soap','Hand Wash Soap','Bleach','Office Supplies','Printer Paper',
+    'ChatGPT','Perplexity','Lovable','Printer Ink','Toilet Bowl Cleaner','Windex','Bathroom Cleaner',
+    'Pest Control','Water Filters','Batteries','Sponges'
+  ];
+  const sortedExpenses = [...home.expenses].sort((a, b) => {
+    const catA = CAT_ORDER.indexOf(a.cat), catB = CAT_ORDER.indexOf(b.cat);
+    const catDiff = (catA === -1 ? 999 : catA) - (catB === -1 ? 999 : catB);
+    if (catDiff !== 0) return catDiff;
+    const iA = ITEM_ORDER.indexOf(a.name), iB = ITEM_ORDER.indexOf(b.name);
+    return (iA === -1 ? 999 : iA) - (iB === -1 ? 999 : iB);
+  });
+  const cats = [...new Set(sortedExpenses.map(e => e.cat))];
   let expHtml = '';
   cats.forEach(cat => {
-    const catItems = home.expenses.filter(e => e.cat === cat);
+    const catItems = sortedExpenses.filter(e => e.cat === cat);
     const catTotal = catItems.reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
     expHtml += `
       <div style="background:var(--bg2);border:1px solid var(--border);margin-bottom:0.75rem;overflow:hidden;">
