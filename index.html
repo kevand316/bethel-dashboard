@@ -942,7 +942,7 @@ body::before {
     <div class="legend">
       <div class="legend-item"><div class="legend-dot occupied"></div>Occupied</div>
       <div class="legend-item"><div class="legend-dot vacant"></div>Vacant</div>
-      <div class="legend-item"><div class="legend-dot manager"></div>House Manager</div>
+      <div class="legend-item"><div class="legend-dot manager"></div>House Lead</div>
       <div class="legend-item"><div class="legend-dot recup"></div>Recuperative Care</div>
     </div>
 
@@ -1116,7 +1116,7 @@ body::before {
           <option value="occupied">Occupied</option>
           <option value="recup">Recuperative Care ($3,000+)</option>
           <option value="vacant">Vacant</option>
-          <option value="manager">House Manager</option>
+          <option value="manager">House Lead</option>
         </select>
       </div>
       <div class="modal-field">
@@ -1192,7 +1192,7 @@ const DEFAULT_HOMES = [
       { cat: 'Supplies', name: 'Sponges', amount: 5 },
     ],
     beds: [
-      { id: 1, status: 'manager', name: 'House Manager', rate: 0, moveIn: '' },
+      { id: 1, status: 'manager', name: 'House Lead', rate: 0, moveIn: '' },
       { id: 2, status: 'occupied', name: 'Client', rate: 825, moveIn: '' },
       { id: 3, status: 'occupied', name: 'Client', rate: 1600, moveIn: '' },
       { id: 4, status: 'occupied', name: 'Client', rate: 3800, moveIn: '' },
@@ -1246,7 +1246,7 @@ const DEFAULT_HOMES = [
       { cat: 'Supplies', name: 'Sponges', amount: 5 },
     ],
     beds: [
-      { id: 1, status: 'manager', name: 'House Manager', rate: 0, moveIn: '' },
+      { id: 1, status: 'manager', name: 'House Lead', rate: 0, moveIn: '' },
       { id: 2, status: 'occupied', name: 'Client', rate: 0, moveIn: '' },
       { id: 3, status: 'occupied', name: 'Client', rate: 700, moveIn: '' },
       { id: 4, status: 'occupied', name: 'Client', rate: 825, moveIn: '' },
@@ -1751,7 +1751,7 @@ function renderCF() {
               <div style="display:flex;align-items:center;gap:0.75rem">
                 <div style="width:8px;height:8px;border-radius:50%;background:${dotColor};border:1px solid ${dotBorder};flex-shrink:0;opacity:0.8"></div>
                 <div style="flex:1;min-width:0">
-                  <input type="text" value="${bed.name || ''}" placeholder="${isMgr ? 'House Manager' : 'Client name...'}"
+                  <input type="text" value="${bed.name || ''}" placeholder="${isMgr ? 'House Lead' : 'Client name...'}"
                     onchange="updateClientName(${hi},${bi},this.value)"
                     style="font-family:var(--sans);font-size:0.8rem;color:var(--text);font-weight:500;background:transparent;border:none;border-bottom:1px solid transparent;width:100%;outline:none;padding:2px 0;transition:all 0.2s;"
                     onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='transparent'">
