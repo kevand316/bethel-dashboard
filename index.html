@@ -1046,7 +1046,7 @@ body::before {
         <div id="expenseLineItems"></div>
 
         <!-- Push all to all homes -->
-        <button onclick="pushAllExpensesToAllHomes()" style="width:100%;margin-top:0.75rem;font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.65rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:0.6rem;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⬆ Push All Expenses to All Homes</button>
+        <button onclick="openPushModal()" style="width:100%;margin-top:0.75rem;font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.65rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:0.6rem;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⬆ Push All Expenses to All Homes</button>
       </div>
 
     </div>
@@ -1144,6 +1144,26 @@ body::before {
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-gold" onclick="saveBed()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- PUSH EXPENSES MODAL -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="pushModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Push All Expenses To</h3>
+      <button class="modal-close" onclick="closePushModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-family:var(--mono);font-size:0.72rem;color:var(--text-dim);margin-bottom:1rem;line-height:1.5">Select which homes to update. Their expenses will be <strong style="color:var(--gold)">completely replaced</strong> with an exact copy from the current home.</p>
+      <div id="pushHomeCheckboxes" style="display:flex;flex-direction:column;gap:0.6rem;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closePushModal()">Cancel</button>
+      <button class="btn btn-gold" onclick="confirmPushExpenses()">Push Expenses</button>
     </div>
   </div>
 </div>
@@ -2007,25 +2027,39 @@ if ($('newExpAmount')) $('newExpAmount').addEventListener('keydown', e => { if (
 // ═══════════════════════════════════════════════════════
 // PUSH ALL EXPENSES TO ALL HOMES
 // ═══════════════════════════════════════════════════════
-function pushAllExpensesToAllHomes() {
+function openPushModal() {
+  const container = $('pushHomeCheckboxes');
+  container.innerHTML = homes.map((home, hi) => {
+    if (hi === currentHome) return '';
+    return `
+      <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;padding:0.5rem 0.75rem;border:1px solid var(--border);transition:border-color 0.15s;"
+        onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+        <input type="checkbox" value="${hi}" checked style="accent-color:var(--gold);width:14px;height:14px;cursor:pointer;">
+        <span style="font-family:var(--mono);font-size:0.75rem;color:var(--text)">${home.name}</span>
+      </label>`;
+  }).join('');
+  $('pushModal').classList.add('show');
+}
+
+function closePushModal() {
+  $('pushModal').classList.remove('show');
+}
+
+function confirmPushExpenses() {
   const sourceHome = homes[currentHome];
-  const count = sourceHome.expenses.length;
-  if (!confirm(`Push all ${count} expenses from "${sourceHome.name}" to every other home?\n\nExisting expenses with matching names will be updated. New ones will be added.`)) return;
-  homes.forEach((home, hi) => {
-    if (hi === currentHome) return;
-    sourceHome.expenses.forEach(src => {
-      const existing = home.expenses.findIndex(e => e.name === src.name);
-      if (existing >= 0) {
-        home.expenses[existing].amount = src.amount;
-        home.expenses[existing].cat = src.cat;
-      } else {
-        home.expenses.push({ cat: src.cat, name: src.name, amount: src.amount });
-      }
-    });
+  const checked = [...$('pushHomeCheckboxes').querySelectorAll('input[type=checkbox]:checked')];
+  const targetIndices = checked.map(cb => parseInt(cb.value));
+  if (targetIndices.length === 0) { closePushModal(); return; }
+  targetIndices.forEach(hi => {
+    homes[hi].expenses = sourceHome.expenses.map(e => ({ cat: e.cat, name: e.name, amount: e.amount }));
   });
+  closePushModal();
+  persistData();
   renderAll();
   renderCF();
 }
+
+$('pushModal').addEventListener('click', e => { if (e.target === $('pushModal')) closePushModal(); });
 
 // ═══════════════════════════════════════════════════════
 // PRINT / PDF
