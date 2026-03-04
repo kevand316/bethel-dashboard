@@ -1783,14 +1783,13 @@ function renderCF() {
                 </div>` : label}
             </td>
             <td style="padding:0.6rem 0.75rem;text-align:right">
-              ${isMgr ? '<span style="font-family:var(--mono);font-size:0.82rem;color:var(--text-dim)">—</span>' : `
               <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px">
                 <span style="font-family:var(--mono);font-size:0.72rem;color:var(--text-dim)">$</span>
                 <input type="number" value="${bed.rate}" onchange="updateClientRate(${hi},${bi},this.value)"
                   style="font-family:var(--mono);font-size:0.82rem;font-weight:600;color:${rateColor};background:transparent;border:none;border-bottom:1px solid var(--border);width:65px;text-align:right;outline:none;padding:2px 0;transition:border-color 0.2s;"
                   onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border)'">
                 <span style="font-family:var(--mono);font-size:0.58rem;color:var(--text-dim)">/mo</span>
-              </div>`}
+              </div>
             </td>
             <td style="padding:0.6rem 0.75rem;text-align:right">
               <div style="display:flex;gap:0.35rem;justify-content:flex-end">
