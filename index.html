@@ -1540,6 +1540,19 @@ async function initData() {
       }
     });
   });
+  // Initialize catOrder for homes that don't have it yet
+  const INIT_CAT_ORDER = ['Housing','Staff','Admin','Insurance','Utilities','Maintenance','Food','Software','Supplies'];
+  homes.forEach(home => {
+    if (!home.catOrder) {
+      const seen = new Set();
+      const cats = home.expenses.map(e => e.cat).filter(c => { if (seen.has(c)) return false; seen.add(c); return true; });
+      cats.sort((a, b) => {
+        const ai = INIT_CAT_ORDER.indexOf(a), bi = INIT_CAT_ORDER.indexOf(b);
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      });
+      home.catOrder = cats;
+    }
+  });
   renderAll();
 }
 
@@ -1829,32 +1842,26 @@ function renderCF() {
 
   // ── EXPENSE LINE ITEMS ──
   $('cf-exp-total').textContent = fmt(exp) + ' total';
-  const CAT_ORDER = ['Housing','Staff','Admin','Insurance','Utilities','Maintenance','Food','Software','Supplies'];
-  const ITEM_ORDER = [
-    'Rent','House Support (÷3)','Virtual Assistant','Accounting','General Liability Insurance',
-    'RPU (Water, Electricity, Trash)','Maintenance & Repair Reserve','SoCal Gas','Recup Groceries',
-    'Birthday/Holiday Dinner','Emergency Transportation','Landscaping','WiFi','Toilet Paper',
-    'Paper Towels','Netflix*','Detergent','Trash Bags','Pin-Sol','GoHighLevel','Domain/Email Hosting',
-    'Security Camera*','Dish Washing Soap','Hand Wash Soap','Bleach','Office Supplies','Printer Paper',
-    'ChatGPT','Perplexity','Lovable','Printer Ink','Toilet Bowl Cleaner','Windex','Bathroom Cleaner',
-    'Pest Control','Water Filters','Batteries','Sponges'
-  ];
-  const sortedExpenses = [...home.expenses].sort((a, b) => {
-    const catA = CAT_ORDER.indexOf(a.cat), catB = CAT_ORDER.indexOf(b.cat);
-    const catDiff = (catA === -1 ? 999 : catA) - (catB === -1 ? 999 : catB);
-    if (catDiff !== 0) return catDiff;
-    const iA = ITEM_ORDER.indexOf(a.name), iB = ITEM_ORDER.indexOf(b.name);
-    return (iA === -1 ? 999 : iA) - (iB === -1 ? 999 : iB);
-  });
-  const cats = [...new Set(sortedExpenses.map(e => e.cat))];
+  // Use stored catOrder to keep category box positions stable
+  const cats = (home.catOrder || []).filter(cat => home.expenses.some(e => e.cat === cat));
+  // Append any categories not yet tracked in catOrder
+  home.expenses.forEach(e => { if (!cats.includes(e.cat)) cats.push(e.cat); });
   let expHtml = '';
   cats.forEach(cat => {
-    const catItems = sortedExpenses.filter(e => e.cat === cat);
+    const catItems = home.expenses.filter(e => e.cat === cat);
     const catTotal = catItems.reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
     expHtml += `
-      <div style="background:var(--bg2);border:1px solid var(--border);margin-bottom:0.75rem;overflow:hidden;">
-        <div style="background:var(--bg3);padding:0.6rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-          <div style="font-family:var(--mono);font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold)">${cat}</div>
+      <div draggable="true"
+        ondragstart="catDragStart(${hi},'${cat}')"
+        ondragover="catDragOver(event,this)"
+        ondragleave="catDragLeave(this)"
+        ondrop="catDrop(event,${hi},'${cat}')"
+        style="background:var(--bg2);border:1px solid var(--border);margin-bottom:0.75rem;overflow:hidden;">
+        <div style="background:var(--bg3);padding:0.6rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:grab;">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <span style="color:var(--text-dim);font-size:0.8rem;line-height:1;" title="Drag to reorder">⠿</span>
+            <div style="font-family:var(--mono);font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold)">${cat}</div>
+          </div>
           <div style="font-family:var(--mono);font-size:0.7rem;font-weight:600;color:var(--text-mid)">${fmt(catTotal)}/mo</div>
         </div>
         <table style="width:100%;border-collapse:collapse;">`;
@@ -2039,6 +2046,8 @@ function addExpense() {
     return;
   }
   homes[currentHome].expenses.push({ cat, name, amount });
+  if (!homes[currentHome].catOrder) homes[currentHome].catOrder = [];
+  if (!homes[currentHome].catOrder.includes(cat)) homes[currentHome].catOrder.push(cat);
   $('newExpName').value = '';
   $('newExpAmount').value = '';
   renderCF();
@@ -2047,13 +2056,52 @@ function addExpense() {
 
 function deleteExpense(hi, ei) {
   if (homes[hi].expenses.length <= 1) return;
+  const cat = homes[hi].expenses[ei].cat;
   homes[hi].expenses.splice(ei, 1);
+  // Remove cat from catOrder only if no expenses remain in that category
+  if (!homes[hi].expenses.some(e => e.cat === cat)) {
+    homes[hi].catOrder = (homes[hi].catOrder || []).filter(c => c !== cat);
+  }
   renderCF();
   renderAll();
 }
 
 if ($('newExpName')) $('newExpName').addEventListener('keydown', e => { if (e.key === 'Enter') addExpense(); });
 if ($('newExpAmount')) $('newExpAmount').addEventListener('keydown', e => { if (e.key === 'Enter') addExpense(); });
+
+// ── EXPENSE CATEGORY DRAG-AND-DROP ──
+let draggedCatName = null;
+let draggedCatHi = null;
+
+function catDragStart(hi, cat) {
+  draggedCatName = cat;
+  draggedCatHi = hi;
+}
+
+function catDragOver(e, el) {
+  e.preventDefault();
+  el.style.outline = '2px dashed var(--gold)';
+  el.style.outlineOffset = '-2px';
+}
+
+function catDragLeave(el) {
+  el.style.outline = 'none';
+}
+
+function catDrop(e, hi, cat) {
+  e.preventDefault();
+  e.currentTarget.style.outline = 'none';
+  if (!draggedCatName || draggedCatName === cat || draggedCatHi !== hi) { draggedCatName = null; return; }
+  const order = homes[hi].catOrder;
+  const fromIdx = order.indexOf(draggedCatName);
+  const toIdx = order.indexOf(cat);
+  if (fromIdx === -1 || toIdx === -1) { draggedCatName = null; return; }
+  order.splice(fromIdx, 1);
+  order.splice(toIdx, 0, draggedCatName);
+  draggedCatName = null;
+  renderAll();
+  renderCF();
+}
 
 // ═══════════════════════════════════════════════════════
 // PUSH ALL EXPENSES TO ALL HOMES
