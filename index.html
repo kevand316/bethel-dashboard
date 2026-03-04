@@ -1743,7 +1743,8 @@ function renderCF() {
         const dotColor = isRecup ? '#c084fc' : isMgr ? 'var(--gold)' : 'var(--green)';
         const dotBorder = isRecup ? '#7c3aed' : isMgr ? 'var(--gold-dim)' : 'var(--green-dim)';
         const rateColor = isRecup ? '#c084fc' : isMgr ? 'var(--text-dim)' : 'var(--green)';
-        const label = isRecup ? 'Recup Care' : isMgr ? 'Manager' : 'Client';
+        const managerType = bed.managerType || 'manager';
+        const label = isRecup ? 'Recup Care' : isMgr ? (managerType === 'lead' ? 'Lead' : 'Manager') : 'Client';
 
         return `
           <tr style="border-bottom:1px solid rgba(30,45,69,0.4);transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
@@ -1759,7 +1760,17 @@ function renderCF() {
                 </div>
               </div>
             </td>
-            <td style="padding:0.6rem 0.75rem;font-family:var(--mono);font-size:0.65rem;letter-spacing:0.06em;color:var(--text-dim);text-transform:uppercase;white-space:nowrap">${label}</td>
+            <td style="padding:0.6rem 0.75rem;font-family:var(--mono);font-size:0.65rem;letter-spacing:0.06em;color:var(--text-dim);text-transform:uppercase;white-space:nowrap">
+              ${isMgr ? `
+                <div style="position:relative;display:inline-block">
+                  <span style="pointer-events:none">${label} ▾</span>
+                  <select onchange="updateManagerType(${hi},${bi},this.value)"
+                    style="position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0.65rem">
+                    <option value="lead" ${managerType==='lead'?'selected':''}>House Lead</option>
+                    <option value="manager" ${managerType==='manager'?'selected':''}>House Manager</option>
+                  </select>
+                </div>` : label}
+            </td>
             <td style="padding:0.6rem 0.75rem;text-align:right">
               ${isMgr ? '<span style="font-family:var(--mono);font-size:0.82rem;color:var(--text-dim)">—</span>' : `
               <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px">
@@ -1917,6 +1928,12 @@ function updateClientRate(hi, bi, val) {
     bed.status = rate >= 3000 ? 'recup' : 'occupied';
   }
   renderAll();
+}
+
+function updateManagerType(hi, bi, val) {
+  homes[hi].beds[bi].managerType = val;
+  persistData();
+  if ($('view-ops').classList.contains('active')) renderCF();
 }
 
 function updateExpenseLine(hi, ei, val) {
