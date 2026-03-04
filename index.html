@@ -179,13 +179,16 @@ body::before {
 
 /* KPI ROW */
 .kpi-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
 
 .kpi-card {
+  flex: 1 1 160px;
+  max-width: 220px;
   background: var(--bg2);
   border: 1px solid var(--border);
   padding: 1.25rem;
@@ -393,6 +396,12 @@ body::before {
   background: rgba(240,180,41,0.12);
   border-color: var(--gold-dim);
   color: var(--gold);
+}
+
+.bed-cell.house-manager {
+  background: rgba(59,130,246,0.12);
+  border-color: rgba(59,130,246,0.4);
+  color: #60a5fa;
 }
 
 .bed-cell.recup {
@@ -783,6 +792,7 @@ body::before {
 .legend-dot.occupied { background: rgba(46,204,113,0.2); border-color: var(--green-dim); }
 .legend-dot.vacant { background: rgba(231,76,60,0.1); border-color: var(--red-dim); }
 .legend-dot.manager { background: rgba(240,180,41,0.2); border-color: var(--gold-dim); }
+.legend-dot.house-manager { background: rgba(59,130,246,0.2); border-color: rgba(59,130,246,0.4); }
 .legend-dot.recup { background: rgba(168,85,247,0.2); border-color: #7c3aed; }
 
 @keyframes fadeIn {
@@ -791,7 +801,6 @@ body::before {
 }
 
 @media (max-width: 1100px) {
-  .kpi-row { grid-template-columns: repeat(3, 1fr); }
   .homes-grid { grid-template-columns: repeat(3, 1fr); }
   .fin-grid { grid-template-columns: 1fr; }
   .cashflow-grid { grid-template-columns: repeat(2, 1fr); }
@@ -800,7 +809,6 @@ body::before {
 
 @media (max-width: 700px) {
   .main { padding: 1rem; }
-  .kpi-row { grid-template-columns: repeat(2, 1fr); }
   .homes-grid { grid-template-columns: 1fr 1fr; }
   .cashflow-grid { grid-template-columns: 1fr; }
 }
@@ -943,6 +951,7 @@ body::before {
       <div class="legend-item"><div class="legend-dot occupied"></div>Occupied</div>
       <div class="legend-item"><div class="legend-dot vacant"></div>Vacant</div>
       <div class="legend-item"><div class="legend-dot manager"></div>House Lead</div>
+      <div class="legend-item"><div class="legend-dot house-manager"></div>House Manager</div>
       <div class="legend-item"><div class="legend-dot recup"></div>Recuperative Care</div>
     </div>
 
@@ -1632,10 +1641,11 @@ function renderHomes() {
 
     const bedCells = home.beds.map((bed, bi) => {
       const st = autoStatus(bed);
+      const cellClass = st === 'manager' && (bed.managerType || 'manager') === 'manager' ? 'house-manager' : st;
       return `
-      <div class="bed-cell ${st}" onclick="openBedModal(${hi}, ${bi})" title="${bed.name || 'Vacant'} — ${bed.rate ? fmt(bed.rate)+'/mo' : 'No rate'}">
+      <div class="bed-cell ${cellClass}" onclick="openBedModal(${hi}, ${bi})" title="${bed.name || 'Vacant'} — ${bed.rate ? fmt(bed.rate)+'/mo' : 'No rate'}">
         ${bed.id}
-        <div class="bed-tooltip">${st === 'vacant' ? 'VACANT' : st === 'recup' ? '⚕ '+(bed.name||'Recup')+' · '+fmt(bed.rate) : (bed.name || 'Client')}${st !== 'recup' && bed.rate ? ' · '+fmt(bed.rate) : ''}</div>
+        <div class="bed-tooltip">${cellClass === 'vacant' ? 'VACANT' : cellClass === 'recup' ? '⚕ '+(bed.name||'Recup')+' · '+fmt(bed.rate) : (bed.name || 'Client')}${cellClass !== 'recup' && bed.rate ? ' · '+fmt(bed.rate) : ''}</div>
       </div>
     `}).join('');
 
@@ -1740,10 +1750,11 @@ function renderCF() {
 
         const isRecup = bed.status === 'recup';
         const isMgr = bed.status === 'manager';
-        const dotColor = isRecup ? '#c084fc' : isMgr ? 'var(--gold)' : 'var(--green)';
-        const dotBorder = isRecup ? '#7c3aed' : isMgr ? 'var(--gold-dim)' : 'var(--green-dim)';
-        const rateColor = isRecup ? '#c084fc' : isMgr ? 'var(--text-dim)' : 'var(--green)';
         const managerType = bed.managerType || 'manager';
+        const isHouseMgr = isMgr && managerType === 'manager';
+        const dotColor = isRecup ? '#c084fc' : isHouseMgr ? '#60a5fa' : isMgr ? 'var(--gold)' : 'var(--green)';
+        const dotBorder = isRecup ? '#7c3aed' : isHouseMgr ? 'rgba(59,130,246,0.4)' : isMgr ? 'var(--gold-dim)' : 'var(--green-dim)';
+        const rateColor = isRecup ? '#c084fc' : isMgr ? 'var(--text-dim)' : 'var(--green)';
         const label = isRecup ? 'Recup Care' : isMgr ? (managerType === 'lead' ? 'Lead' : 'Manager') : 'Client';
 
         return `
