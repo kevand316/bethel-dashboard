@@ -2000,6 +2000,7 @@ function removeBed(hi, bi) {
 
 function updateClientName(hi, bi, val) {
   homes[hi].beds[bi].name = val;
+  persistData();
   renderKPIs();
   renderHomes();
   if ($('view-projections').classList.contains('active')) renderProjections();
@@ -2029,6 +2030,7 @@ function updateExpenseLine(hi, ei, val) {
 
 function updateExpenseName(hi, ei, val) {
   homes[hi].expenses[ei].name = val;
+  persistData();
 }
 
 function updateExpenseCat(hi, ei, val) {
