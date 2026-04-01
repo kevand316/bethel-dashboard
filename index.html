@@ -870,6 +870,19 @@ body::before {
 .delta-zero { color: #445566; }
 .no-snaps-msg { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: #445566; text-align: center; padding: 3rem; }
 
+/* SAVE STATUS INDICATOR */
+#save-status {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  transition: color 0.3s;
+}
+#save-status.saving { color: var(--gold); }
+#save-status.saved { color: var(--green); }
+#save-status.error { color: var(--red); }
+
 /* SUPABASE ERROR TOAST */
 #sb-toast {
   position: fixed;
@@ -922,6 +935,7 @@ body::before {
   </div>
   <div class="header-right">
     <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <div id="save-status">SAVED</div>
     <div class="date-display" id="dateDisplay"></div>
   </div>
 </div>
@@ -1499,6 +1513,8 @@ async function sbGet(id) {
 }
 
 async function sbSet(id, data) {
+  const el = document.getElementById('save-status');
+  if (el) { el.textContent = 'SAVING...'; el.className = 'saving'; }
   try {
     // Upsert: inserts if row missing, updates if it exists
     const res = await fetch(`${SUPABASE_URL}/rest/v1/bethel_data`, {
@@ -1511,16 +1527,32 @@ async function sbSet(id, data) {
       const errText = await res.text();
       console.warn('[sbSet] error response:', errText);
       showToast('Failed to save — check connection');
+      if (el) { el.textContent = 'ERROR'; el.className = 'error'; }
+    } else {
+      if (el) { el.textContent = 'SAVED'; el.className = 'saved'; }
     }
-  } catch(e) { console.warn('[sbSet] network error:', e); showToast('Failed to save — check connection'); }
+  } catch(e) { console.warn('[sbSet] network error:', e); showToast('Failed to save — check connection'); if (el) { el.textContent = 'ERROR'; el.className = 'error'; } }
 }
 
 // Debounce so we don't hammer Supabase on every keystroke
 let persistTimer = null;
 function persistData() {
+  const el = document.getElementById('save-status');
+  if (el) { el.textContent = 'SAVING...'; el.className = 'saving'; }
   clearTimeout(persistTimer);
   persistTimer = setTimeout(() => sbSet('homes', homes), 800);
 }
+
+// Force-save immediately on page close so in-flight debounce changes aren't lost
+window.addEventListener('beforeunload', () => {
+  clearTimeout(persistTimer);
+  fetch(`${SUPABASE_URL}/rest/v1/bethel_data`, {
+    method: 'POST',
+    headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ id: 'homes', data: homes, updated_at: new Date().toISOString() }),
+    keepalive: true
+  });
+});
 
 let homes = JSON.parse(JSON.stringify(DEFAULT_HOMES));
 let currentHome = 0;
@@ -2035,6 +2067,7 @@ function updateExpenseName(hi, ei, val) {
 
 function updateExpenseCat(hi, ei, val) {
   homes[hi].expenses[ei].cat = val;
+  persistData();
   if ($('view-ops').classList.contains('active')) renderCF();
 }
 
