@@ -599,7 +599,17 @@ body::before {
   color: var(--text-mid);
   cursor: pointer;
   transition: all 0.15s;
+  line-height: 1.2;
+  text-align: left;
 }
+.prop-btn .prop-occ {
+  display: block;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+.prop-btn.active .prop-occ { opacity: 0.75; }
 
 .prop-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
 .prop-btn.active { background: var(--gold); color: var(--bg); border-color: var(--gold); font-weight: 600; }
@@ -1763,12 +1773,20 @@ function renderCF() {
   const occ = homeOccupied(home);
 
   // Home sub-tabs
-  $('cfPropSelector').innerHTML = homes.map((h, i) => `
+  $('cfPropSelector').innerHTML = homes.map((h, i) => {
+    const hOcc = homeOccupied(h);
+    const hTotal = h.beds.length;
+    const hVacant = hTotal - hOcc;
+    const occColor = hVacant === 0 ? 'var(--green)' : hVacant <= 2 ? 'var(--gold)' : 'var(--red)';
+    return `
     <span style="display:inline-flex;align-items:center;gap:0.2rem;">
-      <button class="prop-btn ${i === currentHome ? 'active' : ''}" onclick="selectHome(${i})">${h.name}</button>
+      <button class="prop-btn ${i === currentHome ? 'active' : ''}" onclick="selectHome(${i})">
+        ${h.name}
+        <span class="prop-occ" style="color:${i === currentHome ? 'inherit' : occColor}">${hOcc}/${hTotal} beds · ${hVacant} vacant</span>
+      </button>
       <button onclick="renameHome(${i})" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:0.75rem;padding:0.15rem 0.3rem;line-height:1;opacity:0.45;transition:all 0.15s;" title="Rename home" onmouseover="this.style.opacity='1';this.style.color='var(--gold)'" onmouseout="this.style.opacity='0.45';this.style.color='var(--text-dim)'">✎</button>
     </span>
-  `).join('') + `
+  `}).join('') + `
     <button class="prop-btn" onclick="addHome()" style="border-style:dashed;color:var(--text-dim);" title="Add new home" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">+ Add Home</button>
   `;
 
