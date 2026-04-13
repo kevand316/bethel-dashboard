@@ -1987,6 +1987,7 @@ function saveBed() {
   homes[hi].beds[bi].rate = rate;
   homes[hi].beds[bi].moveIn = $('modalMoveIn').value;
   closeModal();
+  persistData();
   renderAll();
   if ($('view-ops').classList.contains('active')) renderCF();
 }
@@ -2007,6 +2008,7 @@ function pushExpenseToAllHomes(sourceHi, expIdx) {
       home.expenses.push({ cat: source.cat, name: source.name, amount: source.amount });
     }
   });
+  persistData();
   renderAll();
   renderCF();
 }
@@ -2022,6 +2024,7 @@ function renameHome(hi) {
   if (newName && newName.trim()) {
     homes[hi].name = newName.trim();
     homes[hi].address = newName.trim();
+    persistData();
     renderAll();
     renderCF();
   }
@@ -2118,6 +2121,7 @@ function addExpense() {
   if (!homes[currentHome].catOrder.includes(cat)) homes[currentHome].catOrder.push(cat);
   $('newExpName').value = '';
   $('newExpAmount').value = '';
+  persistData();
   renderCF();
   renderAll();
 }
@@ -2130,6 +2134,7 @@ function deleteExpense(hi, ei) {
   if (!homes[hi].expenses.some(e => e.cat === cat)) {
     homes[hi].catOrder = (homes[hi].catOrder || []).filter(c => c !== cat);
   }
+  persistData();
   renderCF();
   renderAll();
 }
@@ -2167,6 +2172,7 @@ function catDrop(e, hi, cat) {
   order.splice(fromIdx, 1);
   order.splice(toIdx, 0, draggedCatName);
   draggedCatName = null;
+  persistData();
   renderAll();
   renderCF();
 }
