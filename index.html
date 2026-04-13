@@ -1535,7 +1535,7 @@ async function sbSet(id, data) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/bethel_data`, {
       method: 'POST',
       headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify({ id, data, updated_at: new Date().toISOString() })
+      body: JSON.stringify({ id, data })
     });
     console.log('[sbSet] status:', res.status, res.statusText);
     if (!res.ok) {
@@ -1564,7 +1564,7 @@ window.addEventListener('beforeunload', () => {
   fetch(`${SUPABASE_URL}/rest/v1/bethel_data`, {
     method: 'POST',
     headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify({ id: 'homes', data: homes, updated_at: new Date().toISOString() }),
+    body: JSON.stringify({ id: 'homes', data: homes }),
     keepalive: true
   });
 });
