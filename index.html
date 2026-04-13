@@ -2039,6 +2039,7 @@ function addHome() {
     beds: [{ id: 1, status: 'vacant', name: '', rate: 850, moveIn: '' }]
   });
   currentHome = homes.length - 1;
+  persistData();
   renderAll();
   renderCF();
 }
@@ -2046,6 +2047,7 @@ function addHome() {
 function addBed(hi) {
   const home = homes[hi];
   home.beds.push({ id: home.beds.length + 1, status: 'vacant', name: '', rate: 850, moveIn: '' });
+  persistData();
   renderAll();
   if ($('view-ops').classList.contains('active')) renderCF();
 }
@@ -2054,6 +2056,7 @@ function removeBed(hi, bi) {
   if (homes[hi].beds.length <= 1) return;
   homes[hi].beds.splice(bi, 1);
   homes[hi].beds.forEach((b, i) => b.id = i + 1);
+  persistData();
   renderAll();
   if ($('view-ops').classList.contains('active')) renderCF();
 }
@@ -2073,6 +2076,7 @@ function updateClientRate(hi, bi, val) {
   if (bed.status !== 'vacant' && bed.status !== 'manager') {
     bed.status = rate >= 3000 ? 'recup' : 'occupied';
   }
+  persistData();
   renderAll();
 }
 
@@ -2084,6 +2088,7 @@ function updateManagerType(hi, bi, val) {
 
 function updateExpenseLine(hi, ei, val) {
   homes[hi].expenses[ei].amount = parseFloat(val) || 0;
+  persistData();
   if ($('view-ops').classList.contains('active')) renderCF();
   renderAll();
 }
