@@ -2109,7 +2109,6 @@ function addBed(hi) {
   home.beds.push({ id: home.beds.length + 1, status: 'vacant', name: '', rate: 850, moveIn: '' });
   persistData();
   renderAll();
-  if ($('view-ops').classList.contains('active')) renderCF();
 }
 
 function removeBed(hi, bi) {
@@ -2118,7 +2117,6 @@ function removeBed(hi, bi) {
   homes[hi].beds.forEach((b, i) => b.id = i + 1);
   persistData();
   renderAll();
-  if ($('view-ops').classList.contains('active')) renderCF();
 }
 
 function updateClientName(hi, bi, val) {
