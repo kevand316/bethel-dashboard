@@ -1666,6 +1666,8 @@ async function initData() {
 // ═══════════════════════════════════════════════════════
 const $ = id => document.getElementById(id);
 const fmt = n => '$' + Math.round(n).toLocaleString();
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const escJs = s => String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 
 function homeRevenue(home) {
   return home.beds.reduce((s, b) => s + (b.status !== 'vacant' && b.status !== 'manager' ? b.rate : 0), 0);
@@ -1780,9 +1782,9 @@ function renderHomes() {
       const st = autoStatus(bed);
       const cellClass = st === 'manager' && (bed.managerType || 'lead') === 'manager' ? 'house-manager' : st;
       return `
-      <div class="bed-cell ${cellClass}" onclick="openBedModal(${hi}, ${bi})" title="${bed.name || 'Vacant'} — ${bed.rate ? fmt(bed.rate)+'/mo' : 'No rate'}">
+      <div class="bed-cell ${cellClass}" onclick="openBedModal(${hi}, ${bi})" title="${esc(bed.name || 'Vacant')} — ${bed.rate ? fmt(bed.rate)+'/mo' : 'No rate'}">
         ${bed.id}
-        <div class="bed-tooltip">${cellClass === 'vacant' ? 'VACANT' : cellClass === 'recup' ? '⚕ '+(bed.name||'Recup')+' · '+fmt(bed.rate) : (bed.name || 'Client')}${cellClass !== 'recup' && bed.rate ? ' · '+fmt(bed.rate) : ''}</div>
+        <div class="bed-tooltip">${cellClass === 'vacant' ? 'VACANT' : cellClass === 'recup' ? '⚕ '+esc(bed.name||'Recup')+' · '+fmt(bed.rate) : esc(bed.name || 'Client')}${cellClass !== 'recup' && bed.rate ? ' · '+fmt(bed.rate) : ''}</div>
       </div>
     `}).join('');
 
@@ -1791,7 +1793,7 @@ function renderHomes() {
     return `
       <div class="home-card" style="animation-delay:${hi*0.08}s">
         <div class="home-card-header">
-          <div class="home-name">${home.name}</div>
+          <div class="home-name">${esc(home.name)}</div>
           <div class="home-occ-badge ${oc}">${occP}%</div>
         </div>
         <div class="home-stats">
@@ -1843,7 +1845,7 @@ function renderCF() {
     return `
     <span style="display:inline-flex;align-items:center;gap:0.2rem;">
       <button class="prop-btn ${i === currentHome ? 'active' : ''}" onclick="selectHome(${i})">
-        ${h.name}
+        ${esc(h.name)}
         <span class="prop-occ" style="color:${i === currentHome ? 'inherit' : occColor}">${hOcc}/${hTotal} beds · ${hVacant} vacant</span>
       </button>
       <button onclick="renameHome(${i})" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:0.75rem;padding:0.15rem 0.3rem;line-height:1;opacity:0.45;transition:all 0.15s;" title="Rename home" onmouseover="this.style.opacity='1';this.style.color='var(--gold)'" onmouseout="this.style.opacity='0.45';this.style.color='var(--text-dim)'">✎</button>
@@ -1919,7 +1921,7 @@ function renderCF() {
               <div style="display:flex;align-items:center;gap:0.75rem">
                 <div style="width:8px;height:8px;border-radius:50%;background:${dotColor};border:1px solid ${dotBorder};flex-shrink:0;opacity:0.8"></div>
                 <div style="flex:1;min-width:0">
-                  <input type="text" value="${bed.name || ''}" placeholder="${isMgr ? 'House Lead' : 'Client name...'}"
+                  <input type="text" value="${esc(bed.name || '')}" placeholder="${isMgr ? 'House Lead' : 'Client name...'}"
                     onchange="updateClientName(${hi},${bi},this.value)"
                     style="font-family:var(--sans);font-size:0.8rem;color:var(--text);font-weight:500;background:transparent;border:none;border-bottom:1px solid transparent;width:100%;outline:none;padding:2px 0;transition:all 0.2s;"
                     onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='transparent'">
@@ -1970,10 +1972,10 @@ function renderCF() {
     const catTotal = catItems.reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
     expHtml += `
       <div draggable="true"
-        ondragstart="catDragStart(${hi},'${cat}')"
+        ondragstart="catDragStart(${hi},'${escJs(cat)}')"
         ondragover="catDragOver(event,this)"
         ondragleave="catDragLeave(this)"
-        ondrop="catDrop(event,${hi},'${cat}')"
+        ondrop="catDrop(event,${hi},'${escJs(cat)}')"
         style="background:var(--bg2);border:1px solid var(--border);margin-bottom:0.75rem;overflow:hidden;">
         <div style="background:var(--bg3);padding:0.6rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:grab;">
           <div style="display:flex;align-items:center;gap:0.5rem;">
@@ -1988,7 +1990,7 @@ function renderCF() {
       expHtml += `
         <tr style="border-bottom:1px solid rgba(30,45,69,0.5);transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
           <td style="padding:0.5rem 1rem;width:55%">
-            <input type="text" value="${item.name}" onchange="updateExpenseName(${hi},${realIdx},this.value)"
+            <input type="text" value="${esc(item.name)}" onchange="updateExpenseName(${hi},${realIdx},this.value)"
               style="font-family:var(--mono);font-size:0.75rem;color:var(--text-mid);background:transparent;border:none;border-bottom:1px solid transparent;width:100%;outline:none;padding:1px 0;transition:all 0.2s;"
               onfocus="this.style.borderColor='var(--gold)';this.style.color='var(--text)'" onblur="this.style.borderColor='transparent';this.style.color='var(--text-mid)'">
           </td>
@@ -2395,7 +2397,7 @@ async function renderReports() {
     return `
       <div class="snapshot-card ${isSelected ? 'selected' : ''}" onclick="toggleSelectSnap(${s.id})">
         <button class="snap-delete no-print" onclick="event.stopPropagation();deleteSnapshot(${s.id})">✕</button>
-        <div class="snap-date">${s.label}</div>
+        <div class="snap-date">${esc(s.label)}</div>
         <div class="snap-label">${snapDate}</div>
         <div class="snap-stats">
           <div class="snap-stat"><label>Revenue</label><span>${fmt(d.revenue)}</span></div>
@@ -2436,7 +2438,7 @@ async function renderReports() {
       if (!bh) return '';
       return `
         <tr style="background:rgba(255,255,255,0.015)">
-          <td style="color:var(--gold);font-size:0.7rem">${ah.name}</td>
+          <td style="color:var(--gold);font-size:0.7rem">${esc(ah.name)}</td>
           <td>${fmt(ah.revenue)}</td><td>${fmt(bh.revenue)}</td>
           <td>${delta(ah.revenue, bh.revenue, true)}</td>
         </tr>
@@ -2456,8 +2458,8 @@ async function renderReports() {
       <thead>
         <tr>
           <th>Metric</th>
-          <th>${older.label}</th>
-          <th>${newer.label}</th>
+          <th>${esc(older.label)}</th>
+          <th>${esc(newer.label)}</th>
           <th>Change</th>
         </tr>
       </thead>
