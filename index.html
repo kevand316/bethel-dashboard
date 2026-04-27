@@ -1908,7 +1908,7 @@ function renderCF() {
 
         const isRecup = bed.status === 'recup';
         const isMgr = bed.status === 'manager';
-        const managerType = bed.managerType || 'manager';
+        const managerType = bed.managerType || 'lead';
         const isHouseMgr = isMgr && managerType === 'manager';
         const dotColor = isRecup ? '#c084fc' : isHouseMgr ? '#60a5fa' : isMgr ? 'var(--gold)' : 'var(--green)';
         const dotBorder = isRecup ? '#7c3aed' : isHouseMgr ? 'rgba(59,130,246,0.4)' : isMgr ? 'var(--gold-dim)' : 'var(--green-dim)';
@@ -2057,7 +2057,7 @@ $('bedModal').addEventListener('click', e => { if (e.target === $('bedModal')) c
 // ── PUSH EXPENSE TO ALL HOMES ──
 function pushExpenseToAllHomes(sourceHi, expIdx) {
   const source = homes[sourceHi].expenses[expIdx];
-  if (!confirm(`Push "${source.name}" ($${source.amount}/mo) to all other homes?\n\nThis will add or update this expense across all 5 properties.`)) return;
+  if (!confirm(`Push "${source.name}" ($${source.amount}/mo) to all other homes?\n\nThis will add or update this expense across all ${homes.length} properties.`)) return;
   homes.forEach((home, hi) => {
     if (hi === sourceHi) return;
     const existing = home.expenses.findIndex(e => e.name === source.name);
@@ -2149,6 +2149,7 @@ function updateClientRate(hi, bi, val) {
 function updateManagerType(hi, bi, val) {
   homes[hi].beds[bi].managerType = val;
   persistData();
+  renderHomes();
   if ($('view-ops').classList.contains('active')) renderCF();
 }
 
