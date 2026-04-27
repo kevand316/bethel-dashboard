@@ -1571,8 +1571,10 @@ setInterval(() => {
   if (dataLoaded) sbSet('homes', homes);
 }, 60000);
 
-// Force-save immediately on page close so in-flight debounce changes aren't lost
+// Force-save immediately on page close so in-flight debounce changes aren't lost.
+// dataLoaded guard prevents writing DEFAULT_HOMES if Supabase failed on startup.
 window.addEventListener('beforeunload', () => {
+  if (!dataLoaded) return;
   clearTimeout(persistTimer);
   fetch(`${SUPABASE_URL}/rest/v1/bethel_data`, {
     method: 'POST',
@@ -1582,9 +1584,11 @@ window.addEventListener('beforeunload', () => {
   });
 });
 
-// Force-save when tab goes hidden (handles sleep, screen lock, tab switch)
-// beforeunload does NOT fire on sleep — this does
+// Force-save when tab goes hidden (handles sleep, screen lock, tab switch).
+// beforeunload does NOT fire on sleep — this does.
+// dataLoaded guard prevents writing DEFAULT_HOMES if Supabase failed on startup.
 document.addEventListener('visibilitychange', () => {
+  if (!dataLoaded) return;
   if (document.visibilityState === 'hidden') {
     clearTimeout(persistTimer);
     fetch(`${SUPABASE_URL}/rest/v1/bethel_data`, {
