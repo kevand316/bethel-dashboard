@@ -2339,6 +2339,7 @@ async function clearAllSnapshots() {
 
 async function toggleSelectSnap(id) {
   const snaps = await getSnapshots();
+  if (snaps === SB_LOAD_FAILED) return;
   const snap = snaps.find(s => s.id === id);
   if (!snap) return;
   const idx = selectedSnaps.findIndex(s => s.id === id);
@@ -2364,6 +2365,11 @@ function delta(a, b, isMoney) {
 async function renderReports() {
   const snaps = await getSnapshots();
   const grid = $('snapshotGrid');
+
+  if (snaps === SB_LOAD_FAILED) {
+    grid.innerHTML = `<div class="no-snaps-msg" style="grid-column:1/-1;color:var(--red)">Could not load snapshots — check connection and reload.</div>`;
+    return;
+  }
 
   if (!snaps.length) {
     grid.innerHTML = `<div class="no-snaps-msg" style="grid-column:1/-1">No snapshots yet — save one from the Overview tab using the 📸 button above.</div>`;
