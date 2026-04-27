@@ -2067,6 +2067,9 @@ function pushExpenseToAllHomes(sourceHi, expIdx) {
       home.expenses[existing].cat = source.cat;
     } else {
       home.expenses.push({ cat: source.cat, name: source.name, amount: source.amount });
+      // Add new category to catOrder if it's not already there
+      if (!home.catOrder) home.catOrder = [];
+      if (!home.catOrder.includes(source.cat)) home.catOrder.push(source.cat);
     }
   });
   persistData();
@@ -2266,6 +2269,8 @@ function confirmPushExpenses() {
   if (targetIndices.length === 0) { closePushModal(); return; }
   targetIndices.forEach(hi => {
     homes[hi].expenses = sourceHome.expenses.map(e => ({ cat: e.cat, name: e.name, amount: e.amount }));
+    // Sync catOrder so expense categories appear in the same order as the source home
+    homes[hi].catOrder = sourceHome.catOrder ? [...sourceHome.catOrder] : [];
   });
   closePushModal();
   persistData();
