@@ -540,7 +540,6 @@ body::before {
 .cashflow-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  divide-x: 1px solid var(--border);
 }
 
 .cashflow-item {
@@ -951,10 +950,10 @@ body::before {
 </div>
 
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('occupancy')">Overview</button>
-  <button class="tab" onclick="switchTab('ops')">Operations</button>
-  <button class="tab" onclick="switchTab('projections')">Projections</button>
-  <button class="tab" onclick="switchTab('reports')">Reports</button>
+  <button class="tab active" onclick="switchTab('occupancy', event)">Overview</button>
+  <button class="tab" onclick="switchTab('ops', event)">Operations</button>
+  <button class="tab" onclick="switchTab('projections', event)">Projections</button>
+  <button class="tab" onclick="switchTab('reports', event)">Reports</button>
   <button class="no-print" onclick="printOverview()" style="margin-left:auto;font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⬇ Save PDF</button>
   <button class="no-print" onclick="saveSnapshot()" style="font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:var(--gold);border:1px solid var(--gold);color:var(--bg);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#d4a012'" onmouseout="this.style.background='var(--gold)'">📸 Save Snapshot</button>
 </div>
@@ -1782,7 +1781,7 @@ function renderHomes() {
 
     const bedCells = home.beds.map((bed, bi) => {
       const st = autoStatus(bed);
-      const cellClass = st === 'manager' && (bed.managerType || 'manager') === 'manager' ? 'house-manager' : st;
+      const cellClass = st === 'manager' && (bed.managerType || 'lead') === 'manager' ? 'house-manager' : st;
       return `
       <div class="bed-cell ${cellClass}" onclick="openBedModal(${hi}, ${bi})" title="${bed.name || 'Vacant'} — ${bed.rate ? fmt(bed.rate)+'/mo' : 'No rate'}">
         ${bed.id}
@@ -2493,7 +2492,7 @@ async function renderReports() {
   }
 }
 
-function switchTab(name) {
+function switchTab(name, event) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   event.target.classList.add('active');
