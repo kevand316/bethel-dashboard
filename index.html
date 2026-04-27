@@ -2346,7 +2346,7 @@ async function deleteSnapshot(id) {
 
 async function clearAllSnapshots() {
   if (!confirm('Delete all saved snapshots? This cannot be undone.')) return;
-  await sbSet('snapshots', []);
+  await saveSnapshots([]);
   selectedSnaps = [];
   renderReports();
 }
