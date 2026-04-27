@@ -1511,6 +1511,8 @@ const sbHeaders = {
   'Authorization': `Bearer ${SUPABASE_KEY}`
 };
 
+const SB_LOAD_FAILED = Symbol('SB_LOAD_FAILED');
+
 async function sbGet(id) {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/bethel_data?id=eq.${id}&select=data`, { headers: sbHeaders });
@@ -1519,12 +1521,12 @@ async function sbGet(id) {
       const errText = await res.text();
       console.warn('[sbGet] error response:', errText);
       showToast('Failed to load — check connection');
-      return null;
+      return SB_LOAD_FAILED;
     }
     const rows = await res.json();
     console.log('[sbGet] rows returned:', rows.length, rows);
     return rows.length ? rows[0].data : null;
-  } catch(e) { console.warn('[sbGet] network error:', e); showToast('Failed to load — check connection'); return null; }
+  } catch(e) { console.warn('[sbGet] network error:', e); showToast('Failed to load — check connection'); return SB_LOAD_FAILED; }
 }
 
 async function sbSet(id, data) {
@@ -1549,14 +1551,25 @@ async function sbSet(id, data) {
   } catch(e) { console.warn('[sbSet] network error:', e); showToast('Failed to save — check connection'); if (el) { el.textContent = 'ERROR'; el.className = 'error'; } }
 }
 
+// Guard: never save until data has been confirmed loaded from Supabase.
+// Without this, a failed load would leave homes=DEFAULT_HOMES and then
+// renderAll() → persistData() would overwrite real Supabase data with defaults.
+let dataLoaded = false;
+
 // Debounce so we don't hammer Supabase on every keystroke
 let persistTimer = null;
 function persistData() {
+  if (!dataLoaded) return;
   const el = document.getElementById('save-status');
   if (el) { el.textContent = 'SAVING...'; el.className = 'saving'; }
   clearTimeout(persistTimer);
   persistTimer = setTimeout(() => sbSet('homes', homes), 800);
 }
+
+// Periodic heartbeat save every 60s — catches anything the debounce missed
+setInterval(() => {
+  if (dataLoaded) sbSet('homes', homes);
+}, 60000);
 
 // Force-save immediately on page close so in-flight debounce changes aren't lost
 window.addEventListener('beforeunload', () => {
@@ -1590,6 +1603,14 @@ let editingBed = null;
 // Load from Supabase on startup
 async function initData() {
   const saved = await sbGet('homes');
+  // If load failed (network error, Supabase down), bail completely.
+  // Do NOT render defaults and do NOT allow persistData to run — that would
+  // wipe real data with DEFAULT_HOMES.
+  if (saved === SB_LOAD_FAILED) {
+    showToast('Could not reach Supabase — reload to try again. Saves are disabled.');
+    return;
+  }
+  dataLoaded = true;
   if (saved && Array.isArray(saved) && saved.length > 0 && saved[0].beds) {
     homes = saved;
   }
