@@ -1564,6 +1564,9 @@ function persistData() {
   if (!dataLoaded) return;
   const el = document.getElementById('save-status');
   if (el) { el.textContent = 'SAVING...'; el.className = 'saving'; }
+  // Write to localStorage immediately on every edit — synchronous, always works,
+  // so data is never lost even if Supabase is down or the browser crashes.
+  try { localStorage.setItem(LS_HOMES_KEY, JSON.stringify(homes)); } catch(e) {}
   clearTimeout(persistTimer);
   persistTimer = setTimeout(() => sbSet('homes', homes), 800);
 }
