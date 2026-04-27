@@ -1581,6 +1581,9 @@ setInterval(() => {
 window.addEventListener('beforeunload', () => {
   if (!dataLoaded) return;
   clearTimeout(persistTimer);
+  // Write to localStorage synchronously before anything else — browser may not
+  // finish async fetch calls during unload, but localStorage always completes
+  try { localStorage.setItem(LS_HOMES_KEY, JSON.stringify(homes)); } catch(e) {}
   fetch(`${SUPABASE_URL}/rest/v1/bethel_data`, {
     method: 'POST',
     headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
@@ -1622,7 +1625,7 @@ async function initData() {
       const lsData = JSON.parse(localStorage.getItem(LS_HOMES_KEY));
       if (lsData && Array.isArray(lsData) && lsData.length > 0 && lsData[0].beds) {
         saved = lsData;
-        // Will show warning after dataLoaded is set below
+        showToast('Supabase unreachable — loaded from local backup. Saves will retry automatically.');
       }
     } catch(e) {}
 
