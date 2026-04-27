@@ -1859,7 +1859,8 @@ function renderCF() {
   $('cf-annual').textContent = fmt(annual);
   const occPct = home.beds.length > 0 ? Math.round((occ / home.beds.length) * 100) : 0;
   const occColor = occPct >= 90 ? 'var(--green)' : occPct >= 70 ? 'var(--gold)' : 'var(--red)';
-  $('cf-occ-sub').textContent = `${occ} clients`;
+  const clientCount = home.beds.filter(b => b.status !== 'vacant' && b.status !== 'manager').length;
+  $('cf-occ-sub').textContent = `${clientCount} clients`;
   $('cf-exp-items').textContent = `${home.expenses.length} line items`;
   $('cf-margin-sub').textContent = `${margin}% profit margin`;
   $('cf-coc-sub').textContent = `${coc}% CoC return`;
@@ -2176,7 +2177,7 @@ function addExpense() {
 }
 
 function deleteExpense(hi, ei) {
-  if (homes[hi].expenses.length <= 1) return;
+  if (homes[hi].expenses.length <= 1) { showToast('Cannot delete the last expense — add another first.'); return; }
   const cat = homes[hi].expenses[ei].cat;
   homes[hi].expenses.splice(ei, 1);
   // Remove cat from catOrder only if no expenses remain in that category
@@ -2214,6 +2215,7 @@ function catDrop(e, hi, cat) {
   e.currentTarget.style.outline = 'none';
   if (!draggedCatName || draggedCatName === cat || draggedCatHi !== hi) { draggedCatName = null; return; }
   const order = homes[hi].catOrder;
+  if (!order) { draggedCatName = null; return; }
   const fromIdx = order.indexOf(draggedCatName);
   const toIdx = order.indexOf(cat);
   if (fromIdx === -1 || toIdx === -1) { draggedCatName = null; return; }
