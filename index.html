@@ -1201,8 +1201,6 @@ body::before {
 // DATA MODEL
 // ═══════════════════════════════════════════════════════
 
-const STARTUP_COSTS = 14000;
-
 // 5 homes with real data
 const DEFAULT_HOMES = [
   {
@@ -1668,10 +1666,9 @@ async function initData() {
 // ═══════════════════════════════════════════════════════
 const $ = id => document.getElementById(id);
 const fmt = n => '$' + Math.round(n).toLocaleString();
-const pct = (a, b) => b === 0 ? '0%' : Math.round((a/b)*100) + '%';
 
 function homeRevenue(home) {
-  return home.beds.reduce((s, b) => s + (b.status !== 'vacant' ? b.rate : 0), 0);
+  return home.beds.reduce((s, b) => s + (b.status !== 'vacant' && b.status !== 'manager' ? b.rate : 0), 0);
 }
 
 function homeExpenses(home) {
@@ -2049,7 +2046,6 @@ function saveBed() {
   closeModal();
   persistData();
   renderAll();
-  if ($('view-ops').classList.contains('active')) renderCF();
 }
 
 $('bedModal').addEventListener('click', e => { if (e.target === $('bedModal')) closeModal(); });
@@ -2073,7 +2069,6 @@ function pushExpenseToAllHomes(sourceHi, expIdx) {
   });
   persistData();
   renderAll();
-  renderCF();
 }
 
 
@@ -2089,7 +2084,6 @@ function renameHome(hi) {
     homes[hi].address = newName.trim();
     persistData();
     renderAll();
-    renderCF();
   }
 }
 
@@ -2107,7 +2101,6 @@ function addHome() {
   currentHome = homes.length - 1;
   persistData();
   renderAll();
-  renderCF();
 }
 
 function addBed(hi) {
@@ -2156,19 +2149,12 @@ function updateManagerType(hi, bi, val) {
 function updateExpenseLine(hi, ei, val) {
   homes[hi].expenses[ei].amount = parseFloat(val) || 0;
   persistData();
-  if ($('view-ops').classList.contains('active')) renderCF();
   renderAll();
 }
 
 function updateExpenseName(hi, ei, val) {
   homes[hi].expenses[ei].name = val;
   persistData();
-}
-
-function updateExpenseCat(hi, ei, val) {
-  homes[hi].expenses[ei].cat = val;
-  persistData();
-  if ($('view-ops').classList.contains('active')) renderCF();
 }
 
 function addExpense() {
@@ -2186,7 +2172,6 @@ function addExpense() {
   $('newExpName').value = '';
   $('newExpAmount').value = '';
   persistData();
-  renderCF();
   renderAll();
 }
 
@@ -2199,7 +2184,6 @@ function deleteExpense(hi, ei) {
     homes[hi].catOrder = (homes[hi].catOrder || []).filter(c => c !== cat);
   }
   persistData();
-  renderCF();
   renderAll();
 }
 
@@ -2238,7 +2222,6 @@ function catDrop(e, hi, cat) {
   draggedCatName = null;
   persistData();
   renderAll();
-  renderCF();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2275,7 +2258,6 @@ function confirmPushExpenses() {
   closePushModal();
   persistData();
   renderAll();
-  renderCF();
 }
 
 $('pushModal').addEventListener('click', e => { if (e.target === $('pushModal')) closePushModal(); });
