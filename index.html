@@ -2278,6 +2278,7 @@ let selectedSnaps = [];
 
 async function getSnapshots() {
   const data = await sbGet('snapshots');
+  if (data === SB_LOAD_FAILED) return SB_LOAD_FAILED;
   return Array.isArray(data) ? data : [];
 }
 async function saveSnapshots(snaps) {
@@ -2287,6 +2288,9 @@ async function saveSnapshots(snaps) {
 async function saveSnapshot() {
   const label = prompt('Label this snapshot (e.g. "January 2026"):');
   if (!label) return;
+  const snaps = await getSnapshots();
+  // If load failed, bail — saving now would wipe existing snapshots
+  if (snaps === SB_LOAD_FAILED) { alert('Could not reach Supabase — snapshot not saved. Check connection and try again.'); return; }
   const totalBeds = homes.reduce((s, h) => s + h.beds.length, 0);
   const totalOcc  = homes.reduce((s, h) => s + homeOccupied(h), 0);
   const totalRev  = homes.reduce((s, h) => s + homeRevenue(h), 0);
@@ -2310,7 +2314,6 @@ async function saveSnapshot() {
       }))
     }
   };
-  const snaps = await getSnapshots();
   snaps.unshift(snap);
   await saveSnapshots(snaps);
   selectedSnaps = [];
@@ -2319,8 +2322,10 @@ async function saveSnapshot() {
 }
 
 async function deleteSnapshot(id) {
-  const snaps = (await getSnapshots()).filter(s => s.id !== id);
-  await saveSnapshots(snaps);
+  const snaps = await getSnapshots();
+  // If load failed, bail — saving now would wipe existing snapshots
+  if (snaps === SB_LOAD_FAILED) { alert('Could not reach Supabase — try again.'); return; }
+  await saveSnapshots(snaps.filter(s => s.id !== id));
   selectedSnaps = selectedSnaps.filter(s => s.id !== id);
   renderReports();
 }
