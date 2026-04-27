@@ -2365,10 +2365,11 @@ async function toggleSelectSnap(id) {
   renderReports();
 }
 
-function delta(a, b, isMoney) {
+function delta(a, b, isMoney, reverse = false) {
   const diff = b - a;
   const pct = a !== 0 ? Math.round((diff / Math.abs(a)) * 100) : 0;
-  const cls = diff > 0 ? 'delta-pos' : diff < 0 ? 'delta-neg' : 'delta-zero';
+  const good = reverse ? diff < 0 : diff > 0;
+  const cls = diff === 0 ? 'delta-zero' : good ? 'delta-pos' : 'delta-neg';
   const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '—';
   const val = isMoney ? fmt(Math.abs(diff)) : Math.abs(diff);
   if (diff === 0) return `<span class="delta-zero">—</span>`;
@@ -2421,14 +2422,14 @@ async function renderReports() {
 
     const rows = [
       ['Portfolio Revenue',  fmt(a.revenue),  fmt(b.revenue),  delta(a.revenue,  b.revenue,  true)],
-      ['Total Expenses',     fmt(a.expenses), fmt(b.expenses), delta(a.expenses, b.expenses, true)],
+      ['Total Expenses',     fmt(a.expenses), fmt(b.expenses), delta(a.expenses, b.expenses, true, true)],
       ['Net Cashflow',       fmt(a.cashflow), fmt(b.cashflow), delta(a.cashflow, b.cashflow, true)],
       ['Annual Cashflow',    fmt(a.annual),   fmt(b.annual),   delta(a.annual,   b.annual,   true)],
       ['Profit Margin',      a.margin+'%',    b.margin+'%',    delta(a.margin,   b.margin,   false)],
       ['Total Beds',         a.beds,          b.beds,          delta(a.beds,     b.beds,     false)],
       ['Total Clients',      a.clients,       b.clients,       delta(a.clients,  b.clients,  false)],
       ['Recuperative Clients', a.recup,       b.recup,         delta(a.recup,    b.recup,    false)],
-      ['Open Beds',          a.vacant,        b.vacant,        delta(a.vacant,   b.vacant,   false)],
+      ['Open Beds',          a.vacant,        b.vacant,        delta(a.vacant,   b.vacant,   false, true)],
       ['Occupancy Rate',     a.occPct+'%',    b.occPct+'%',    delta(a.occPct,   b.occPct,   false)],
     ];
 
