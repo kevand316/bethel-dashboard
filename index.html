@@ -1569,6 +1569,20 @@ window.addEventListener('beforeunload', () => {
   });
 });
 
+// Force-save when tab goes hidden (handles sleep, screen lock, tab switch)
+// beforeunload does NOT fire on sleep — this does
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    clearTimeout(persistTimer);
+    fetch(`${SUPABASE_URL}/rest/v1/bethel_data`, {
+      method: 'POST',
+      headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ id: 'homes', data: homes }),
+      keepalive: true
+    });
+  }
+});
+
 let homes = JSON.parse(JSON.stringify(DEFAULT_HOMES));
 let currentHome = 0;
 let editingBed = null;
