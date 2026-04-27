@@ -1980,7 +1980,7 @@ function renderCF() {
         <div style="background:var(--bg3);padding:0.6rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:grab;">
           <div style="display:flex;align-items:center;gap:0.5rem;">
             <span style="color:var(--text-dim);font-size:0.8rem;line-height:1;" title="Drag to reorder">⠿</span>
-            <div style="font-family:var(--mono);font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold)">${cat}</div>
+            <div style="font-family:var(--mono);font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold)">${esc(cat)}</div>
           </div>
           <div style="font-family:var(--mono);font-size:0.7rem;font-weight:600;color:var(--text-mid)">${fmt(catTotal)}/mo</div>
         </div>
@@ -2237,7 +2237,7 @@ function openPushModal() {
       <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;padding:0.5rem 0.75rem;border:1px solid var(--border);transition:border-color 0.15s;"
         onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
         <input type="checkbox" value="${hi}" checked style="accent-color:var(--gold);width:14px;height:14px;cursor:pointer;">
-        <span style="font-family:var(--mono);font-size:0.75rem;color:var(--text)">${home.name}</span>
+        <span style="font-family:var(--mono);font-size:0.75rem;color:var(--text)">${esc(home.name)}</span>
       </label>`;
   }).join('');
   $('pushModal').classList.add('show');
@@ -2520,7 +2520,7 @@ function renderProjections() {
 
     return `
       <tr>
-        <td style="color:var(--text)">${home.name}</td>
+        <td style="color:var(--text)">${esc(home.name)}</td>
         <td style="text-align:right">${homeOccupied(home)}/${home.beds.length}</td>
         <td style="text-align:right;color:${occP>=90?'var(--green)':occP>=70?'var(--gold)':'var(--red)'}">${occP}%</td>
         <td style="text-align:right;color:var(--gold)">${fmt(rev)}</td>
