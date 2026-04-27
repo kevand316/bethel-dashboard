@@ -1502,6 +1502,7 @@ function dismissToast() {
 }
 
 // ── SUPABASE PERSISTENCE ──
+const LS_HOMES_KEY = 'bethel_homes_backup'; // localStorage fallback key
 const SUPABASE_URL = 'https://yqgccykbdihsjqlapghr.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxZ2NjeWtiZGloc2pxbGFwZ2hyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAyMTksImV4cCI6MjA4NzkxNjIxOX0.XHgok8xbYDKekprYI2htAZL622P7YcycTsQ5HuP-VUs';
 
@@ -1547,6 +1548,10 @@ async function sbSet(id, data) {
       if (el) { el.textContent = 'ERROR'; el.className = 'error'; }
     } else {
       if (el) { el.textContent = 'SAVED'; el.className = 'saved'; }
+      // Mirror to localStorage so we have a fallback if Supabase goes down
+      if (id === 'homes') {
+        try { localStorage.setItem(LS_HOMES_KEY, JSON.stringify(data)); } catch(e) {}
+      }
     }
   } catch(e) { console.warn('[sbSet] network error:', e); showToast('Failed to save — check connection'); if (el) { el.textContent = 'ERROR'; el.className = 'error'; } }
 }
@@ -1591,6 +1596,9 @@ document.addEventListener('visibilitychange', () => {
   if (!dataLoaded) return;
   if (document.visibilityState === 'hidden') {
     clearTimeout(persistTimer);
+    // Write to localStorage immediately — this is synchronous and always works
+    try { localStorage.setItem(LS_HOMES_KEY, JSON.stringify(homes)); } catch(e) {}
+    // Also attempt Supabase (best-effort, keepalive so browser doesn't cancel it)
     fetch(`${SUPABASE_URL}/rest/v1/bethel_data`, {
       method: 'POST',
       headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
@@ -1606,14 +1614,25 @@ let editingBed = null;
 
 // Load from Supabase on startup
 async function initData() {
-  const saved = await sbGet('homes');
-  // If load failed (network error, Supabase down), bail completely.
-  // Do NOT render defaults and do NOT allow persistData to run — that would
-  // wipe real data with DEFAULT_HOMES.
+  let saved = await sbGet('homes');
+
+  // If Supabase failed, try localStorage backup before giving up
   if (saved === SB_LOAD_FAILED) {
-    showToast('Could not reach Supabase — reload to try again. Saves are disabled.');
-    return;
+    try {
+      const lsData = JSON.parse(localStorage.getItem(LS_HOMES_KEY));
+      if (lsData && Array.isArray(lsData) && lsData.length > 0 && lsData[0].beds) {
+        saved = lsData;
+        // Will show warning after dataLoaded is set below
+      }
+    } catch(e) {}
+
+    // If localStorage also had nothing, bail — do not render defaults
+    if (saved === SB_LOAD_FAILED) {
+      showToast('Could not reach Supabase — reload to try again. Saves are disabled.');
+      return;
+    }
   }
+
   dataLoaded = true;
   if (saved && Array.isArray(saved) && saved.length > 0 && saved[0].beds) {
     homes = saved;
