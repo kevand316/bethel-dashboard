@@ -2023,7 +2023,7 @@ function openBedModal(hi, bi) {
   $('modalBedId').textContent = `${homes[hi].name} · Bed ${bed.id}`;
   $('modalStatus').value = bed.status;
   $('modalName').value = bed.name || '';
-  $('modalRate').value = bed.rate || '';
+  $('modalRate').value = bed.rate;
   $('modalMoveIn').value = bed.moveIn || '';
   $('bedModal').classList.add('show');
 }
@@ -2112,7 +2112,7 @@ function addBed(hi) {
 }
 
 function removeBed(hi, bi) {
-  if (homes[hi].beds.length <= 1) return;
+  if (homes[hi].beds.length <= 1) { showToast('Cannot remove the last bed — add another first.'); return; }
   homes[hi].beds.splice(bi, 1);
   homes[hi].beds.forEach((b, i) => b.id = i + 1);
   persistData();
@@ -2284,13 +2284,16 @@ function printOverview() {
 // SNAPSHOTS / REPORTS
 // ═══════════════════════════════════════════════════════
 let selectedSnaps = [];
+let cachedSnaps = null; // in-memory cache so toggleSelectSnap doesn't refetch
 
 async function getSnapshots() {
   const data = await sbGet('snapshots');
   if (data === SB_LOAD_FAILED) return SB_LOAD_FAILED;
-  return Array.isArray(data) ? data : [];
+  cachedSnaps = Array.isArray(data) ? data : [];
+  return cachedSnaps;
 }
 async function saveSnapshots(snaps) {
+  cachedSnaps = snaps;
   await sbSet('snapshots', snaps);
 }
 
@@ -2347,9 +2350,8 @@ async function clearAllSnapshots() {
 }
 
 async function toggleSelectSnap(id) {
-  const snaps = await getSnapshots();
-  if (snaps === SB_LOAD_FAILED) return;
-  const snap = snaps.find(s => s.id === id);
+  if (!cachedSnaps) return;
+  const snap = cachedSnaps.find(s => s.id === id);
   if (!snap) return;
   const idx = selectedSnaps.findIndex(s => s.id === id);
   if (idx >= 0) {
