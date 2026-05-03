@@ -138,6 +138,17 @@ body::before {
   letter-spacing: 0.05em;
 }
 
+.session-email {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  letter-spacing: 0.03em;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .logout-btn {
   background: none;
   border: 1px solid var(--border);
@@ -968,6 +979,7 @@ body::before {
     <div class="live-badge"><div class="live-dot"></div>LIVE</div>
     <div id="save-status">SAVED</div>
     <div class="date-display" id="dateDisplay"></div>
+    <div class="session-email" id="session-email"></div>
     <button class="logout-btn" data-action="logout" onclick="logout()">Sign Out</button>
   </div>
 </div>
@@ -1584,6 +1596,10 @@ async function initData() {
   // Auth gate: redirect to login.html if no active session.
   const session = await requireAuth();
   if (!session) return;
+
+  // Populate email display in header — defensive: never show undefined.
+  const emailEl = document.getElementById('session-email');
+  if (emailEl) emailEl.textContent = session.user?.email || '';
 
   let saved = await sbGet('homes');
 
