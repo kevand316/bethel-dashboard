@@ -42,10 +42,11 @@ if (!ALLOWED_SUPABASE_URLS.includes(supabaseUrl)) {
  * @param {string} password
  */
 async function signIn(page, email, password) {
-  await page.goto("/login.html");
+  // serve redirects /login.html → /login (clean URLs), so navigate to /login directly.
+  await page.goto("/login");
   await page.locator("#email").fill(email);
   await page.locator("#password").fill(password);
-  await page.locator('[type="submit"]').click();
+  await page.locator('#login-btn').click();
   await page.waitForURL("/", { timeout: 10000 });
 }
 
@@ -57,7 +58,8 @@ async function signIn(page, email, password) {
  */
 async function signOut(page) {
   await page.locator('[data-action="logout"]').click();
-  await page.waitForURL(/login\.html/, { timeout: 5000 });
+  // serve redirects /login.html → /login (clean URLs)
+  await page.waitForURL(/\/login/, { timeout: 5000 });
 }
 
 /**

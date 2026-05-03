@@ -20,7 +20,8 @@ test.describe("@isolation two-user data isolation", () => {
   // Fails now because index.html has no auth gate.
   test("unauthenticated visit to dashboard redirects to login", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveURL(/login\.html/, { timeout: 5000 });
+    // serve redirects /login.html → /login (clean URLs)
+    await expect(page).toHaveURL(/\/login/, { timeout: 5000 });
   });
 
   // ── Test 2: write/read isolation ─────────────────────────────────────────
@@ -33,7 +34,8 @@ test.describe("@isolation two-user data isolation", () => {
     const pageA = await ctxA.newPage();
 
     await pageA.goto("/");
-    await expect(pageA).toHaveURL(/login\.html/, { timeout: 5000 });
+    // serve redirects /login.html → /login (clean URLs)
+    await expect(pageA).toHaveURL(/\/login/, { timeout: 5000 });
 
     await signIn(pageA, process.env.TEST_USER_A_EMAIL, process.env.TEST_USER_A_PASSWORD);
 
@@ -41,9 +43,10 @@ test.describe("@isolation two-user data isolation", () => {
     // data-field="startupCost" will be added to index.html when we implement
     // the auth gate update — the selector is intentionally forward-looking.
     const sentinel = "77777";
+    await pageA.locator('[data-tab="ops"]').click();
     await pageA.locator('input[data-field="startupCost"]').first().fill(sentinel);
     await pageA.locator('input[data-field="startupCost"]').first().dispatchEvent("change");
-    await expect(pageA.locator("#save-status")).toHaveText("SAVED", { timeout: 10000 });
+    await expect(pageA.locator("#save-status")).toHaveText("SAVED ✓", { timeout: 10000 });
 
     await signOut(pageA);
     await ctxA.close();
@@ -53,7 +56,8 @@ test.describe("@isolation two-user data isolation", () => {
     const pageB = await ctxB.newPage();
 
     await pageB.goto("/");
-    await expect(pageB).toHaveURL(/login\.html/, { timeout: 5000 });
+    // serve redirects /login.html → /login (clean URLs)
+    await expect(pageB).toHaveURL(/\/login/, { timeout: 5000 });
 
     await signIn(pageB, process.env.TEST_USER_B_EMAIL, process.env.TEST_USER_B_PASSWORD);
 

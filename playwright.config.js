@@ -8,6 +8,9 @@ module.exports = defineConfig({
   expect: { timeout: 5000 },
   // Run tests sequentially — isolation tests depend on independent browser contexts,
   // not parallel processes, and concurrent Supabase writes could interfere.
+  // workers: 1 ensures sequential execution across ALL test files (fullyParallel: false
+  // only serializes tests within a single file).
+  workers: 1,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

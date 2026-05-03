@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="lib/supabase.js"></script>
 <script src="lib/auth.js"></script>
+<script src="lib/autosave.js"></script>
 <style>
 :root {
   --bg: #0a0e14;
@@ -572,7 +573,7 @@ body::before {
 
 .cashflow-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
 }
 
 .cashflow-item {
@@ -923,7 +924,27 @@ body::before {
 }
 #save-status.saving { color: var(--gold); }
 #save-status.saved { color: var(--green); }
+#save-status.offline { color: var(--gold); }
 #save-status.error { color: var(--red); }
+
+/* SAVE FAILED BANNER — shown when all retries exhausted */
+.save-fail-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: var(--red);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 0.6rem 1rem;
+  display: none;
+}
 
 /* SUPABASE ERROR TOAST */
 #sb-toast {
@@ -977,7 +998,7 @@ body::before {
   </div>
   <div class="header-right">
     <div class="live-badge"><div class="live-dot"></div>LIVE</div>
-    <div id="save-status">SAVED</div>
+    <div id="save-status"></div>
     <div class="date-display" id="dateDisplay"></div>
     <div class="session-email" id="session-email"></div>
     <button class="logout-btn" data-action="logout" onclick="logout()">Sign Out</button>
@@ -986,7 +1007,7 @@ body::before {
 
 <div class="tabs">
   <button class="tab active" onclick="switchTab('occupancy', event)">Overview</button>
-  <button class="tab" onclick="switchTab('ops', event)">Operations</button>
+  <button class="tab" data-tab="ops" onclick="switchTab('ops', event)">Operations</button>
   <button class="tab" onclick="switchTab('projections', event)">Projections</button>
   <button class="tab" onclick="switchTab('reports', event)">Reports</button>
   <button class="no-print" onclick="printOverview()" style="margin-left:auto;font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⬇ Save PDF</button>
@@ -1052,6 +1073,21 @@ body::before {
           <label>Occupancy</label>
           <div class="val" id="cf-occ-pct">0%</div>
           <div class="sub" id="cf-occ-beds">0 / 0 beds</div>
+        </div>
+        <div class="cashflow-item">
+          <label>Startup Cost</label>
+          <input
+            id="cf-startup-cost"
+            data-field="startupCost"
+            type="number"
+            min="0"
+            step="1000"
+            value="0"
+            style="width:100%;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--display);font-size:1.55rem;letter-spacing:2px;text-align:center;outline:none;padding:0;-moz-appearance:textfield;"
+            oninput="updateStartupCost(currentHome, this.value)"
+            onchange="updateStartupCost(currentHome, this.value)"
+          >
+          <div class="sub" id="cf-coc-calc">0% CoC</div>
         </div>
       </div>
     </div>
@@ -1540,51 +1576,43 @@ const SB_LOAD_FAILED = window.SB_LOAD_FAILED;
 
 // Guard: never save until data has been confirmed loaded from Supabase.
 // Without this, a failed load would leave homes=DEFAULT_HOMES and then
-// renderAll() → persistData() would overwrite real Supabase data with defaults.
+// renderAll() would overwrite real Supabase data with defaults.
 let dataLoaded = false;
 
-// Debounce so we don't hammer Supabase on every keystroke
-let persistTimer = null;
+// All writes go through autosave.push() which handles debounce, queue, retry,
+// and UI state. Direct sbSet calls (outside of autosave.js) are only for
+// snapshots and one-time seeding.
 function persistData() {
   if (!dataLoaded) return;
-  const el = document.getElementById('save-status');
-  if (el) { el.textContent = 'SAVING...'; el.className = 'saving'; }
-  // Write to localStorage immediately on every edit — synchronous, always works,
-  // so data is never lost even if Supabase is down or the browser crashes.
-  try { localStorage.setItem(LS_HOMES_KEY, JSON.stringify(homes)); } catch(e) {}
-  clearTimeout(persistTimer);
-  persistTimer = setTimeout(() => sbSet('homes', homes), 800);
+  window.autosave.push('homes', homes);
 }
 
-// Periodic heartbeat save every 60s — catches anything the debounce missed
+// Periodic heartbeat — flush any stale queue entries every 60s.
 setInterval(() => {
-  if (dataLoaded) sbSet('homes', homes);
+  if (dataLoaded) window.autosave.flush();
 }, 60000);
 
-// Force-save immediately on page close so in-flight debounce changes aren't lost.
-// dataLoaded guard prevents writing DEFAULT_HOMES if Supabase failed on startup.
+// Flush queue on page close — autosave.flush() does a keepalive fetch so the
+// write completes even after the page unloads. dataLoaded guard prevents
+// flushing DEFAULT_HOMES if Supabase failed on startup.
 window.addEventListener('beforeunload', () => {
   if (!dataLoaded) return;
-  clearTimeout(persistTimer);
-  // Write to localStorage synchronously before anything else — browser may not
-  // finish async calls during unload, but localStorage always completes
-  try { localStorage.setItem(LS_HOMES_KEY, JSON.stringify(homes)); } catch(e) {}
-  // Best-effort Supabase flush — proper keepalive flush is handled by lib/autosave.js
-  sbSet('homes', homes);
+  window.autosave.flush();
 });
 
-// Force-save when tab goes hidden (handles sleep, screen lock, tab switch).
+// Flush when tab goes hidden (handles sleep, screen lock, tab switch).
 // beforeunload does NOT fire on sleep — this does.
-// dataLoaded guard prevents writing DEFAULT_HOMES if Supabase failed on startup.
 document.addEventListener('visibilitychange', () => {
   if (!dataLoaded) return;
   if (document.visibilityState === 'hidden') {
-    clearTimeout(persistTimer);
-    // Write to localStorage immediately — this is synchronous and always works
-    try { localStorage.setItem(LS_HOMES_KEY, JSON.stringify(homes)); } catch(e) {}
-    // Best-effort Supabase flush — proper keepalive flush is handled by lib/autosave.js
-    sbSet('homes', homes);
+    window.autosave.flush();
   }
+});
+
+// pagehide is more reliable than beforeunload on mobile browsers.
+window.addEventListener('pagehide', () => {
+  if (!dataLoaded) return;
+  window.autosave.flush();
 });
 
 let homes = JSON.parse(JSON.stringify(DEFAULT_HOMES));
@@ -1600,6 +1628,13 @@ async function initData() {
   // Populate email display in header — defensive: never show undefined.
   const emailEl = document.getElementById('session-email');
   if (emailEl) emailEl.textContent = session.user?.email || '';
+
+  // Init autosave with the authenticated user's ID, then drain any pending
+  // queue entries from a previous session before reading Supabase state.
+  // Sequencing matters: drain first, then sbGet, so we don't load stale data
+  // that doesn't include the pending writes.
+  window.autosave.init(session.user.id);
+  await window.autosave.drainQueueOnLoad();
 
   let saved = await sbGet('homes');
 
@@ -1684,7 +1719,7 @@ async function initData() {
       catOrder: ['Housing', 'Staff', 'Admin', 'Insurance', 'Utilities', 'Maintenance', 'Food', 'Software', 'Supplies'],
     }];
     dataLoaded = true;
-    await sbSet('homes', homes);
+    window.autosave.push('homes', homes);
     renderAll();
     return;
   }
@@ -1715,6 +1750,9 @@ async function initData() {
     }
   });
   renderAll();
+  // Data loaded from Supabase — mark as in sync.
+  const statusEl = document.getElementById('save-status');
+  if (statusEl) { statusEl.textContent = 'SAVED ✓'; statusEl.className = 'saved'; }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1927,6 +1965,11 @@ function renderCF() {
   $('cf-occ-pct').textContent = `${occPct}%`;
   $('cf-occ-pct').style.color = occColor;
   $('cf-occ-beds').textContent = `${occ} / ${home.beds.length} beds`;
+  const startupInput = $('cf-startup-cost');
+  if (startupInput && document.activeElement !== startupInput) {
+    startupInput.value = home.startupCost || 0;
+  }
+  if ($('cf-coc-calc')) $('cf-coc-calc').textContent = `${coc}% CoC`;
 
   // ── CLIENT TABLE ──
   $('cf-rev-total').textContent = fmt(rev) + ' revenue';
@@ -2175,6 +2218,12 @@ function removeBed(hi, bi) {
   homes[hi].beds.forEach((b, i) => b.id = i + 1);
   persistData();
   renderAll();
+}
+
+function updateStartupCost(hi, val) {
+  homes[hi].startupCost = parseFloat(val) || 0;
+  persistData();
+  if ($('view-ops').classList.contains('active')) renderCF();
 }
 
 function updateClientName(hi, bi, val) {
@@ -2550,7 +2599,6 @@ function switchTab(name, event) {
 // RENDER ALL
 // ═══════════════════════════════════════════════════════
 function renderAll() {
-  persistData();
   renderKPIs();
   renderHomes();
   renderProjections();
