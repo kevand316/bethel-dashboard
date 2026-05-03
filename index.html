@@ -1604,6 +1604,75 @@ async function initData() {
     }
   }
 
+  // New user: no homes row in Supabase yet — seed one empty starter home.
+  // Idempotent: after sbSet() the row exists, so subsequent loads hit the
+  // branch below instead and this never runs twice for the same user.
+  if (saved === null) {
+    homes = [{
+      id: 1, name: 'My First Home', address: '',
+      startupCost: 0,
+      expenses: [
+        { cat: 'Housing',     name: 'Rent',                            amount: 0 },
+        { cat: 'Housing',     name: 'House Support (÷3)',              amount: 0 },
+        { cat: 'Staff',       name: 'Virtual Assistant',               amount: 0 },
+        { cat: 'Admin',       name: 'Accounting',                      amount: 0 },
+        { cat: 'Insurance',   name: 'General Liability Insurance',     amount: 0 },
+        { cat: 'Utilities',   name: 'RPU (Water, Electricity, Trash)', amount: 0 },
+        { cat: 'Maintenance', name: 'Maintenance & Repair Reserve',    amount: 0 },
+        { cat: 'Utilities',   name: 'SoCal Gas',                       amount: 0 },
+        { cat: 'Food',        name: 'Recup Groceries',                 amount: 0 },
+        { cat: 'Food',        name: 'Birthday/Holiday Dinner',         amount: 0 },
+        { cat: 'Staff',       name: 'Emergency Transportation',        amount: 0 },
+        { cat: 'Maintenance', name: 'Landscaping',                     amount: 0 },
+        { cat: 'Utilities',   name: 'WiFi',                            amount: 0 },
+        { cat: 'Supplies',    name: 'Toilet Paper',                    amount: 0 },
+        { cat: 'Supplies',    name: 'Paper Towels',                    amount: 0 },
+        { cat: 'Software',    name: 'Netflix*',                        amount: 0 },
+        { cat: 'Supplies',    name: 'Detergent',                       amount: 0 },
+        { cat: 'Supplies',    name: 'Trash Bags',                      amount: 0 },
+        { cat: 'Supplies',    name: 'Pin-Sol',                         amount: 0 },
+        { cat: 'Admin',       name: 'GoHighLevel',                     amount: 0 },
+        { cat: 'Admin',       name: 'Domain/Email Hosting',            amount: 0 },
+        { cat: 'Insurance',   name: 'Security Camera*',                amount: 0 },
+        { cat: 'Supplies',    name: 'Dish Washing Soap',               amount: 0 },
+        { cat: 'Supplies',    name: 'Hand Wash Soap',                  amount: 0 },
+        { cat: 'Supplies',    name: 'Bleach',                          amount: 0 },
+        { cat: 'Admin',       name: 'Office Supplies',                 amount: 0 },
+        { cat: 'Admin',       name: 'Printer Paper',                   amount: 0 },
+        { cat: 'Software',    name: 'ChatGPT',                         amount: 0 },
+        { cat: 'Software',    name: 'Perplexity',                      amount: 0 },
+        { cat: 'Software',    name: 'Lovable',                         amount: 0 },
+        { cat: 'Admin',       name: 'Printer Ink',                     amount: 0 },
+        { cat: 'Supplies',    name: 'Toilet Bowl Cleaner',             amount: 0 },
+        { cat: 'Supplies',    name: 'Windex',                          amount: 0 },
+        { cat: 'Supplies',    name: 'Bathroom Cleaner',                amount: 0 },
+        { cat: 'Maintenance', name: 'Pest Control',                    amount: 0 },
+        { cat: 'Supplies',    name: 'Water Filters',                   amount: 0 },
+        { cat: 'Supplies',    name: 'Batteries',                       amount: 0 },
+        { cat: 'Supplies',    name: 'Sponges',                         amount: 0 },
+      ],
+      beds: [
+        { id:  1, status: 'vacant', name: '', rate: 0, moveIn: '' },
+        { id:  2, status: 'vacant', name: '', rate: 0, moveIn: '' },
+        { id:  3, status: 'vacant', name: '', rate: 0, moveIn: '' },
+        { id:  4, status: 'vacant', name: '', rate: 0, moveIn: '' },
+        { id:  5, status: 'vacant', name: '', rate: 0, moveIn: '' },
+        { id:  6, status: 'vacant', name: '', rate: 0, moveIn: '' },
+        { id:  7, status: 'vacant', name: '', rate: 0, moveIn: '' },
+        { id:  8, status: 'vacant', name: '', rate: 0, moveIn: '' },
+        { id:  9, status: 'vacant', name: '', rate: 0, moveIn: '' },
+        { id: 10, status: 'vacant', name: '', rate: 0, moveIn: '' },
+        { id: 11, status: 'vacant', name: '', rate: 0, moveIn: '' },
+        { id: 12, status: 'vacant', name: '', rate: 0, moveIn: '' },
+      ],
+      catOrder: ['Housing', 'Staff', 'Admin', 'Insurance', 'Utilities', 'Maintenance', 'Food', 'Software', 'Supplies'],
+    }];
+    dataLoaded = true;
+    await sbSet('homes', homes);
+    renderAll();
+    return;
+  }
+
   dataLoaded = true;
   if (saved && Array.isArray(saved) && saved.length > 0 && saved[0].beds) {
     homes = saved;

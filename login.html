@@ -167,26 +167,33 @@ button[type="submit"]:disabled {
 
 .forgot-link:hover { color: var(--text-mid); }
 
-.footer {
-  margin-top: 24px;
+/* ── Mode toggle (Sign in ↔ Sign up) ─────────────────────────────────── */
+.mode-toggle {
   text-align: center;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
   font-family: var(--mono);
   font-size: 11px;
   color: var(--text-dim);
 }
 
-.footer a {
-  color: var(--text-dim);
-  text-decoration: none;
+.toggle-link {
+  background: none;
+  border: none;
+  color: var(--text-mid);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
   transition: color 0.15s;
 }
 
-.footer a:hover { color: var(--text-mid); }
+.toggle-link:hover { color: var(--text); }
 
-/* ── Reset-password view (hidden by default) ─────────────────────────── */
-#reset-view { display: none; }
-#login-view { display: block; }
-
+/* ── Back link (used in reset + signup views) ────────────────────────── */
 .back-link {
   display: inline-flex;
   align-items: center;
@@ -217,6 +224,27 @@ button[type="submit"]:disabled {
 }
 
 .success-msg.visible { display: block; }
+
+.footer {
+  margin-top: 24px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.footer a {
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.footer a:hover { color: var(--text-mid); }
+
+/* ── View visibility ─────────────────────────────────────────────────── */
+#login-view  { display: block; }
+#signup-view { display: none; }
+#reset-view  { display: none; }
 </style>
 </head>
 <body>
@@ -225,7 +253,7 @@ button[type="submit"]:disabled {
   <div class="logo">Bethel Residency</div>
   <div class="tagline">Operations Dashboard</div>
 
-  <!-- ── Login view ─────────────────────────────────────────────── -->
+  <!-- ── Sign-in view ───────────────────────────────────────────── -->
   <div id="login-view">
     <h1>Sign In</h1>
     <form id="login-form" autocomplete="on">
@@ -241,6 +269,35 @@ button[type="submit"]:disabled {
       <a class="forgot-link" id="forgot-link" href="#">Forgot password?</a>
       <div class="error-msg" id="login-error"></div>
     </form>
+    <div class="mode-toggle">
+      New here? <button class="toggle-link" id="to-signup">Create an account</button>
+    </div>
+  </div>
+
+  <!-- ── Sign-up view ───────────────────────────────────────────── -->
+  <div id="signup-view">
+    <button class="back-link" id="signup-back-btn">&#8592; Back to sign in</button>
+    <h1>Create Account</h1>
+    <form id="signup-form" autocomplete="off">
+      <div class="field">
+        <label for="su-email">Email</label>
+        <input id="su-email" type="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label for="su-password">Password</label>
+        <input id="su-password" type="password" name="new-password" placeholder="At least 8 characters" autocomplete="new-password" required minlength="8">
+      </div>
+      <div class="field">
+        <label for="su-confirm">Confirm Password</label>
+        <input id="su-confirm" type="password" name="confirm-password" placeholder="Repeat password" autocomplete="new-password" required minlength="8">
+      </div>
+      <button type="submit" id="signup-btn">Create Account</button>
+      <div class="error-msg" id="signup-error"></div>
+      <div class="success-msg" id="signup-success">Check your email to confirm your account.</div>
+    </form>
+    <div class="mode-toggle">
+      Already have an account? <button class="toggle-link" id="to-login">Sign in</button>
+    </div>
   </div>
 
   <!-- ── Reset-password view ────────────────────────────────────── -->
@@ -260,7 +317,7 @@ button[type="submit"]:disabled {
 </div>
 
 <div class="footer">
-  Need access? <a href="mailto:info@bethelresidency.com">Contact support</a>
+  Need help? <a href="mailto:info@bethelresidency.com">Contact support</a>
 </div>
 
 <script>
@@ -278,7 +335,52 @@ button[type="submit"]:disabled {
     if (session) window.location.href = '/';
   });
 
-  // ── Login form ─────────────────────────────────────────────────────────────
+  // ── View switching ─────────────────────────────────────────────────────────
+  function showView(id) {
+    ['login-view', 'signup-view', 'reset-view'].forEach((v) => {
+      document.getElementById(v).style.display = v === id ? 'block' : 'none';
+    });
+  }
+
+  document.getElementById('to-signup').addEventListener('click', () => {
+    clearSignupForm();
+    showView('signup-view');
+  });
+
+  document.getElementById('to-login').addEventListener('click', () => {
+    showView('login-view');
+  });
+
+  document.getElementById('forgot-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    const loginEmail = document.getElementById('email').value.trim();
+    if (loginEmail) document.getElementById('reset-email').value = loginEmail;
+    showView('reset-view');
+  });
+
+  document.getElementById('back-btn').addEventListener('click', () => {
+    document.getElementById('reset-error').classList.remove('visible');
+    document.getElementById('reset-success').classList.remove('visible');
+    document.getElementById('reset-btn').disabled = false;
+    document.getElementById('reset-btn').textContent = 'Send Reset Link';
+    showView('login-view');
+  });
+
+  document.getElementById('signup-back-btn').addEventListener('click', () => {
+    showView('login-view');
+  });
+
+  function clearSignupForm() {
+    document.getElementById('su-email').value = '';
+    document.getElementById('su-password').value = '';
+    document.getElementById('su-confirm').value = '';
+    document.getElementById('signup-error').classList.remove('visible');
+    document.getElementById('signup-success').classList.remove('visible');
+    document.getElementById('signup-btn').disabled = false;
+    document.getElementById('signup-btn').textContent = 'Create Account';
+  }
+
+  // ── Sign-in form ───────────────────────────────────────────────────────────
   const loginForm = document.getElementById('login-form');
   const loginBtn  = document.getElementById('login-btn');
   const loginErr  = document.getElementById('login-error');
@@ -305,24 +407,49 @@ button[type="submit"]:disabled {
     window.location.href = '/';
   });
 
-  // ── Forgot password link ───────────────────────────────────────────────────
-  document.getElementById('forgot-link').addEventListener('click', (e) => {
+  // ── Sign-up form ───────────────────────────────────────────────────────────
+  const signupForm = document.getElementById('signup-form');
+  const signupBtn  = document.getElementById('signup-btn');
+  const signupErr  = document.getElementById('signup-error');
+  const signupOk   = document.getElementById('signup-success');
+
+  signupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    // Pre-fill reset email from login email if already typed
-    const loginEmail = document.getElementById('email').value.trim();
-    if (loginEmail) document.getElementById('reset-email').value = loginEmail;
+    signupErr.classList.remove('visible');
 
-    document.getElementById('login-view').style.display = 'none';
-    document.getElementById('reset-view').style.display = 'block';
-  });
+    const email   = document.getElementById('su-email').value.trim();
+    const pw      = document.getElementById('su-password').value;
+    const confirm = document.getElementById('su-confirm').value;
 
-  document.getElementById('back-btn').addEventListener('click', () => {
-    document.getElementById('reset-view').style.display = 'none';
-    document.getElementById('login-view').style.display = 'block';
-    document.getElementById('reset-error').classList.remove('visible');
-    document.getElementById('reset-success').classList.remove('visible');
-    document.getElementById('reset-btn').disabled = false;
-    document.getElementById('reset-btn').textContent = 'Send Reset Link';
+    // Client-side validation
+    if (pw.length < 8) {
+      signupErr.textContent = 'Password must be at least 8 characters.';
+      signupErr.classList.add('visible');
+      return;
+    }
+    if (pw !== confirm) {
+      signupErr.textContent = 'Passwords do not match.';
+      signupErr.classList.add('visible');
+      return;
+    }
+
+    signupBtn.disabled = true;
+    signupBtn.textContent = 'Creating account…';
+
+    const { error } = await client.auth.signUp({ email, password: pw });
+
+    if (error) {
+      signupErr.textContent = error.message;
+      signupErr.classList.add('visible');
+      signupBtn.disabled = false;
+      signupBtn.textContent = 'Create Account';
+      return;
+    }
+
+    // Email confirmation is on — do not auto-redirect.
+    // Show success message and leave form locked.
+    signupOk.classList.add('visible');
+    signupBtn.textContent = 'Account created';
   });
 
   // ── Reset-password form ────────────────────────────────────────────────────
