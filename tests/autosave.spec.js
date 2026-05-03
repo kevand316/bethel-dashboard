@@ -88,9 +88,10 @@ test.describe("@autosave autosave queue", () => {
     await signInAndWaitForLoad(page);
     await goToOps(page);
 
-    // Block all Supabase upsert calls
+    // Block all Supabase write calls (POST = upsert pre-migration, PATCH = conditional update post-migration)
     await page.route(SB_REST, (route) => {
-      if (route.request().method() === "POST") {
+      const method = route.request().method();
+      if (method === "POST" || method === "PATCH") {
         route.abort("failed");
       } else {
         route.continue();
@@ -167,11 +168,146 @@ test.describe("@autosave autosave queue", () => {
   });
 
   // ── Test 4: Cross-device conflict detection ───────────────────────────────
-  // Deferred to migration 002. Skipping with explicit reason so it shows in output.
-  test.skip("cross-device conflict detection — deferred to migration 002 session", () => {
-    // Will simulate two browser contexts editing the same row simultaneously.
-    // Requires conflict_version column (migration 002) and UI warning banner.
-    // Do not implement until migration 002 plan is approved.
+  // Two browser contexts load the same row. Context A saves first (bumping
+  // updated_at). Context B then tries to save — the conditional UPDATE finds
+  // 0 rows and the conflict banner appears.
+  //
+  // Skips gracefully if migration 002 hasn't been applied yet (updatedAt null).
+  // SKIPPED: requires migration 002 to be applied. Un-skip after manual SQL run.
+  test.skip("cross-device conflict: second write shows conflict banner", async ({ browser }) => {
+    const ctxA = await browser.newContext();
+    const ctxB = await browser.newContext();
+    const pageA = await ctxA.newPage();
+    const pageB = await ctxB.newPage();
+
+    try {
+      // Both devices sign in — each gets the same current updatedAt.
+      await signInAndWaitForLoad(pageA);
+      await signInAndWaitForLoad(pageB);
+
+      // Guard: skip if migration 002 hasn't been applied yet.
+      const updatedAt = await pageA.evaluate(async () => {
+        const result = await window.sbGetWithTs("homes");
+        return result.updatedAt;
+      });
+      if (updatedAt === null) {
+        test.skip(true, "Migration 002 not yet applied — skipping conflict test");
+        return;
+      }
+
+      // Device A edits and waits for confirmed save (bumps updated_at on server).
+      await pageA.locator('[data-tab="ops"]').click();
+      await expect(pageA.locator('input[data-field="startupCost"]').first()).toBeVisible({
+        timeout: 5000,
+      });
+      await pageA.locator('input[data-field="startupCost"]').first().fill("11111");
+      await pageA.locator('input[data-field="startupCost"]').first().dispatchEvent("change");
+      await expect(pageA.locator("#save-status")).toHaveText("SAVED ✓", { timeout: 15000 });
+
+      // Device B edits — its _loadedAt is now stale (A's save bumped updated_at).
+      await pageB.locator('[data-tab="ops"]').click();
+      await expect(pageB.locator('input[data-field="startupCost"]').first()).toBeVisible({
+        timeout: 5000,
+      });
+      await pageB.locator('input[data-field="startupCost"]').first().fill("22222");
+      await pageB.locator('input[data-field="startupCost"]').first().dispatchEvent("change");
+
+      // Conflict banner must appear on device B.
+      await expect(pageB.locator("#conflict-banner")).toBeVisible({ timeout: 15000 });
+      await expect(pageB.locator("#save-status")).toHaveText("CHANGED ELSEWHERE", {
+        timeout: 5000,
+      });
+    } finally {
+      await ctxA.close();
+      await ctxB.close();
+      // Cleanup: reset startup cost to 0
+      const ctxClean = await browser.newContext();
+      const pageClean = await ctxClean.newPage();
+      await signInAndWaitForLoad(pageClean);
+      await pageClean.locator('[data-tab="ops"]').click();
+      await expect(pageClean.locator('input[data-field="startupCost"]').first()).toBeVisible({
+        timeout: 5000,
+      });
+      await pageClean.locator('input[data-field="startupCost"]').first().fill("0");
+      await pageClean.locator('input[data-field="startupCost"]').first().dispatchEvent("change");
+      await expect(pageClean.locator("#save-status")).toHaveText("SAVED ✓", { timeout: 15000 });
+      await ctxClean.close();
+    }
+  });
+
+  // ── Test 7: Conflict override path ────────────────────────────────────────
+  // After a conflict banner appears, clicking "Override and save anyway"
+  // clears the banner, saves the local version unconditionally, and resumes
+  // normal conditional writes (verified by subsequent reload + value check).
+  //
+  // Skips gracefully if migration 002 hasn't been applied yet.
+  // SKIPPED: requires migration 002 to be applied. Un-skip after manual SQL run.
+  test.skip("conflict override: clicking Override saves local version", async ({ browser }) => {
+    const ctxA = await browser.newContext();
+    const ctxB = await browser.newContext();
+    const pageA = await ctxA.newPage();
+    const pageB = await ctxB.newPage();
+
+    try {
+      await signInAndWaitForLoad(pageA);
+      await signInAndWaitForLoad(pageB);
+
+      // Guard: skip if migration 002 hasn't been applied yet.
+      const updatedAt = await pageA.evaluate(async () => {
+        const result = await window.sbGetWithTs("homes");
+        return result.updatedAt;
+      });
+      if (updatedAt === null) {
+        test.skip(true, "Migration 002 not yet applied — skipping override test");
+        return;
+      }
+
+      // Device A saves first (bumps updated_at).
+      await pageA.locator('[data-tab="ops"]').click();
+      await expect(pageA.locator('input[data-field="startupCost"]').first()).toBeVisible({
+        timeout: 5000,
+      });
+      await pageA.locator('input[data-field="startupCost"]').first().fill("33333");
+      await pageA.locator('input[data-field="startupCost"]').first().dispatchEvent("change");
+      await expect(pageA.locator("#save-status")).toHaveText("SAVED ✓", { timeout: 15000 });
+
+      // Device B edits — conflict detected, banner appears.
+      await pageB.locator('[data-tab="ops"]').click();
+      await expect(pageB.locator('input[data-field="startupCost"]').first()).toBeVisible({
+        timeout: 5000,
+      });
+      await pageB.locator('input[data-field="startupCost"]').first().fill("44444");
+      await pageB.locator('input[data-field="startupCost"]').first().dispatchEvent("change");
+      await expect(pageB.locator("#conflict-banner")).toBeVisible({ timeout: 15000 });
+
+      // Click "Override and save anyway".
+      await pageB.locator(".conflict-banner-btn.secondary").click();
+
+      // Banner must disappear and save must confirm.
+      await expect(pageB.locator("#conflict-banner")).not.toBeVisible({ timeout: 5000 });
+      await expect(pageB.locator("#save-status")).toHaveText("SAVED ✓", { timeout: 15000 });
+
+      // Reload device B — override value (44444) must have persisted.
+      await pageB.reload();
+      await expect(pageB.locator("#save-status")).toHaveText("SAVED ✓", { timeout: 15000 });
+      await pageB.locator('[data-tab="ops"]').click();
+      await expect(pageB.locator('input[data-field="startupCost"]').first()).toHaveValue("44444");
+    } finally {
+      await ctxA.close();
+      await ctxB.close();
+      // Cleanup
+      const ctxClean = await browser.newContext();
+      const pageClean = await ctxClean.newPage();
+      await signInAndWaitForLoad(pageClean);
+      await pageClean.locator('[data-tab="ops"]').click();
+      await expect(pageClean.locator('input[data-field="startupCost"]').first()).toBeVisible({
+        timeout: 5000,
+      });
+      await pageClean.locator('input[data-field="startupCost"]').first().fill("0");
+      await pageClean.locator('input[data-field="startupCost"]').first().dispatchEvent("change");
+      await expect(pageClean.locator("#save-status")).toHaveText("SAVED ✓", { timeout: 15000 });
+      await ctxClean.close();
+    }
   });
 
   // ── Test 5: Quota stress — de-duplication ─────────────────────────────────

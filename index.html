@@ -992,6 +992,39 @@ body::before {
   display: none;
 }
 
+/* CONFLICT BANNER — shown when another device wrote since our last load */
+#conflict-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: var(--gold);
+  color: var(--bg);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.6rem 1rem;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+.conflict-banner-btn {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.8rem;
+  border: none;
+  cursor: pointer;
+}
+.conflict-banner-btn.primary { background: var(--bg); color: var(--gold); }
+.conflict-banner-btn.secondary { background: transparent; color: var(--bg); border: 1px solid var(--bg); }
+
 /* SUPABASE ERROR TOAST */
 #sb-toast {
   position: fixed;
@@ -1032,6 +1065,16 @@ body::before {
   <span class="toast-icon">⚠</span>
   <span id="sb-toast-msg">Failed to save — check connection</span>
   <span class="toast-dismiss">✕</span>
+</div>
+
+<div id="save-fail-banner" class="save-fail-banner">
+  SAVE FAILED — RELOAD TO RECOVER YOUR WORK
+</div>
+
+<div id="conflict-banner">
+  CHANGED ELSEWHERE —
+  <button class="conflict-banner-btn primary" onclick="location.reload()">RELOAD</button>
+  <button class="conflict-banner-btn secondary" onclick="window.autosave.overrideAndSave()">OVERRIDE AND SAVE ANYWAY</button>
 </div>
 
 <div class="header">
@@ -1696,24 +1739,31 @@ async function initData() {
   window.autosave.init(session.user.id);
   await window.autosave.drainQueueOnLoad();
 
-  let saved = await sbGet('homes');
+  const { data: loadedData, updatedAt, failed } = await sbGetWithTs('homes');
+  let saved = loadedData;
 
   // If Supabase failed, try localStorage backup before giving up
-  if (saved === SB_LOAD_FAILED) {
+  if (failed) {
+    let usedFallback = false;
     try {
       const lsData = JSON.parse(localStorage.getItem(LS_HOMES_KEY));
       if (lsData && Array.isArray(lsData) && lsData.length > 0 && lsData[0].beds) {
         saved = lsData;
+        usedFallback = true;
         showToast('Supabase unreachable — loaded from local backup. Saves will retry automatically.');
       }
     } catch(e) {}
 
     // If localStorage also had nothing, bail — do not render defaults
-    if (saved === SB_LOAD_FAILED) {
+    if (!usedFallback) {
       showToast('Could not reach Supabase — reload to try again. Saves are disabled.');
       return;
     }
   }
+
+  // Store reference timestamp for conditional UPDATE (conflict detection).
+  // Null when migration 002 not yet applied — autosave falls back to unconditional upsert.
+  window.autosave.setLoadedAt(updatedAt);
 
   // New user: no homes row in Supabase yet — seed one empty starter home.
   // Idempotent: after sbSet() the row exists, so subsequent loads hit the
