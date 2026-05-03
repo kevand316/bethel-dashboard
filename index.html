@@ -305,13 +305,15 @@ body::before {
 
 /* HOME CARDS GRID */
 .homes-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
 
 .home-card {
+  flex: 0 0 calc((100% - 4rem) / 5); /* 5-col: (container - 4 gaps) / 5 */
   background: var(--bg2);
   border: 1px solid var(--border);
   overflow: hidden;
@@ -857,7 +859,7 @@ body::before {
 }
 
 @media (max-width: 1100px) {
-  .homes-grid { grid-template-columns: repeat(3, 1fr); }
+  .home-card { flex-basis: calc((100% - 2rem) / 3); } /* 3-col */
   .fin-grid { grid-template-columns: 1fr; }
   .cashflow-grid { grid-template-columns: repeat(3, 1fr); }
   .cashflow-item:nth-child(3) { border-right: none; }
@@ -865,7 +867,7 @@ body::before {
 
 @media (max-width: 700px) {
   .main { padding: 1rem; }
-  .homes-grid { grid-template-columns: 1fr 1fr; }
+  .home-card { flex-basis: calc((100% - 1rem) / 2); } /* 2-col */
   .cashflow-grid { grid-template-columns: 1fr; }
 }
 
