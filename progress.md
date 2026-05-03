@@ -1,6 +1,6 @@
 # Bethel Dashboard — Build Progress
 
-Last updated: 2026-05-03
+Last updated: 2026-05-03 (email infrastructure verified)
 
 ---
 
@@ -24,6 +24,11 @@ Last updated: 2026-05-03
 - Save indicator: `SAVING...` → `SAVED ✓` → `OFFLINE — WILL RETRY` → `SAVE FAILED` banner
 - `pagehide`/`visibilitychange`/`beforeunload` flush the queue via keepalive fetch
 - On next page load, any pending queue entries are drained before reading Supabase state
+
+**Email infrastructure**
+- Custom SMTP configured in Supabase Auth — sender `noreply@bethelresidency.com`, port 465, via Resend (verified 2026-05-03)
+- All auth emails (signup confirmation, password reset) arrive from the branded address
+- Supabase's default rate limit (30/hour) no longer applies — not a launch blocker
 
 **Operations tab**
 - Startup Cost input in a "Property Setup" card above the expense form
