@@ -58,7 +58,7 @@ body::before {
 .header {
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
-  padding: 1rem 2rem;
+  padding: 1rem max(2rem, calc(50% - 640px));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -174,7 +174,7 @@ body::before {
   display: flex;
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
-  padding: 0 2rem;
+  padding: 0 max(2rem, calc(50% - 640px));
   position: relative;
   z-index: 10;
 }
@@ -204,7 +204,7 @@ body::before {
   padding: 1.5rem 2rem 4rem;
   position: relative;
   z-index: 1;
-  max-width: 1400px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 
