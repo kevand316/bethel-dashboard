@@ -66,6 +66,26 @@ See `plans/multi-user-migration.md` for the full checklist.
 
 ---
 
+## Known issues — 2026-05-03
+
+**Conflict banner never fires (conflict detection wired up, not working)**
+
+Migration 002 (`updated_at` column + trigger) is applied to the Supabase project. `lib/autosave.js` and `lib/supabase.js` are wired to use a conditional UPDATE filtered on `updated_at`. The amber conflict banner (`#conflict-banner`) and Override button are present in `index.html`. The two conflict tests in `tests/autosave.spec.js` are `test.skip`-ped pending this fix.
+
+**What's broken**: the conflict banner never appears even when a conflict should be detected. Two contexts editing the same row — one saves first, the second save silently succeeds instead of returning 0 rows and triggering the banner.
+
+**What we know**: the conditional UPDATE (PATCH via Supabase `.update()`) is succeeding when it should return 0 rows. Either the `eq("updated_at", _loadedAt)` filter is not being applied at the network level, or there's a timestamp precision/format mismatch between the value `sbGetWithTs` returns and what the `updated_at` column actually stores.
+
+**Likely culprits**:
+- Timestamp string format: the value stored in `_loadedAt` (from `row.updated_at` in `sbGetWithTs`) may not exactly match what PostgREST expects — e.g., timezone offset format `+00:00` vs `Z`, or microsecond precision differences.
+- The `.eq("updated_at", _loadedAt)` filter silently not being sent in the request — inspect the outgoing PATCH in DevTools or Playwright network log to confirm the `updated_at` query param is present.
+
+**Where to look**: `lib/autosave.js` → `tryWrite()` (the conditional UPDATE block), `lib/supabase.js` → `sbGetWithTs()` (the raw `row.updated_at` value). Add a `console.log("[autosave] conditional UPDATE: _loadedAt =", _loadedAt)` before the `.update()` call and inspect what the request looks like in the network tab.
+
+**Status**: both new conflict tests (`cross-device conflict: second write shows conflict banner` and `conflict override: clicking Override saves local version`) are `test.skip`-ped. Un-skip them once the conditional UPDATE is confirmed working.
+
+---
+
 ## Known limitations / future work
 
 - **No conflict detection yet**: editing the same home on two devices simultaneously silently last-write-wins. No warning is shown. Deferred to migration 002.
