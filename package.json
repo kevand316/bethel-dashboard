@@ -1,0 +1,19 @@
+{
+  "name": "bethel-dashboard",
+  "version": "1.0.0",
+  "description": "Bethel Residency operations dashboard",
+  "scripts": {
+    "start": "serve . -l 3000",
+    "test": "playwright test",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:isolation": "playwright test --grep @isolation",
+    "lint": "prettier --check .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "dotenv": "^16.4.0",
+    "prettier": "^3.2.0",
+    "serve": "^14.2.0"
+  }
+}

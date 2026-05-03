@@ -1,0 +1,27 @@
+# Secrets — NEVER commit
+.env
+.env.local
+.env.test
+.env.production
+*.key
+*.pem
+
+# Dependencies
+node_modules/
+
+# Test artifacts
+test-results/
+playwright-report/
+playwright/.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Local migration tracking (not for git)
+.applied_migrations

@@ -1,0 +1,34 @@
+{
+  "_comment": "Claude Code settings for bethel-dashboard. PostToolUse hooks run after every Edit/Write so Claude sees lint and smoke-test results without being asked. PreToolUse hooks block destructive operations.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "_comment": "Format check after every edit. Failure means the file isn't pretty-formatted; Claude must fix.",
+        "matcher": "Edit|Write",
+        "command": "npx prettier --check . 2>&1 | tail -20"
+      },
+      {
+        "_comment": "Run the smoke test subset after every edit. Tagged @smoke in the test files. Keep this fast (<30s).",
+        "matcher": "Edit|Write",
+        "command": "npx playwright test --grep @smoke --reporter=line 2>&1 | tail -40"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "_comment": "Block destructive bash commands. Anything matching this regex requires the user to type explicit confirmation in chat first.",
+        "matcher": "Bash",
+        "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -E '(rm -rf|git push --force|git reset --hard|DROP TABLE|DROP DATABASE|TRUNCATE|DELETE FROM [a-z_]+ *;|ALTER TABLE.*DROP|supabase db reset)'; then echo 'BLOCKED: destructive operation detected. Confirm in chat before proceeding.'; exit 1; fi"
+      },
+      {
+        "_comment": "Block edits to migrations that have already been applied to production. Migrations are append-only.",
+        "matcher": "Edit",
+        "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -E 'migrations/[0-9]+_.*\\.sql' && [ -f .applied_migrations ] && grep -q \"$(echo \"$CLAUDE_TOOL_INPUT\" | grep -oE 'migrations/[0-9]+_[^\"]*\\.sql')\" .applied_migrations; then echo 'BLOCKED: this migration has been applied to production. Write a new migration instead.'; exit 1; fi"
+      },
+      {
+        "_comment": "Block accidental commits of secrets. Service role keys and SMTP creds must never reach git.",
+        "matcher": "Bash",
+        "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -E 'git (add|commit).*\\.env'; then echo 'BLOCKED: refusing to add .env to git. Use .env.example for templates.'; exit 1; fi"
+      }
+    ]
+  }
+}
