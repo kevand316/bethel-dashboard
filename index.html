@@ -1075,19 +1075,9 @@ body::before {
           <div class="sub" id="cf-occ-beds">0 / 0 beds</div>
         </div>
         <div class="cashflow-item">
-          <label>Startup Cost</label>
-          <input
-            id="cf-startup-cost"
-            data-field="startupCost"
-            type="number"
-            min="0"
-            step="1000"
-            value="0"
-            style="width:100%;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--display);font-size:1.55rem;letter-spacing:2px;text-align:center;outline:none;padding:0;-moz-appearance:textfield;"
-            oninput="updateStartupCost(currentHome, this.value)"
-            onchange="updateStartupCost(currentHome, this.value)"
-          >
-          <div class="sub" id="cf-coc-calc">0% CoC</div>
+          <label>CoC Return</label>
+          <div class="val" id="cf-coc-val" style="color:var(--text-dim)">—</div>
+          <div class="sub" id="cf-startup-sub">Startup: $0</div>
         </div>
       </div>
     </div>
@@ -1112,6 +1102,30 @@ body::before {
 
       <!-- RIGHT: Expenses -->
       <div>
+        <!-- Property Setup — one-time costs, above recurring expenses -->
+        <div style="background:var(--bg2);border:1px solid var(--border);margin-bottom:1rem;overflow:hidden;">
+          <div style="background:var(--bg3);padding:0.75rem 1.25rem;border-bottom:1px solid var(--border);">
+            <div class="fin-panel-title">Property Setup</div>
+            <div style="font-family:var(--mono);font-size:0.6rem;color:var(--text-dim);margin-top:3px">One-time costs — not counted in monthly expenses</div>
+          </div>
+          <div style="padding:1rem;">
+            <div style="font-family:var(--mono);font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.35rem;">Startup Cost</div>
+            <input
+              type="number"
+              id="cf-startup-cost"
+              data-field="startupCost"
+              min="0"
+              step="1000"
+              placeholder="$0"
+              style="font-family:var(--mono);font-size:0.8rem;color:var(--text);background:var(--bg3);border:1px solid var(--border);padding:0.5rem 0.75rem;width:100%;outline:none;transition:border-color 0.2s;-moz-appearance:textfield;"
+              onfocus="this.style.borderColor='var(--gold)'"
+              onblur="this.style.borderColor='var(--border)'"
+              oninput="updateStartupCost(currentHome, this.value)"
+              onchange="updateStartupCost(currentHome, this.value)"
+            >
+          </div>
+        </div>
+
         <!-- Add expense form -->
         <div style="background:var(--bg2);border:1px solid var(--border);margin-bottom:1rem;overflow:hidden;">
           <div style="background:var(--bg3);padding:0.75rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
@@ -1927,7 +1941,8 @@ function renderCF() {
   const cf = rev - exp;
   const annual = cf * 12;
   const margin = rev > 0 ? Math.round((cf/rev)*100) : 0;
-  const coc = home.startupCost > 0 ? Math.round((annual / home.startupCost) * 100) : 0;
+  const cocRaw = home.startupCost > 0 ? (annual / home.startupCost) * 100 : 0;
+  const coc = Math.round(cocRaw * 10) / 10; // one decimal place, e.g. 12.5
   const occ = homeOccupied(home);
 
   // Home sub-tabs
@@ -1965,11 +1980,23 @@ function renderCF() {
   $('cf-occ-pct').textContent = `${occPct}%`;
   $('cf-occ-pct').style.color = occColor;
   $('cf-occ-beds').textContent = `${occ} / ${home.beds.length} beds`;
+  // 6th KPI cell: CoC return — display only, zero state shows em-dash
+  const cocValEl = $('cf-coc-val');
+  if (cocValEl) {
+    if (home.startupCost > 0) {
+      cocValEl.textContent = `${coc}%`;
+      cocValEl.style.color = coc > 0 ? 'var(--green)' : 'var(--red)';
+    } else {
+      cocValEl.textContent = '—';
+      cocValEl.style.color = 'var(--text-dim)';
+    }
+  }
+  if ($('cf-startup-sub')) $('cf-startup-sub').textContent = `Startup: ${fmt(home.startupCost || 0)}`;
+  // Keep Property Setup input in sync when switching between homes
   const startupInput = $('cf-startup-cost');
   if (startupInput && document.activeElement !== startupInput) {
     startupInput.value = home.startupCost || 0;
   }
-  if ($('cf-coc-calc')) $('cf-coc-calc').textContent = `${coc}% CoC`;
 
   // ── CLIENT TABLE ──
   $('cf-rev-total').textContent = fmt(rev) + ' revenue';
