@@ -26,7 +26,7 @@ These rules apply to anything touching authentication, session management, RLS p
 
 - **Forgot-password flow must use Supabase's built-in `resetPasswordForEmail`.** Do not invent a custom token system. Configure the redirect URL in Supabase's auth settings to point at a `/reset-password.html` page on the production domain.
 
-- **Email verification stays off** unless the operator explicitly enables it later. Document this in the migration that disables it so the trade-off is recorded.
+- **Email verification is ON intentionally** — provides free abuse protection on a public-facing course tool. Operator confirmed this decision in the May 2026 build session. The login.html signup success message already handles this ("Check your email to confirm your account."). Do not disable it without explicit operator approval.
 
 ## Required tests when modifying these files
 

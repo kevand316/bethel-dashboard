@@ -251,11 +251,20 @@ Complete before the app goes live to any real user other than the operator.
       added in Supabase Auth → URL Configuration
 - [ ] Default Supabase reset email template reviewed — subject line and body acceptable for
       real users
-- [ ] Manual two-user test by operator on real phones: two browsers, two test accounts, edit in
-      each, confirm isolation by eye, full login → edit → logout flow
+- [ ] Manual two-user test on real phones: one session as operator (existing data), one as a
+      fresh signup (blank slate) — on actual iPhone AND Android devices. Full flow: sign up →
+      verify email → log in → edit numbers → see SAVED ✓ → log out. Confirm neither session
+      can see the other's data. This test cannot be automated — do it before any course launch.
 - [ ] Full Playwright suite green including `@isolation`
-- [ ] Test accounts (playwright-a@bethel.test, playwright-b@bethel.test) removed or deactivated
-      in Supabase before go-live so no test data can persist in production
+- [ ] Delete `playwright-a@bethel.test` and `playwright-b@bethel.test` from Supabase Auth →
+      Users immediately before announcing the dashboard to course members. These accounts live
+      in the production project and must not exist when real users are active.
+- [ ] When moving to a separate Supabase test project (future): create new playwright-a and
+      playwright-b accounts there, update `ALLOWED_SUPABASE_URLS` in `tests/fixtures/users.js`,
+      and update `.env.test.example` with the new project URL and anon key.
+- [ ] Cross-device conflict detection implemented and the skipped `@autosave` test passing
+      before announcing that the dashboard supports multi-device editing. The test is in
+      `tests/autosave.spec.js` marked `test.skip` with comment "deferred to migration 002".
 - [ ] No residual test data visible in the operator's account after final cleanup run
 
 ## Review checklist (before merging)
