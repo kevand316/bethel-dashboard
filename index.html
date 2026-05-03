@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bethel Residency — Operations Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="lib/supabase.js"></script>
+<script src="lib/auth.js"></script>
 <style>
 :root {
   --bg: #0a0e14;
@@ -133,6 +136,25 @@ body::before {
   font-size: 0.72rem;
   color: var(--text-mid);
   letter-spacing: 0.05em;
+}
+
+.logout-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  padding: 4px 9px;
+  text-transform: uppercase;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.logout-btn:hover {
+  color: var(--text);
+  border-color: var(--text-mid);
 }
 
 /* TABS */
@@ -946,6 +968,7 @@ body::before {
     <div class="live-badge"><div class="live-dot"></div>LIVE</div>
     <div id="save-status">SAVED</div>
     <div class="date-display" id="dateDisplay"></div>
+    <button class="logout-btn" data-action="logout" onclick="logout()">Sign Out</button>
   </div>
 </div>
 
@@ -1500,58 +1523,8 @@ function dismissToast() {
 
 // ── SUPABASE PERSISTENCE ──
 const LS_HOMES_KEY = 'bethel_homes_backup'; // localStorage fallback key
-const SUPABASE_URL = 'https://yqgccykbdihsjqlapghr.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxZ2NjeWtiZGloc2pxbGFwZ2hyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAyMTksImV4cCI6MjA4NzkxNjIxOX0.XHgok8xbYDKekprYI2htAZL622P7YcycTsQ5HuP-VUs';
-
-const sbHeaders = {
-  'Content-Type': 'application/json',
-  'apikey': SUPABASE_KEY,
-  'Authorization': `Bearer ${SUPABASE_KEY}`
-};
-
-const SB_LOAD_FAILED = Symbol('SB_LOAD_FAILED');
-
-async function sbGet(id) {
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/bethel_data?id=eq.${id}&select=data`, { headers: sbHeaders });
-    console.log('[sbGet] status:', res.status, res.statusText);
-    if (!res.ok) {
-      const errText = await res.text();
-      console.warn('[sbGet] error response:', errText);
-      showToast('Failed to load — check connection');
-      return SB_LOAD_FAILED;
-    }
-    const rows = await res.json();
-    console.log('[sbGet] rows returned:', rows.length, rows);
-    return rows.length ? rows[0].data : null;
-  } catch(e) { console.warn('[sbGet] network error:', e); showToast('Failed to load — check connection'); return SB_LOAD_FAILED; }
-}
-
-async function sbSet(id, data) {
-  const el = document.getElementById('save-status');
-  if (el) { el.textContent = 'SAVING...'; el.className = 'saving'; }
-  try {
-    // Upsert: inserts if row missing, updates if it exists
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/bethel_data`, {
-      method: 'POST',
-      headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify({ id, data })
-    });
-    console.log('[sbSet] status:', res.status, res.statusText);
-    if (!res.ok) {
-      const errText = await res.text();
-      console.warn('[sbSet] error response:', errText);
-      showToast('Failed to save — check connection');
-      if (el) { el.textContent = 'ERROR'; el.className = 'error'; }
-    } else {
-      if (el) { el.textContent = 'SAVED'; el.className = 'saved'; }
-      // Mirror to localStorage so we have a fallback if Supabase goes down
-      if (id === 'homes') {
-        try { localStorage.setItem(LS_HOMES_KEY, JSON.stringify(data)); } catch(e) {}
-      }
-    }
-  } catch(e) { console.warn('[sbSet] network error:', e); showToast('Failed to save — check connection'); if (el) { el.textContent = 'ERROR'; el.className = 'error'; } }
-}
+// sbGet, sbSet, and SB_LOAD_FAILED are provided by lib/supabase.js (loaded in <head>).
+const SB_LOAD_FAILED = window.SB_LOAD_FAILED;
 
 // Guard: never save until data has been confirmed loaded from Supabase.
 // Without this, a failed load would leave homes=DEFAULT_HOMES and then
@@ -1582,14 +1555,10 @@ window.addEventListener('beforeunload', () => {
   if (!dataLoaded) return;
   clearTimeout(persistTimer);
   // Write to localStorage synchronously before anything else — browser may not
-  // finish async fetch calls during unload, but localStorage always completes
+  // finish async calls during unload, but localStorage always completes
   try { localStorage.setItem(LS_HOMES_KEY, JSON.stringify(homes)); } catch(e) {}
-  fetch(`${SUPABASE_URL}/rest/v1/bethel_data`, {
-    method: 'POST',
-    headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify({ id: 'homes', data: homes }),
-    keepalive: true
-  });
+  // Best-effort Supabase flush — proper keepalive flush is handled by lib/autosave.js
+  sbSet('homes', homes);
 });
 
 // Force-save when tab goes hidden (handles sleep, screen lock, tab switch).
@@ -1601,13 +1570,8 @@ document.addEventListener('visibilitychange', () => {
     clearTimeout(persistTimer);
     // Write to localStorage immediately — this is synchronous and always works
     try { localStorage.setItem(LS_HOMES_KEY, JSON.stringify(homes)); } catch(e) {}
-    // Also attempt Supabase (best-effort, keepalive so browser doesn't cancel it)
-    fetch(`${SUPABASE_URL}/rest/v1/bethel_data`, {
-      method: 'POST',
-      headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify({ id: 'homes', data: homes }),
-      keepalive: true
-    });
+    // Best-effort Supabase flush — proper keepalive flush is handled by lib/autosave.js
+    sbSet('homes', homes);
   }
 });
 
@@ -1617,6 +1581,10 @@ let editingBed = null;
 
 // Load from Supabase on startup
 async function initData() {
+  // Auth gate: redirect to login.html if no active session.
+  const session = await requireAuth();
+  if (!session) return;
+
   let saved = await sbGet('homes');
 
   // If Supabase failed, try localStorage backup before giving up

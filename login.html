@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bethel Residency — Sign In</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root {
+  --bg: #0a0e14;
+  --bg2: #111620;
+  --bg3: #1a2030;
+  --border: #1e2d45;
+  --gold: #f0b429;
+  --gold-dim: #a07820;
+  --green: #2ecc71;
+  --red: #e74c3c;
+  --text: #e8edf5;
+  --text-mid: #8899aa;
+  --text-dim: #445566;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --display: 'Bebas Neue', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 40px 32px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.logo {
+  font-family: var(--display);
+  font-size: 28px;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.tagline {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 36px;
+}
+
+h1 {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+  margin-bottom: 6px;
+}
+
+input {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+}
+
+input:focus {
+  border-color: var(--gold-dim);
+}
+
+input::placeholder {
+  color: var(--text-dim);
+}
+
+button[type="submit"] {
+  width: 100%;
+  background: var(--gold);
+  border: none;
+  border-radius: 4px;
+  color: #0a0e14;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  margin-top: 8px;
+  padding: 12px;
+  text-transform: uppercase;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+button[type="submit"]:hover:not(:disabled) {
+  background: #d9a020;
+}
+
+button[type="submit"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error-msg {
+  background: rgba(231, 76, 60, 0.12);
+  border: 1px solid rgba(231, 76, 60, 0.35);
+  border-radius: 4px;
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 12px;
+  margin-top: 16px;
+  padding: 10px 12px;
+  display: none;
+}
+
+.error-msg.visible { display: block; }
+
+.forgot-link {
+  display: block;
+  text-align: right;
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.forgot-link:hover { color: var(--text-mid); }
+
+.footer {
+  margin-top: 24px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.footer a {
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.footer a:hover { color: var(--text-mid); }
+
+/* ── Reset-password view (hidden by default) ─────────────────────────── */
+#reset-view { display: none; }
+#login-view { display: block; }
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  text-decoration: none;
+  margin-bottom: 20px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.back-link:hover { color: var(--text-mid); }
+
+.success-msg {
+  background: rgba(46, 204, 113, 0.1);
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  border-radius: 4px;
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 10px 12px;
+  display: none;
+}
+
+.success-msg.visible { display: block; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">Bethel Residency</div>
+  <div class="tagline">Operations Dashboard</div>
+
+  <!-- ── Login view ─────────────────────────────────────────────── -->
+  <div id="login-view">
+    <h1>Sign In</h1>
+    <form id="login-form" autocomplete="on">
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" placeholder="••••••••" autocomplete="current-password" required>
+      </div>
+      <button type="submit" id="login-btn">Sign In</button>
+      <a class="forgot-link" id="forgot-link" href="#">Forgot password?</a>
+      <div class="error-msg" id="login-error"></div>
+    </form>
+  </div>
+
+  <!-- ── Reset-password view ────────────────────────────────────── -->
+  <div id="reset-view">
+    <button class="back-link" id="back-btn">&#8592; Back to sign in</button>
+    <h1>Reset Password</h1>
+    <form id="reset-form">
+      <div class="field">
+        <label for="reset-email">Email</label>
+        <input id="reset-email" type="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+      </div>
+      <button type="submit" id="reset-btn">Send Reset Link</button>
+      <div class="error-msg" id="reset-error"></div>
+      <div class="success-msg" id="reset-success">Check your inbox — a reset link is on its way.</div>
+    </form>
+  </div>
+</div>
+
+<div class="footer">
+  Need access? <a href="mailto:info@bethelresidency.com">Contact support</a>
+</div>
+
+<script>
+(function () {
+  const SUPABASE_URL = 'https://yqgccykbdihsjqlapghr.supabase.co';
+  const SUPABASE_ANON_KEY =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +
+    'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxZ2NjeWtiZGloc2pxbGFwZ2hyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAyMTksImV4cCI6MjA4NzkxNjIxOX0.' +
+    'XHgok8xbYDKekprYI2htAZL622P7YcycTsQ5HuP-VUs';
+
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // If already signed in, go straight to the dashboard.
+  client.auth.getSession().then(({ data: { session } }) => {
+    if (session) window.location.href = '/';
+  });
+
+  // ── Login form ─────────────────────────────────────────────────────────────
+  const loginForm = document.getElementById('login-form');
+  const loginBtn  = document.getElementById('login-btn');
+  const loginErr  = document.getElementById('login-error');
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Signing in…';
+    loginErr.classList.remove('visible');
+
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    const { error } = await client.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      loginErr.textContent = error.message;
+      loginErr.classList.add('visible');
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Sign In';
+      return;
+    }
+
+    window.location.href = '/';
+  });
+
+  // ── Forgot password link ───────────────────────────────────────────────────
+  document.getElementById('forgot-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    // Pre-fill reset email from login email if already typed
+    const loginEmail = document.getElementById('email').value.trim();
+    if (loginEmail) document.getElementById('reset-email').value = loginEmail;
+
+    document.getElementById('login-view').style.display = 'none';
+    document.getElementById('reset-view').style.display = 'block';
+  });
+
+  document.getElementById('back-btn').addEventListener('click', () => {
+    document.getElementById('reset-view').style.display = 'none';
+    document.getElementById('login-view').style.display = 'block';
+    document.getElementById('reset-error').classList.remove('visible');
+    document.getElementById('reset-success').classList.remove('visible');
+    document.getElementById('reset-btn').disabled = false;
+    document.getElementById('reset-btn').textContent = 'Send Reset Link';
+  });
+
+  // ── Reset-password form ────────────────────────────────────────────────────
+  const resetForm = document.getElementById('reset-form');
+  const resetBtn  = document.getElementById('reset-btn');
+  const resetErr  = document.getElementById('reset-error');
+  const resetOk   = document.getElementById('reset-success');
+
+  resetForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    resetBtn.disabled = true;
+    resetBtn.textContent = 'Sending…';
+    resetErr.classList.remove('visible');
+    resetOk.classList.remove('visible');
+
+    const email = document.getElementById('reset-email').value.trim();
+
+    const { error } = await client.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/reset-password.html',
+    });
+
+    if (error) {
+      resetErr.textContent = error.message;
+      resetErr.classList.add('visible');
+      resetBtn.disabled = false;
+      resetBtn.textContent = 'Send Reset Link';
+      return;
+    }
+
+    resetOk.classList.add('visible');
+    // Leave button disabled — don't let them spam the send
+  });
+})();
+</script>
+</body>
+</html>
