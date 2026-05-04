@@ -173,8 +173,7 @@ test.describe("@autosave autosave queue", () => {
   // 0 rows and the conflict banner appears.
   //
   // Skips gracefully if migration 002 hasn't been applied yet (updatedAt null).
-  // SKIPPED: requires migration 002 to be applied. Un-skip after manual SQL run.
-  test.skip("cross-device conflict: second write shows conflict banner", async ({ browser }) => {
+  test("cross-device conflict: second write shows conflict banner", async ({ browser }) => {
     const ctxA = await browser.newContext();
     const ctxB = await browser.newContext();
     const pageA = await ctxA.newPage();
@@ -202,6 +201,9 @@ test.describe("@autosave autosave queue", () => {
       });
       await pageA.locator('input[data-field="startupCost"]').first().fill("11111");
       await pageA.locator('input[data-field="startupCost"]').first().dispatchEvent("change");
+      // Wait for SAVING... first to confirm the save actually started, not just the
+      // "SAVED ✓" that was already showing from the initial load.
+      await expect(pageA.locator("#save-status")).toHaveText("SAVING...", { timeout: 5000 });
       await expect(pageA.locator("#save-status")).toHaveText("SAVED ✓", { timeout: 15000 });
 
       // Device B edits — its _loadedAt is now stale (A's save bumped updated_at).
@@ -241,8 +243,7 @@ test.describe("@autosave autosave queue", () => {
   // normal conditional writes (verified by subsequent reload + value check).
   //
   // Skips gracefully if migration 002 hasn't been applied yet.
-  // SKIPPED: requires migration 002 to be applied. Un-skip after manual SQL run.
-  test.skip("conflict override: clicking Override saves local version", async ({ browser }) => {
+  test("conflict override: clicking Override saves local version", async ({ browser }) => {
     const ctxA = await browser.newContext();
     const ctxB = await browser.newContext();
     const pageA = await ctxA.newPage();

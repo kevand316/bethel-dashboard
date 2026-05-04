@@ -1,6 +1,6 @@
 # Bethel Dashboard — Build Progress
 
-Last updated: 2026-05-03 (email infrastructure verified)
+Last updated: 2026-05-03 (conflict detection complete)
 
 ---
 
@@ -35,60 +35,41 @@ Last updated: 2026-05-03 (email infrastructure verified)
 - CoC Return KPI cell: shows `—` when startup cost is 0, `X.X%` (green/red) when set
 - Subheadline shows `Startup: $X,XXX` at all times
 
+**Cross-device conflict detection (migration 002)**
+- `bethel_data` has an `updated_at` column; every write explicitly advances it
+- Conditional UPDATE: `WHERE updated_at = <last_loaded_value>` — if another device wrote since your load, 0 rows are returned and the conflict state fires
+- Amber banner appears: "CHANGED ELSEWHERE — RELOAD or OVERRIDE AND SAVE ANYWAY"
+- Reload: discards local edits, reloads from server
+- Override: unconditional upsert ignores server version, saves local data, resumes conditional writes
+- Bug fixed: Override button used `onclick` which fired after `blur` → `change` → `push()` hid the banner mid-click; changed to `onmousedown` so override runs before the input loses focus
+
 ---
 
 ## Tests passing
 
-**17 passing, 1 skipped** (`npx playwright test`)
+**19 passing, 0 skipped** (`npx playwright test`)
 
 | File | Tests | Tags |
 |------|-------|------|
 | `tests/auth.spec.js` | invalid credentials error, logout + redirect, session persistence, corrupted token redirect | `@smoke` |
-| `tests/autosave.spec.js` | happy path, network drop + recovery, reload-while-pending, quota stress (1000 pushes), pagehide flush | `@autosave` |
+| `tests/autosave.spec.js` | happy path, network drop + recovery, reload-while-pending, cross-device conflict detection, conflict override, quota stress (1000 pushes), pagehide flush | `@autosave` |
 | `tests/isolation.spec.js` | unauth redirect, two-user data isolation, unauthenticated API returns 0 rows | `@isolation` |
 | `tests/login-page.spec.js` | 375px no scroll, tap targets ≥44px, short-PW validation, mismatch validation, forgot-password view | `@smoke` |
-
-Skipped: cross-device conflict detection (`tests/autosave.spec.js` — deferred, see below).
 
 ---
 
 ## Pre-launch tasks remaining
 
-1. **Manual phone test** — one session as operator, one as fresh signup, on real iPhone and Android. Full flow end to end. Can't be automated. Required before course launch.
+1. **Manual two-device test** — one session as operator, one as fresh signup, on real iPhone and Android. Full flow end to end including the conflict banner (edit same home on two devices simultaneously). Can't be automated. Required before course launch.
 
 2. **Delete test accounts** — remove `playwright-a@bethel.test` and `playwright-b@bethel.test` from Supabase Auth → Users immediately before announcing to course members.
 
-3. **Cross-device conflict detection** — the skipped `@autosave` test. Required before telling users the dashboard supports multi-device editing. Planned as migration 002.
-
-4. **Separate test Supabase project** — currently test accounts live in the production project. Low urgency but clean this up before user count grows.
-
-See `plans/multi-user-migration.md` for the full checklist.
-
----
-
-## Known issues — 2026-05-03
-
-**Conflict banner never fires (conflict detection wired up, not working)**
-
-Migration 002 (`updated_at` column + trigger) is applied to the Supabase project. `lib/autosave.js` and `lib/supabase.js` are wired to use a conditional UPDATE filtered on `updated_at`. The amber conflict banner (`#conflict-banner`) and Override button are present in `index.html`. The two conflict tests in `tests/autosave.spec.js` are `test.skip`-ped pending this fix.
-
-**What's broken**: the conflict banner never appears even when a conflict should be detected. Two contexts editing the same row — one saves first, the second save silently succeeds instead of returning 0 rows and triggering the banner.
-
-**What we know**: the conditional UPDATE (PATCH via Supabase `.update()`) is succeeding when it should return 0 rows. Either the `eq("updated_at", _loadedAt)` filter is not being applied at the network level, or there's a timestamp precision/format mismatch between the value `sbGetWithTs` returns and what the `updated_at` column actually stores.
-
-**Likely culprits**:
-- Timestamp string format: the value stored in `_loadedAt` (from `row.updated_at` in `sbGetWithTs`) may not exactly match what PostgREST expects — e.g., timezone offset format `+00:00` vs `Z`, or microsecond precision differences.
-- The `.eq("updated_at", _loadedAt)` filter silently not being sent in the request — inspect the outgoing PATCH in DevTools or Playwright network log to confirm the `updated_at` query param is present.
-
-**Where to look**: `lib/autosave.js` → `tryWrite()` (the conditional UPDATE block), `lib/supabase.js` → `sbGetWithTs()` (the raw `row.updated_at` value). Add a `console.log("[autosave] conditional UPDATE: _loadedAt =", _loadedAt)` before the `.update()` call and inspect what the request looks like in the network tab.
-
-**Status**: both new conflict tests (`cross-device conflict: second write shows conflict banner` and `conflict override: clicking Override saves local version`) are `test.skip`-ped. Un-skip them once the conditional UPDATE is confirmed working.
+3. **Separate test Supabase project** — currently test accounts live in the production project. Low urgency but clean this up before user count grows.
 
 ---
 
 ## Known limitations / future work
 
-- **No conflict detection yet**: editing the same home on two devices simultaneously silently last-write-wins. No warning is shown. Deferred to migration 002.
 - **Test accounts in production**: `playwright-a` and `playwright-b` exist in the same Supabase project as real users. They use `.test` domain emails and RLS keeps them isolated, but they should be deleted before launch.
 - **iOS Safari private browsing**: localStorage is restricted in private mode. The autosave queue may not survive a page reload. Behavior is degraded but not silent — the save-failed banner will appear if Supabase is unreachable.
 - **Session expiry mid-edit**: `onAuthStateChange` detects SIGNED_OUT and redirects to login. Any pending queue entries in localStorage are lost (they were written under the old user_id and won't drain on the next session). Accepted limitation; documented.
