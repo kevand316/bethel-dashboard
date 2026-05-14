@@ -1739,10 +1739,15 @@ async function initData() {
   window.autosave.init(session.user.id);
   await window.autosave.drainQueueOnLoad();
 
+  // Check for pending writes that survived the drain (e.g. network was down).
+  // These are MORE RECENT than whatever Supabase has — we must not overwrite
+  // them with stale loaded data, or new edits will clobber unsynced changes.
+  const pendingHomes = window.autosave.getPendingData('homes', session.user.id);
+
   const { data: loadedData, updatedAt, failed } = await sbGetWithTs('homes');
   let saved = loadedData;
 
-  // If Supabase failed, try localStorage backup before giving up
+  // If Supabase failed, try localStorage backup then pending queue
   if (failed) {
     let usedFallback = false;
     try {
@@ -1754,7 +1759,14 @@ async function initData() {
       }
     } catch(e) {}
 
-    // If localStorage also had nothing, bail — do not render defaults
+    // Last resort: use pending queue data so we don't lose unsynced edits
+    if (!usedFallback && pendingHomes && Array.isArray(pendingHomes) && pendingHomes.length > 0) {
+      saved = pendingHomes;
+      usedFallback = true;
+      showToast('Supabase unreachable — loaded from pending writes. Saves will retry automatically.');
+    }
+
+    // If still nothing, bail — do not render defaults
     if (!usedFallback) {
       showToast('Could not reach Supabase — reload to try again. Saves are disabled.');
       return;
@@ -1764,6 +1776,15 @@ async function initData() {
   // Store reference timestamp for conditional UPDATE (conflict detection).
   // Null when migration 002 not yet applied — autosave falls back to unconditional upsert.
   window.autosave.setLoadedAt(updatedAt);
+
+  // If the drain left pending writes (network was down at drain time), prefer
+  // the queued data over Supabase data — it contains the user's latest edits.
+  // Reset _loadedAt so the retry uses unconditional upsert (since we don't
+  // know what updated_at the DB has right now).
+  if (pendingHomes && Array.isArray(pendingHomes) && pendingHomes.length > 0 && pendingHomes[0].beds) {
+    saved = pendingHomes;
+    window.autosave.setLoadedAt(null);
+  }
 
   // New user: no homes row in Supabase yet — seed one empty starter home.
   // Idempotent: after sbSet() the row exists, so subsequent loads hit the
@@ -2219,7 +2240,9 @@ function renderCF() {
           <td style="padding:0.5rem 0.5rem;text-align:right;width:35%">
             <div style="display:flex;align-items:center;justify-content:flex-end;gap:3px">
               <span style="font-family:var(--mono);font-size:0.72rem;color:var(--text-dim)">$</span>
-              <input type="number" value="${item.amount}" onchange="updateExpenseLine(${hi},${realIdx},this.value)"
+              <input type="number" value="${item.amount}"
+                oninput="queueExpenseAmount(${hi},${realIdx},this.value)"
+                onchange="updateExpenseLine(${hi},${realIdx},this.value)"
                 style="font-family:var(--mono);font-size:0.78rem;color:var(--text);background:transparent;border:none;border-bottom:1px solid var(--border);width:60px;text-align:right;outline:none;padding:1px 0;transition:border-color 0.2s;"
                 onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border)'">
             </div>
@@ -2373,6 +2396,15 @@ function updateManagerType(hi, bi, val) {
   persistData();
   renderHomes();
   if ($('view-ops').classList.contains('active')) renderCF();
+}
+
+// queueExpenseAmount: called on oninput (every keystroke) to immediately
+// queue the latest value without re-rendering the whole UI. This ensures
+// the edit is persisted even if the user closes the tab before blurring
+// the field (which would normally trigger onchange → updateExpenseLine).
+function queueExpenseAmount(hi, ei, val) {
+  homes[hi].expenses[ei].amount = parseFloat(val) || 0;
+  persistData();
 }
 
 function updateExpenseLine(hi, ei, val) {
