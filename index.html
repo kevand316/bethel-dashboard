@@ -1915,7 +1915,7 @@ function renderKPIs() {
   const totalExp = homes.reduce((s, h) => s + homeExpenses(h), 0);
   const totalCF = totalRev - totalExp;
   const occPct = Math.round((totalOcc / totalBeds) * 100);
-  const totalClients = homes.reduce((s, h) => s + h.beds.filter(b => b.status !== 'vacant' && b.status !== 'manager').length, 0);
+  const totalClients = homes.reduce((s, h) => s + h.beds.filter(b => b.status !== 'vacant').length, 0);
   const totalRecup = homes.reduce((s, h) => s + h.beds.filter(b => b.status === 'recup').length, 0);
   const totalVacant = totalBeds - totalOcc;
   const margin = totalRev > 0 ? Math.round((totalCF / totalRev) * 100) : 0;
@@ -2538,7 +2538,7 @@ async function saveSnapshot() {
   const totalRev  = homes.reduce((s, h) => s + homeRevenue(h), 0);
   const totalExp  = homes.reduce((s, h) => s + homeExpenses(h), 0);
   const totalCF   = totalRev - totalExp;
-  const totalClients = homes.reduce((s, h) => s + h.beds.filter(b => b.status !== 'vacant' && b.status !== 'manager').length, 0);
+  const totalClients = homes.reduce((s, h) => s + h.beds.filter(b => b.status !== 'vacant').length, 0);
   const totalRecup   = homes.reduce((s, h) => s + h.beds.filter(b => b.status === 'recup').length, 0);
   const totalVacant  = totalBeds - totalOcc;
   const snap = {
