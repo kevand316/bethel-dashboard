@@ -438,7 +438,7 @@ button[type="submit"]:disabled {
     signupBtn.disabled = true;
     signupBtn.textContent = 'Creating account…';
 
-    const { error } = await client.auth.signUp({
+    const { data, error } = await client.auth.signUp({
       email,
       password: pw,
       options: {
@@ -448,6 +448,15 @@ button[type="submit"]:disabled {
 
     if (error) {
       signupErr.textContent = error.message;
+      signupErr.classList.add('visible');
+      signupBtn.disabled = false;
+      signupBtn.textContent = 'Create Account';
+      return;
+    }
+
+    // Supabase returns no error but a null user when the email is already registered.
+    if (!data.user) {
+      signupErr.textContent = 'An account with this email already exists. Please sign in instead.';
       signupErr.classList.add('visible');
       signupBtn.disabled = false;
       signupBtn.textContent = 'Create Account';
