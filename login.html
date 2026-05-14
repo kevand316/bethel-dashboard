@@ -438,7 +438,13 @@ button[type="submit"]:disabled {
     signupBtn.disabled = true;
     signupBtn.textContent = 'Creating account…';
 
-    const { error } = await client.auth.signUp({ email, password: pw });
+    const { error } = await client.auth.signUp({
+      email,
+      password: pw,
+      options: {
+        emailRedirectTo: 'https://dashboard.bethelresidency.com/',
+      },
+    });
 
     if (error) {
       signupErr.textContent = error.message;
