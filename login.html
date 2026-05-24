@@ -454,17 +454,11 @@ button[type="submit"]:disabled {
       return;
     }
 
-    // Supabase returns no error but a null user when the email is already registered.
-    if (!data.user) {
-      signupErr.textContent = 'An account with this email already exists. Please sign in instead.';
-      signupErr.classList.add('visible');
-      signupBtn.disabled = false;
-      signupBtn.textContent = 'Create Account';
-      return;
-    }
-
     // Email confirmation is on — do not auto-redirect.
-    // Show success message and leave form locked.
+    // Always show success when there is no error. Supabase sends a confirmation
+    // email to new users and silently handles existing emails server-side.
+    // Do NOT gate on data.user being non-null — with email confirmation enabled,
+    // Supabase may return a null or partial user for new signups pending confirmation.
     signupOk.classList.add('visible');
     signupBtn.textContent = 'Account created';
   });
