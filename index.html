@@ -2075,6 +2075,7 @@ function renderCF() {
         <span class="prop-occ" style="color:${i === currentHome ? 'inherit' : occColor}">${hOcc}/${hTotal} beds · ${hVacant} vacant</span>
       </button>
       <button onclick="renameHome(${i})" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:0.75rem;padding:0.15rem 0.3rem;line-height:1;opacity:0.45;transition:all 0.15s;" title="Rename home" onmouseover="this.style.opacity='1';this.style.color='var(--gold)'" onmouseout="this.style.opacity='0.45';this.style.color='var(--text-dim)'">✎</button>
+      <button onclick="deleteHome(${i})" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:0.75rem;padding:0.15rem 0.3rem;line-height:1;opacity:0.45;transition:all 0.15s;" title="Delete home" onmouseover="this.style.opacity='1';this.style.color='var(--red)'" onmouseout="this.style.opacity='0.45';this.style.color='var(--text-dim)'">✕</button>
     </span>
   `}).join('') + `
     <button class="prop-btn" onclick="addHome()" style="border-style:dashed;color:var(--text-dim);" title="Add new home" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">+ Add Home</button>
@@ -2347,6 +2348,16 @@ function addHome() {
     beds: [{ id: 1, status: 'vacant', name: '', rate: 850, moveIn: '' }]
   });
   currentHome = homes.length - 1;
+  persistData();
+  renderAll();
+}
+
+function deleteHome(hi) {
+  if (homes.length <= 1) { showToast('Cannot delete the last home — add another first.'); return; }
+  const home = homes[hi];
+  if (!confirm(`Delete "${home.name}"? This will permanently remove all its beds, expenses, and data.`)) return;
+  homes.splice(hi, 1);
+  if (currentHome >= homes.length) currentHome = homes.length - 1;
   persistData();
   renderAll();
 }
