@@ -2224,7 +2224,13 @@ function renderCF() {
         <div style="background:var(--bg3);padding:0.6rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:grab;">
           <div style="display:flex;align-items:center;gap:0.5rem;">
             <span style="color:var(--text-dim);font-size:0.8rem;line-height:1;" title="Drag to reorder">⠿</span>
-            <div style="font-family:var(--mono);font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold)">${esc(cat)}</div>
+            <input type="text" value="${esc(cat)}"
+              onchange="renameCategory(${hi},'${escJs(cat)}',this.value.trim())"
+              onkeydown="if(event.key==='Enter')this.blur()"
+              title="Click to rename category"
+              style="font-family:var(--mono);font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);background:transparent;border:none;border-bottom:1px solid transparent;outline:none;width:auto;min-width:60px;max-width:220px;padding:0;cursor:text;transition:border-color 0.2s;"
+              onfocus="this.style.borderColor='var(--gold-dim)';this.select()"
+              onblur="this.style.borderColor='transparent'">
           </div>
           <div style="font-family:var(--mono);font-size:0.7rem;font-weight:600;color:var(--text-mid)">${fmt(catTotal)}/mo</div>
         </div>
@@ -2427,6 +2433,16 @@ function updateExpenseLine(hi, ei, val) {
 function updateExpenseName(hi, ei, val) {
   homes[hi].expenses[ei].name = val;
   persistData();
+}
+
+function renameCategory(hi, oldCat, newCat) {
+  if (!newCat || newCat === oldCat) return;
+  homes[hi].expenses.forEach(e => { if (e.cat === oldCat) e.cat = newCat; });
+  if (homes[hi].catOrder) {
+    homes[hi].catOrder = homes[hi].catOrder.map(c => c === oldCat ? newCat : c);
+  }
+  persistData();
+  renderAll();
 }
 
 function addExpense() {
