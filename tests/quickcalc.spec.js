@@ -178,7 +178,12 @@ test.describe("@smoke profit calculator", () => {
     await openQuickCalc(page);
     await page.locator("#qc-beds").fill("12");
     await page.locator("#qc-rate").fill("850");
-    for (const id of ["#qc-exp-utilities", "#qc-exp-supplies", "#qc-exp-staff", "#qc-exp-operations"]) {
+    for (const id of [
+      "#qc-exp-utilities",
+      "#qc-exp-supplies",
+      "#qc-exp-staff",
+      "#qc-exp-operations",
+    ]) {
       await page.locator(id).fill("0");
     }
 
