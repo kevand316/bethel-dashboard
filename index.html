@@ -3265,6 +3265,13 @@ function qcNum(id, max) {
 
 const qcPct = n => Math.round(n) + '%';
 
+// Occupancy rarely lands on a whole bed. Say which way it was rounded rather than
+// quietly adjusting the number the projection is built on.
+function qcRoundNote(exact, rounded) {
+  if (rounded === exact) return '';
+  return rounded > exact ? ' (rounded up)' : ' (rounded down)';
+}
+
 function renderQuickCalc() {
   const beds = qcNum('qc-beds');
   const bedrooms = qcNum('qc-bedrooms');
@@ -3309,10 +3316,11 @@ function renderQuickCalc() {
   // figure is undefined rather than zero — show DASH, same as the CoC zero-state.
   const hasBasis = beds > 0 && rate > 0;
 
-  // Beds are people, not fractions. 85% of 12 beds is 10.2, and 0.2 of a resident
-  // pays nothing — billing 10.2 beds inflates every projection. Round DOWN, so the
-  // number is one the home can actually fill.
-  const occupiedBeds = Math.floor(beds * (occ / 100));
+  // Beds are people, not fractions: 85% of 12 beds is 10.2, and 0.2 of a resident
+  // pays nothing. Resolve occupancy to a whole bed count first, by ordinary
+  // rounding — .5 and above rounds up — then bill that. Flooring everything would
+  // shortchange the home a nearly-full bed at 10.8.
+  const occupiedBeds = Math.round(beds * (occ / 100));
   const fullRevenue = beds * rate;              // every bed filled
   const revenue = occupiedBeds * rate;
   const cashflow = revenue - expenses;
@@ -3324,7 +3332,7 @@ function renderQuickCalc() {
   $('qc-annual').textContent = hasBasis ? fmt(annual) : DASH;
 
   $('qc-occupied-sub').textContent = hasBasis
-    ? `${occupiedBeds} of ${beds} bed${beds === 1 ? '' : 's'} filled${occupiedBeds !== beds * (occ / 100) ? ' (rounded down)' : ''}`
+    ? `${occupiedBeds} of ${beds} bed${beds === 1 ? '' : 's'} filled${qcRoundNote(beds * (occ / 100), occupiedBeds)}`
     : DASH;
 
   // Cashflow and annual go red when negative
@@ -3394,7 +3402,7 @@ function renderQuickCalcRange(beds, occ, expenses, baseRate) {
     high: qcNum('qc-high-rate')
   };
 
-  const occupiedBeds = Math.floor(beds * (occ / 100));
+  const occupiedBeds = Math.round(beds * (occ / 100));
   for (const [key, colRate] of Object.entries(cols)) {
     const usable = beds > 0 && colRate > 0;
     const rev = occupiedBeds * colRate;

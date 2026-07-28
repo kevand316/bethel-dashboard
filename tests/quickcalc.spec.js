@@ -35,8 +35,8 @@ async function openQuickCalc(page) {
 
 test.describe("@smoke profit calculator", () => {
   // ── Test 1: renders with defaults and reads PROFITABLE ────────────────────
-  // 90% of 12 beds rounds DOWN to 10 filled: 10 x $850 = $8,500 revenue,
-  // less $6,725 of expenses = $1,775/mo.
+  // 90% of 12 beds is 10.8, which rounds to 11 filled: 11 x $850 = $9,350
+  // revenue, less $6,725 of expenses = $2,625/mo.
   // Fails if: the tab is missing, defaults differ, or the verdict is not profitable.
   test("opens with defaults and shows a profitable verdict", async ({ page }) => {
     await openQuickCalc(page);
@@ -52,13 +52,13 @@ test.describe("@smoke profit calculator", () => {
     await expect(page.locator("#qc-exp-staff")).toHaveValue("850");
     await expect(page.locator("#qc-exp-operations")).toHaveValue("100");
 
-    // Whole beds only: 90% of 12 is 10.8, which must be billed as 10.
+    // Whole beds only: 90% of 12 is 10.8, billed as 11.
     await expect(page.locator("#qc-verdict")).toHaveText("PROFITABLE");
-    await expect(page.locator("#qc-occupied-sub")).toContainText("10 of 12 beds filled");
-    await expect(page.locator("#qc-revenue")).toHaveText("$8,500");
+    await expect(page.locator("#qc-occupied-sub")).toContainText("11 of 12 beds filled");
+    await expect(page.locator("#qc-revenue")).toHaveText("$9,350");
     await expect(page.locator("#qc-expenses-out")).toHaveText("$6,725");
-    await expect(page.locator("#qc-cashflow")).toHaveText("$1,775");
-    await expect(page.locator("#qc-annual")).toHaveText("$21,300");
+    await expect(page.locator("#qc-cashflow")).toHaveText("$2,625");
+    await expect(page.locator("#qc-annual")).toHaveText("$31,500");
 
     // Annual cashflow must be a real, positive number
     expect(num(await page.locator("#qc-annual").textContent())).toBeGreaterThan(0);
@@ -121,36 +121,39 @@ test.describe("@smoke profit calculator", () => {
     }
 
     // 1000 + 200 + 300 + 400 + 100 = 2000, shown both on the input panel and
-    // in the results cell, and driving cashflow: $8,500 - $2,000 = $6,500.
+    // in the results cell, and driving cashflow: $9,350 - $2,000 = $7,350.
     await expect(page.locator("#qc-exp-total")).toHaveText("$2,000");
     await expect(page.locator("#qc-expenses-out")).toHaveText("$2,000");
-    await expect(page.locator("#qc-cashflow")).toHaveText("$6,500");
+    await expect(page.locator("#qc-cashflow")).toHaveText("$7,350");
 
     // Clearing one category must move the total, proving it is really summed.
     await page.locator("#qc-exp-staff").fill("0");
     await expect(page.locator("#qc-exp-total")).toHaveText("$1,600");
-    await expect(page.locator("#qc-cashflow")).toHaveText("$6,900");
+    await expect(page.locator("#qc-cashflow")).toHaveText("$7,750");
   });
 
-  // ── Test 3b2: occupancy resolves to whole beds, rounded down ──────────────
+  // ── Test 3b2: occupancy resolves to whole beds before any money math ──────
   // A bed is a person. 85% of 12 beds is 10.2, and 0.2 of a resident pays
   // nothing — billing the fraction inflates every projection. Revenue must be
-  // filled-beds × rate, with filled beds floored.
+  // filled-beds × rate, with filled beds rounded the ordinary way: .5 and above
+  // rounds up, below rounds down.
   //
-  // Fails if: revenue is computed from a fractional bed count.
-  test("occupancy rounds down to whole beds before revenue is calculated", async ({ page }) => {
+  // Fails if: revenue is computed from a fractional bed count, or the rounding
+  // is not half-up (flooring 10.8 would cost the home a nearly-full bed).
+  test("occupancy rounds to whole beds before revenue is calculated", async ({ page }) => {
     await openQuickCalc(page);
     await page.locator("#qc-rate").fill("800");
 
-    // beds, occupancy %, beds actually filled (floor), revenue at $800
+    // beds, occupancy %, exact, beds billed (half-up), revenue at $800
     const cases = [
-      [12, 85, 10, "$8,000"],
-      [12, 90, 10, "$8,000"],
-      [12, 100, 12, "$9,600"],
-      [12, 50, 6, "$4,800"],
-      [7, 85, 5, "$4,000"],
-      [20, 33, 6, "$4,800"],
-      [1, 99, 0, "$0"],
+      [12, 85, 10, "$8,000"], // 10.20 -> down
+      [12, 90, 11, "$8,800"], // 10.80 -> up
+      [12, 95, 11, "$8,800"], // 11.40 -> down
+      [12, 100, 12, "$9,600"], // exact
+      [10, 85, 9, "$7,200"], // 8.50 -> exactly half, rounds UP
+      [8, 70, 6, "$4,800"], // 5.60 -> up
+      [20, 33, 7, "$5,600"], // 6.60 -> up
+      [12, 4, 0, "$0"], // 0.48 -> down to nobody
     ];
 
     for (const [beds, occ, filled, revenue] of cases) {

@@ -47,10 +47,13 @@ Last updated: 2026-07-27 (Profit Calculator tab; conflict detection fixed)
 - Staff mirrors the bed rate (the house lead occupies a bed rent-free) and keeps
   following it until the operator types their own figure, after which it is left alone.
   The rate range does NOT vary staff — only the rate charged per bed changes.
-- **Occupancy resolves to whole beds, rounded down.** 85% of 12 beds is 10.2, and a
-  fraction of a resident pays nothing, so revenue is `floor(beds x occupancy) x rate`.
-  Breakeven is whole-bed too: the occupancy at which the Nth bed is filled. Defaults
-  therefore show 10 of 12 filled at 90%, not 10.8.
+- **Occupancy resolves to whole beds before any money math.** 85% of 12 beds is 10.2, and
+  a fraction of a resident pays nothing, so revenue is `round(beds x occupancy) x rate`.
+  Ordinary half-up rounding: 10.2 -> 10, 10.8 -> 11, exactly 8.5 -> 9. Flooring was tried
+  first and rejected — it cost the home a nearly-full bed at 10.8.
+  The occupancy line states which way it rounded, so the adjustment is never silent.
+  Breakeven still uses `ceil`, deliberately: it asks how many beds actually cover the
+  costs, and 7 beds genuinely does not cover what 7.9 beds' rent would.
 - Outputs recalculate on every keystroke: monthly revenue, expenses, cashflow, annual
   cashflow, margin, breakeven occupancy, and a PROFITABLE / BREAKS EVEN / NOT PROFITABLE verdict
 - Rate range strip: low / base / high rate side by side, so the operator can see the
