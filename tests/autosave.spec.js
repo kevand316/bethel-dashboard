@@ -237,6 +237,75 @@ test.describe("@autosave autosave queue", () => {
     }
   });
 
+  // ── Test 6b: a stale write must never reach the server ────────────────────
+  // The banner is the visible symptom; this is the thing that actually matters.
+  // Device B loaded before device A saved, so B's write is stale. B must NOT be
+  // allowed to overwrite A's value — the server must still hold A's number.
+  //
+  // Regression guard: before this was fixed, executeWrite() responded to a
+  // conflict by retrying with an UNCONDITIONAL upsert, which always succeeds.
+  // B's stale value landed, A's work vanished, and the user saw "SAVED ✓".
+  test("stale write does not overwrite the newer value on the server", async ({ browser }) => {
+    const ctxA = await browser.newContext();
+    const ctxB = await browser.newContext();
+    const pageA = await ctxA.newPage();
+    const pageB = await ctxB.newPage();
+
+    try {
+      await signInAndWaitForLoad(pageA);
+      await signInAndWaitForLoad(pageB);
+
+      const updatedAt = await pageA.evaluate(async () => {
+        const result = await window.sbGetWithTs("homes");
+        return result.updatedAt;
+      });
+      if (updatedAt === null) {
+        test.skip(true, "Migration 002 not yet applied — skipping conflict test");
+        return;
+      }
+
+      // Device A saves 31111 and Supabase confirms it.
+      await goToOps(pageA);
+      await pageA.locator('input[data-field="startupCost"]').first().fill("31111");
+      await pageA.locator('input[data-field="startupCost"]').first().dispatchEvent("change");
+      await expect(pageA.locator("#save-status")).toHaveText("SAVING...", { timeout: 5000 });
+      await expect(pageA.locator("#save-status")).toHaveText("SAVED ✓", { timeout: 15000 });
+
+      // Device B, holding a stale timestamp, tries to save 32222.
+      await goToOps(pageB);
+      await pageB.locator('input[data-field="startupCost"]').first().fill("32222");
+      await pageB.locator('input[data-field="startupCost"]').first().dispatchEvent("change");
+
+      // B must be warned rather than quietly succeeding.
+      await expect(pageB.locator("#conflict-banner")).toBeVisible({ timeout: 15000 });
+      await expect(pageB.locator("#save-status")).not.toHaveText("SAVED ✓");
+
+      // The decisive assertion: read what Supabase actually holds. Device A's
+      // session is already authenticated, and sbGetWithTs goes to the network, so
+      // this reads server state without paying for another sign-in.
+      // A's 31111 must still be there. 32222 means B silently clobbered A.
+      const stored = await pageA.evaluate(async () => {
+        const result = await window.sbGetWithTs("homes");
+        const homes = result.data;
+        return Array.isArray(homes) ? homes.map((h) => h.startupCost) : null;
+      });
+
+      expect(stored).toContain(31111);
+      expect(stored).not.toContain(32222);
+    } finally {
+      await ctxA.close();
+      await ctxB.close();
+      const ctxClean = await browser.newContext();
+      const pageClean = await ctxClean.newPage();
+      await signInAndWaitForLoad(pageClean);
+      await goToOps(pageClean);
+      await pageClean.locator('input[data-field="startupCost"]').first().fill("0");
+      await pageClean.locator('input[data-field="startupCost"]').first().dispatchEvent("change");
+      await expect(pageClean.locator("#save-status")).toHaveText("SAVED ✓", { timeout: 15000 });
+      await ctxClean.close();
+    }
+  });
+
   // ── Test 7: Conflict override path ────────────────────────────────────────
   // After a conflict banner appears, clicking "Override and save anyway"
   // clears the banner, saves the local version unconditionally, and resumes

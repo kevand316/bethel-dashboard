@@ -1,6 +1,6 @@
 # Bethel Dashboard — Build Progress
 
-Last updated: 2026-07-27 (Quick Calc tab added)
+Last updated: 2026-07-27 (Quick Calc tab; conflict detection fixed)
 
 ---
 
@@ -39,7 +39,7 @@ Last updated: 2026-07-27 (Quick Calc tab added)
 - Stateless profitability scratch-pad — no Supabase, no autosave, resets on reload
 - Inputs: beds, bedrooms, occupancy %, monthly rate per bed, flat monthly expenses
 - Outputs recalculate on every keystroke: monthly revenue, expenses, cashflow, annual
-  cashflow, margin, breakeven occupancy, and a PROFITABLE / NOT PROFITABLE verdict
+  cashflow, margin, breakeven occupancy, and a PROFITABLE / BREAKS EVEN / NOT PROFITABLE verdict
 - Rate range strip: low / base / high rate side by side, so the operator can see the
   spread before testing a price in a market
 - "Save Projection PDF" prints just this view via the browser print dialog, same
@@ -60,12 +60,13 @@ Last updated: 2026-07-27 (Quick Calc tab added)
 
 ## Tests passing
 
-**21 passing, 2 failing** of 23 (`npx playwright test`) — see the conflict-detection bug below.
+**24 passing, 0 failing** (`npx playwright test`) — first fully green run; the two conflict
+tests had been red since they were written.
 
 | File | Tests | Tags |
 |------|-------|------|
 | `tests/auth.spec.js` | invalid credentials error, logout + redirect, session persistence, corrupted token redirect | `@smoke` |
-| `tests/autosave.spec.js` | happy path, network drop + recovery, reload-while-pending, cross-device conflict detection ❌, conflict override ❌, quota stress (1000 pushes), pagehide flush | `@autosave` |
+| `tests/autosave.spec.js` | happy path, network drop + recovery, reload-while-pending, cross-device conflict detection, **stale write does not overwrite**, conflict override, quota stress (1000 pushes), pagehide flush | `@autosave` |
 | `tests/isolation.spec.js` | unauth redirect, two-user data isolation, unauthenticated API returns 0 rows | `@isolation` |
 | `tests/login-page.spec.js` | 375px no scroll, tap targets ≥44px, short-PW validation, mismatch validation, forgot-password view | `@smoke` |
 | `tests/quickcalc.spec.js` | defaults + profitable verdict, live recalc flips verdict, zero-beds em-dash states, rate range low/base/high | `@smoke` |
@@ -86,24 +87,43 @@ passwords were rotated 2026-07-27 via the Supabase admin API and exist only in t
 
 ---
 
-## Known bugs
+## Fixed 2026-07-27: cross-device conflict detection never fired
 
-- **Cross-device conflict detection does not fire (found 2026-07-27).** `lib/autosave.js`
-  `executeWrite()` treats every conflict as a possible false positive: it sets `_loadedAt = null`
-  and retries once. With `_loadedAt` null, `tryWrite()` takes the *unconditional upsert* branch,
-  which always succeeds — so the retry returns `'ok'`, the banner is hidden, and the stale write
-  silently overwrites the newer one. The "CHANGED ELSEWHERE" banner can effectively never appear.
-  Both conflict tests in `tests/autosave.spec.js` fail because of this, and they fail on a clean
-  checkout with no other changes present.
-  Impact: one user editing the same home on two devices (phone + laptop) can lose the older
-  device's edits with no warning. This does NOT cross user boundaries — RLS still isolates every
-  account, so no user can affect another user's data.
-  Fix needs its own TDD cycle: distinguish "our own keepalive advanced the timestamp" from
-  "another device wrote" instead of collapsing both into an unconditional upsert.
+**The bug.** `executeWrite()` treated every conflict as a possible false positive: it set
+`_loadedAt = null` and retried once. With `_loadedAt` null, `tryWrite()` takes the
+*unconditional upsert* branch, which always succeeds — so the retry returned `'ok'`, the banner
+was hidden, and the stale write silently overwrote the newer one. The "CHANGED ELSEWHERE" banner
+could effectively never appear. Editing the same home on a phone and a laptop lost the older
+device's work with no warning, while showing "SAVED ✓". It never crossed user boundaries — RLS
+isolates every account regardless.
+
+**The fix.** A conflict is now *attributed* before it is acted on. `lib/autosave.js` keeps
+`_ourTimestamps`, the `updated_at` values this session wrote. On a conflict it reads the row's
+current timestamp from the server:
+
+- Ours (a concurrent in-page write) or the row is gone → resync `_loadedAt` and retry, still
+  conditional. No banner; nobody else's work was at stake.
+- Anyone else's, **or the read failed** → leave the server untouched, queue the entry, show the
+  banner. Anything we cannot positively attribute to ourselves is treated as another device.
+
+**Tried and reverted.** Making `flush()` choose its own timestamp and keeping the next write
+conditional. Keepalive is fire-and-forget, so when one does not land `_loadedAt` diverges from
+the server and *every* later save reports a conflict — it took the suite from 2 failures to 6.
+`flush()` still clears `_loadedAt`; the residual window is under Known limitations.
+
+**Proof.** `tests/autosave.spec.js` gained "stale write does not overwrite the newer value on the
+server", which asserts on the stored data rather than the banner: device A saves 31111, stale
+device B tries 32222, and Supabase must still hold 31111.
 
 ## Known limitations / future work
 
 - **Test accounts in production**: `playwright-a` and `playwright-b` exist in the same Supabase project as real users. They use `.test` domain emails and RLS keeps them isolated, but they should be deleted before launch.
+- **Overwrite window after a page-hide flush**: `flush()` fires keepalive writes and clears
+  `_loadedAt`, so the next in-page save is an unconditional upsert. If another device writes in
+  that gap, its change is overwritten without a banner. Narrow — it needs the tab backgrounded
+  mid-edit *and* a second device writing in the same window — but real. Closing it properly needs
+  a device id or a last-writer column rather than timestamp guessing; see the reverted attempt
+  above for why the obvious fix does not work.
 - **iOS Safari private browsing**: localStorage is restricted in private mode. The autosave queue may not survive a page reload. Behavior is degraded but not silent — the save-failed banner will appear if Supabase is unreachable.
 - **Session expiry mid-edit**: `onAuthStateChange` detects SIGNED_OUT and redirects to login. Any pending queue entries in localStorage are lost (they were written under the old user_id and won't drain on the next session). Accepted limitation; documented.
 - **No admin panel**: operator creates accounts manually in Supabase dashboard. Fine for ≤100 users.

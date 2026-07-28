@@ -3236,10 +3236,22 @@ function renderQuickCalc() {
 
   // Verdict
   const box = $('qc-verdict-box');
+  const rangeOnly = beds > 0 && rate <= 0 && (qcNum('qc-low-rate') > 0 || qcNum('qc-high-rate') > 0);
   if (!hasBasis) {
     $('qc-verdict').textContent = DASH;
     box.className = 'qc-verdict-box';
-    $('qc-verdict-sub').textContent = 'Enter beds and a monthly rate to see a projection.';
+    // Don't say "enter a rate" while the range below is already showing figures —
+    // point at the numbers that are actually on screen.
+    $('qc-verdict-sub').textContent = rangeOnly
+      ? 'No base rate set — see the low and high figures below.'
+      : 'Enter beds and a monthly rate to see a projection.';
+  } else if (Math.abs(cashflow) < 0.005) {
+    // Exactly breaking even is its own answer. Calling it "not profitable" in red
+    // overstates it — the home pays for itself and no more.
+    $('qc-verdict').textContent = 'BREAKS EVEN';
+    box.className = 'qc-verdict-box';
+    $('qc-verdict-sub').textContent =
+      `Covers its costs exactly at ${qcPct(occ)} occupancy — nothing left over`;
   } else if (cashflow > 0) {
     $('qc-verdict').textContent = 'PROFITABLE';
     box.className = 'qc-verdict-box good';
