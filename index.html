@@ -923,9 +923,11 @@ body::before {
 
 .qc-field input:focus { border-color: var(--gold); }
 
-.qc-field .qc-note {
+/* Not scoped to .qc-field — notes also sit directly under .qc-fields */
+.qc-note {
   font-family: var(--mono);
   font-size: 0.6rem;
+  line-height: 1.45;
   color: var(--text-dim);
   margin-top: 0.3rem;
 }
@@ -934,6 +936,31 @@ body::before {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.6rem;
+}
+
+.qc-field-wide { grid-column: 1 / -1; }
+
+/* Expense sub-group header, with its running total on the right */
+.qc-exp-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 1.1rem 0 0.6rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+}
+
+.qc-exp-total {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  letter-spacing: 1px;
+  color: var(--red);
 }
 
 /* Verdict banner */
@@ -1334,7 +1361,7 @@ body::before {
   <button class="tab active" onclick="switchTab('occupancy', event)">Overview</button>
   <button class="tab" data-tab="ops" onclick="switchTab('ops', event)">Operations</button>
   <button class="tab" onclick="switchTab('projections', event)">Projections</button>
-  <button class="tab" onclick="switchTab('quickcalc', event)">Quick Calc</button>
+  <button class="tab" onclick="switchTab('quickcalc', event)">Profit Calculator</button>
   <button class="tab" onclick="switchTab('reports', event)">Reports</button>
   <button class="no-print" onclick="printOverview()" style="margin-left:auto;font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⬇ Save PDF</button>
   <button class="no-print" onclick="saveSnapshot()" style="font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:var(--gold);border:1px solid var(--gold);color:var(--bg);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#d4a012'" onmouseout="this.style.background='var(--gold)'">📸 Save Snapshot</button>
@@ -1564,11 +1591,34 @@ body::before {
             <label for="qc-rate">Monthly Rate Per Bed ($)</label>
             <input type="number" id="qc-rate" min="0" step="25" value="850" oninput="renderQuickCalc()">
           </div>
-          <div class="qc-field">
-            <label for="qc-expenses">Monthly Expenses — All In ($)</label>
-            <input type="number" id="qc-expenses" min="0" step="100" value="1200" oninput="renderQuickCalc()">
-            <div class="qc-note">Rent, utilities, food, staff — one flat number</div>
+          <div class="qc-exp-head">
+            <span>Monthly Expenses</span>
+            <span class="qc-exp-total" id="qc-exp-total">$0</span>
           </div>
+          <div class="qc-pair">
+            <div class="qc-field">
+              <label for="qc-exp-rent">Rent / Mortgage ($)</label>
+              <input type="number" id="qc-exp-rent" min="0" step="100" value="5000" oninput="renderQuickCalc()">
+            </div>
+            <div class="qc-field">
+              <label for="qc-exp-utilities">Utilities ($)</label>
+              <input type="number" id="qc-exp-utilities" min="0" step="25" value="365" oninput="renderQuickCalc()">
+            </div>
+            <div class="qc-field">
+              <label for="qc-exp-supplies">Supplies ($)</label>
+              <input type="number" id="qc-exp-supplies" min="0" step="25" value="225" oninput="renderQuickCalc()">
+            </div>
+            <div class="qc-field">
+              <label for="qc-exp-staff">Staff ($)</label>
+              <input type="number" id="qc-exp-staff" min="0" step="25" value="250" oninput="renderQuickCalc()">
+            </div>
+            <div class="qc-field qc-field-wide">
+              <label for="qc-exp-operations">Operations ($)</label>
+              <input type="number" id="qc-exp-operations" min="0" step="25" value="980" oninput="renderQuickCalc()">
+              <div class="qc-note">Insurance, maintenance, admin, food — everything else</div>
+            </div>
+          </div>
+          <div class="qc-note">Starting figures are 20862 Walking Beam Dr.'s real monthly costs</div>
         </div>
       </div>
 
@@ -1583,7 +1633,7 @@ body::before {
           <div class="qc-cell">
             <label>Monthly Expenses</label>
             <div class="val red" id="qc-expenses-out">—</div>
-            <div class="sub">flat estimate</div>
+            <div class="sub" id="qc-expenses-sub">—</div>
           </div>
           <div class="qc-cell">
             <label>Monthly Cashflow</label>
@@ -3187,7 +3237,28 @@ function renderQuickCalc() {
   const bedrooms = qcNum('qc-bedrooms');
   const occ = qcNum('qc-occ', 100);
   const rate = qcNum('qc-rate');
-  const expenses = qcNum('qc-expenses');
+
+  // Expenses are entered per category and summed. Anything the four named buckets
+  // don't cover belongs in Operations, so the total stays honest.
+  const expenseLines = [
+    ['qc-exp-rent', 'rent'],
+    ['qc-exp-utilities', 'utilities'],
+    ['qc-exp-supplies', 'supplies'],
+    ['qc-exp-staff', 'staff'],
+    ['qc-exp-operations', 'operations']
+  ];
+  const expenseParts = expenseLines.map(([id]) => qcNum(id));
+  const expenses = expenseParts.reduce((sum, n) => sum + n, 0);
+  $('qc-exp-total').textContent = fmt(expenses);
+
+  // Name the biggest line so the total isn't just an opaque number.
+  const biggest = expenseLines.reduce(
+    (best, pair, i) => (expenseParts[i] > best.amt ? { label: pair[1], amt: expenseParts[i] } : best),
+    { label: null, amt: 0 }
+  );
+  $('qc-expenses-sub').textContent = biggest.label
+    ? `${biggest.label} is ${qcPct((biggest.amt / expenses) * 100)} of it`
+    : 'no expenses entered';
 
   // Beds per bedroom — context only, never feeds the money math.
   $('qc-density').textContent = bedrooms > 0
@@ -3292,7 +3363,7 @@ function renderQuickCalcRange(beds, occ, expenses, baseRate) {
 // as printOverview(). Nothing is stored; the operator keeps the file.
 function printQuickCalc() {
   const ts = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-  $('qcPrintTimestamp').textContent = `Bethel Residency · Quick Projection · ${ts}`;
+  $('qcPrintTimestamp').textContent = `Bethel Residency · Profit Projection · ${ts}`;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('print-active'));
   $('view-quickcalc').classList.add('print-active');
   setTimeout(() => {

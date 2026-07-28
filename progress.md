@@ -1,6 +1,6 @@
 # Bethel Dashboard — Build Progress
 
-Last updated: 2026-07-27 (Quick Calc tab; conflict detection fixed)
+Last updated: 2026-07-27 (Profit Calculator tab; conflict detection fixed)
 
 ---
 
@@ -35,9 +35,13 @@ Last updated: 2026-07-27 (Quick Calc tab; conflict detection fixed)
 - CoC Return KPI cell: shows `—` when startup cost is 0, `X.X%` (green/red) when set
 - Subheadline shows `Startup: $X,XXX` at all times
 
-**Quick Calc tab**
+**Profit Calculator tab** (internally still `view-quickcalc` / `qc-*` ids)
 - Stateless profitability scratch-pad — no Supabase, no autosave, resets on reload
-- Inputs: beds, bedrooms, occupancy %, monthly rate per bed, flat monthly expenses
+- Inputs: beds, bedrooms, occupancy %, monthly rate per bed, and five expense
+  categories — rent/mortgage, utilities, supplies, staff, operations — which are
+  summed. Operations is the catch-all (insurance, maintenance, admin, food), so the
+  total stays honest rather than quietly omitting real costs.
+- Expense defaults are 20862 Walking Beam Dr.'s real monthly figures, totalling $6,820
 - Outputs recalculate on every keystroke: monthly revenue, expenses, cashflow, annual
   cashflow, margin, breakeven occupancy, and a PROFITABLE / BREAKS EVEN / NOT PROFITABLE verdict
 - Rate range strip: low / base / high rate side by side, so the operator can see the
@@ -46,7 +50,7 @@ Last updated: 2026-07-27 (Quick Calc tab; conflict detection fixed)
   approach as `printOverview()`. Nothing is stored server-side.
 - Zero beds or zero rate renders "—" everywhere rather than NaN/Infinity; occupancy
   clamps to 100%, negatives clamp to 0
-- Tests: `tests/quickcalc.spec.js`, 4 `@smoke` tests
+- Tests: `tests/quickcalc.spec.js`, 5 `@smoke` tests
 
 **Cross-device conflict detection (migration 002)**
 - `bethel_data` has an `updated_at` column; every write explicitly advances it
@@ -60,7 +64,7 @@ Last updated: 2026-07-27 (Quick Calc tab; conflict detection fixed)
 
 ## Tests passing
 
-**24 passing, 0 failing** (`npx playwright test`) — first fully green run; the two conflict
+**25 passing, 0 failing** (`npx playwright test`) — first fully green run; the two conflict
 tests had been red since they were written.
 
 | File | Tests | Tags |
@@ -69,7 +73,7 @@ tests had been red since they were written.
 | `tests/autosave.spec.js` | happy path, network drop + recovery, reload-while-pending, cross-device conflict detection, **stale write does not overwrite**, conflict override, quota stress (1000 pushes), pagehide flush | `@autosave` |
 | `tests/isolation.spec.js` | unauth redirect, two-user data isolation, unauthenticated API returns 0 rows | `@isolation` |
 | `tests/login-page.spec.js` | 375px no scroll, tap targets ≥44px, short-PW validation, mismatch validation, forgot-password view | `@smoke` |
-| `tests/quickcalc.spec.js` | defaults + profitable verdict, live recalc flips verdict, zero-beds em-dash states, rate range low/base/high | `@smoke` |
+| `tests/quickcalc.spec.js` | defaults + profitable verdict, live recalc flips verdict, zero-beds em-dash states, expense categories sum, rate range low/base/high | `@smoke` |
 
 `.env.test` is gitignored and does not travel with the repo. If the suite refuses to start with
 "SUPABASE_URL is not set", recreate it from `.env.test.example`; the `playwright-*` account

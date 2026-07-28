@@ -7,9 +7,10 @@
 // the dashboard is behind the auth gate.
 //
 // These tests will pass once index.html has:
-//   - a "Quick Calc" tab button between Projections and Reports
+//   - a "Profit Calculator" tab button between Projections and Reports
 //   - #view-quickcalc with inputs #qc-beds, #qc-bedrooms, #qc-occ, #qc-rate,
-//     #qc-expenses, #qc-low-rate, #qc-high-rate
+//     the five expense inputs (#qc-exp-rent, -utilities, -supplies, -staff,
+//     -operations), #qc-low-rate, #qc-high-rate
 //   - outputs #qc-revenue, #qc-expenses-out, #qc-cashflow, #qc-annual, #qc-margin,
 //     #qc-breakeven, #qc-verdict
 //   - a range strip with #qc-low-annual, #qc-base-annual, #qc-high-annual
@@ -27,7 +28,7 @@ function num(text) {
 async function openQuickCalc(page) {
   await signIn(page, process.env.TEST_USER_A_EMAIL, process.env.TEST_USER_A_PASSWORD);
   await expect(page).toHaveURL("/", { timeout: 10000 });
-  await page.getByRole("button", { name: "Quick Calc" }).click();
+  await page.getByRole("button", { name: "Profit Calculator" }).click();
   await expect(page.locator("#view-quickcalc")).toBeVisible();
 }
 
@@ -42,12 +43,19 @@ test.describe("@smoke quick calc", () => {
     await expect(page.locator("#qc-bedrooms")).toHaveValue("4");
     await expect(page.locator("#qc-occ")).toHaveValue("90");
     await expect(page.locator("#qc-rate")).toHaveValue("850");
-    await expect(page.locator("#qc-expenses")).toHaveValue("1200");
+    // Expenses default to 20862 Walking Beam Dr.'s real monthly costs.
+    await expect(page.locator("#qc-exp-rent")).toHaveValue("5000");
+    await expect(page.locator("#qc-exp-utilities")).toHaveValue("365");
+    await expect(page.locator("#qc-exp-supplies")).toHaveValue("225");
+    await expect(page.locator("#qc-exp-staff")).toHaveValue("250");
+    await expect(page.locator("#qc-exp-operations")).toHaveValue("980");
 
+    // 12 x $850 x 90% = $9,180 revenue, less $6,820 of expenses.
     await expect(page.locator("#qc-verdict")).toHaveText("PROFITABLE");
     await expect(page.locator("#qc-revenue")).toHaveText("$9,180");
-    await expect(page.locator("#qc-cashflow")).toHaveText("$7,980");
-    await expect(page.locator("#qc-annual")).toHaveText("$95,760");
+    await expect(page.locator("#qc-expenses-out")).toHaveText("$6,820");
+    await expect(page.locator("#qc-cashflow")).toHaveText("$2,360");
+    await expect(page.locator("#qc-annual")).toHaveText("$28,320");
 
     // Annual cashflow must be a real, positive number
     expect(num(await page.locator("#qc-annual").textContent())).toBeGreaterThan(0);
@@ -60,8 +68,8 @@ test.describe("@smoke quick calc", () => {
     await openQuickCalc(page);
     await expect(page.locator("#qc-verdict")).toHaveText("PROFITABLE");
 
-    // Expenses well above the $9,180 of revenue at default settings
-    await page.locator("#qc-expenses").fill("20000");
+    // Rent alone well above the $9,180 of revenue at default settings
+    await page.locator("#qc-exp-rent").fill("20000");
 
     await expect(page.locator("#qc-verdict")).toHaveText("NOT PROFITABLE");
     expect(num(await page.locator("#qc-cashflow").textContent())).toBeLessThan(0);
@@ -89,6 +97,36 @@ test.describe("@smoke quick calc", () => {
     const viewText = await page.locator("#view-quickcalc").innerText();
     expect(viewText).not.toContain("NaN");
     expect(viewText).not.toContain("Infinity");
+  });
+
+  // ── Test 3b: the five expense categories add up ───────────────────────────
+  // Expenses are entered per category, so the number driving cashflow must be
+  // their sum — not one of them, and not a stale total.
+  // Fails if: any category is dropped, or the running total drifts from the
+  // figure used in the cashflow calculation.
+  test("expense categories sum into the total used for cashflow", async ({ page }) => {
+    await openQuickCalc(page);
+
+    for (const [id, value] of [
+      ["#qc-exp-rent", "1000"],
+      ["#qc-exp-utilities", "200"],
+      ["#qc-exp-supplies", "300"],
+      ["#qc-exp-staff", "400"],
+      ["#qc-exp-operations", "100"],
+    ]) {
+      await page.locator(id).fill(value);
+    }
+
+    // 1000 + 200 + 300 + 400 + 100 = 2000, shown both on the input panel and
+    // in the results cell, and driving cashflow: $9,180 - $2,000 = $7,180.
+    await expect(page.locator("#qc-exp-total")).toHaveText("$2,000");
+    await expect(page.locator("#qc-expenses-out")).toHaveText("$2,000");
+    await expect(page.locator("#qc-cashflow")).toHaveText("$7,180");
+
+    // Clearing one category must move the total, proving it is really summed.
+    await page.locator("#qc-exp-staff").fill("0");
+    await expect(page.locator("#qc-exp-total")).toHaveText("$1,600");
+    await expect(page.locator("#qc-cashflow")).toHaveText("$7,580");
   });
 
   // ── Test 4: rate range shows low / base / high ────────────────────────────
