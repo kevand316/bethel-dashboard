@@ -1,6 +1,7 @@
 // tests/quickcalc.spec.js
 //
-// Quick Calc tab — stateless profitability scratch-pad.
+// Profit Calculator tab — stateless profitability scratch-pad.
+// (ids remain view-quickcalc / qc-* — only the visible label was renamed.)
 //
 // The tab is pure client-side arithmetic: no Supabase reads or writes, no autosave.
 // These tests therefore write nothing and need no cleanup — they only sign in because
@@ -32,9 +33,9 @@ async function openQuickCalc(page) {
   await expect(page.locator("#view-quickcalc")).toBeVisible();
 }
 
-test.describe("@smoke quick calc", () => {
+test.describe("@smoke profit calculator", () => {
   // ── Test 1: renders with defaults and reads PROFITABLE ────────────────────
-  // 12 beds x $850 x 90% = $9,180 revenue - $1,200 expenses = $7,980/mo.
+  // 12 beds x $850 x 90% = $9,180 revenue - $6,725 expenses = $2,455/mo.
   // Fails if: the tab is missing, defaults differ, or the verdict is not profitable.
   test("opens with defaults and shows a profitable verdict", async ({ page }) => {
     await openQuickCalc(page);
@@ -43,19 +44,19 @@ test.describe("@smoke quick calc", () => {
     await expect(page.locator("#qc-bedrooms")).toHaveValue("4");
     await expect(page.locator("#qc-occ")).toHaveValue("90");
     await expect(page.locator("#qc-rate")).toHaveValue("850");
-    // Expenses default to 20862 Walking Beam Dr.'s real monthly costs.
+    // Typical starting figures for a 12-bed home. Staff mirrors the bed rate.
     await expect(page.locator("#qc-exp-rent")).toHaveValue("5000");
-    await expect(page.locator("#qc-exp-utilities")).toHaveValue("365");
-    await expect(page.locator("#qc-exp-supplies")).toHaveValue("225");
-    await expect(page.locator("#qc-exp-staff")).toHaveValue("250");
-    await expect(page.locator("#qc-exp-operations")).toHaveValue("980");
+    await expect(page.locator("#qc-exp-utilities")).toHaveValue("600");
+    await expect(page.locator("#qc-exp-supplies")).toHaveValue("175");
+    await expect(page.locator("#qc-exp-staff")).toHaveValue("850");
+    await expect(page.locator("#qc-exp-operations")).toHaveValue("100");
 
-    // 12 x $850 x 90% = $9,180 revenue, less $6,820 of expenses.
+    // 12 x $850 x 90% = $9,180 revenue, less $6,725 of expenses.
     await expect(page.locator("#qc-verdict")).toHaveText("PROFITABLE");
     await expect(page.locator("#qc-revenue")).toHaveText("$9,180");
-    await expect(page.locator("#qc-expenses-out")).toHaveText("$6,820");
-    await expect(page.locator("#qc-cashflow")).toHaveText("$2,360");
-    await expect(page.locator("#qc-annual")).toHaveText("$28,320");
+    await expect(page.locator("#qc-expenses-out")).toHaveText("$6,725");
+    await expect(page.locator("#qc-cashflow")).toHaveText("$2,455");
+    await expect(page.locator("#qc-annual")).toHaveText("$29,460");
 
     // Annual cashflow must be a real, positive number
     expect(num(await page.locator("#qc-annual").textContent())).toBeGreaterThan(0);
@@ -127,6 +128,27 @@ test.describe("@smoke quick calc", () => {
     await page.locator("#qc-exp-staff").fill("0");
     await expect(page.locator("#qc-exp-total")).toHaveText("$1,600");
     await expect(page.locator("#qc-cashflow")).toHaveText("$7,580");
+  });
+
+  // ── Test 3c: staff tracks the bed rate until overridden ───────────────────
+  // The house lead occupies a bed rent-free, so staffing cost ≈ one bed's rate.
+  // Staff follows the rate field, but must stop the moment the operator types
+  // their own number — a default that silently overwrites real input is worse
+  // than no default at all.
+  test("staff follows the bed rate until the operator overrides it", async ({ page }) => {
+    await openQuickCalc(page);
+    await expect(page.locator("#qc-exp-staff")).toHaveValue("850");
+
+    await page.locator("#qc-rate").fill("1200");
+    await expect(page.locator("#qc-exp-staff")).toHaveValue("1200");
+
+    await page.locator("#qc-rate").fill("700");
+    await expect(page.locator("#qc-exp-staff")).toHaveValue("700");
+
+    // Hand-entered value must survive later rate changes.
+    await page.locator("#qc-exp-staff").fill("2000");
+    await page.locator("#qc-rate").fill("950");
+    await expect(page.locator("#qc-exp-staff")).toHaveValue("2000");
   });
 
   // ── Test 4: rate range shows low / base / high ────────────────────────────
