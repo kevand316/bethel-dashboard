@@ -41,6 +41,7 @@ Last updated: 2026-07-27 (Profit Calculator tab; conflict detection fixed)
   categories — rent/mortgage, utilities, supplies, staff, operations — which are
   summed. Operations is the catch-all (insurance, maintenance, admin, food), so the
   total stays honest rather than quietly omitting real costs.
+- Home defaults: 12 beds across 6 bedrooms (two per room on average)
 - Expense defaults are typical 12-bed starting figures — rent $5,000, utilities $600,
   supplies $175, staff $850, operations $100 — totalling $6,725
 - Staff mirrors the bed rate (the house lead occupies a bed rent-free) and keeps

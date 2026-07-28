@@ -41,7 +41,7 @@ test.describe("@smoke profit calculator", () => {
     await openQuickCalc(page);
 
     await expect(page.locator("#qc-beds")).toHaveValue("12");
-    await expect(page.locator("#qc-bedrooms")).toHaveValue("4");
+    await expect(page.locator("#qc-bedrooms")).toHaveValue("6");
     await expect(page.locator("#qc-occ")).toHaveValue("90");
     await expect(page.locator("#qc-rate")).toHaveValue("850");
     // Typical starting figures for a 12-bed home. Staff mirrors the bed rate.
