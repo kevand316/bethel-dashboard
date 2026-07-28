@@ -1,6 +1,6 @@
 # Bethel Dashboard — Build Progress
 
-Last updated: 2026-05-03 (conflict detection complete)
+Last updated: 2026-07-27 (Quick Calc tab added)
 
 ---
 
@@ -35,6 +35,19 @@ Last updated: 2026-05-03 (conflict detection complete)
 - CoC Return KPI cell: shows `—` when startup cost is 0, `X.X%` (green/red) when set
 - Subheadline shows `Startup: $X,XXX` at all times
 
+**Quick Calc tab**
+- Stateless profitability scratch-pad — no Supabase, no autosave, resets on reload
+- Inputs: beds, bedrooms, occupancy %, monthly rate per bed, flat monthly expenses
+- Outputs recalculate on every keystroke: monthly revenue, expenses, cashflow, annual
+  cashflow, margin, breakeven occupancy, and a PROFITABLE / NOT PROFITABLE verdict
+- Rate range strip: low / base / high rate side by side, so the operator can see the
+  spread before testing a price in a market
+- "Save Projection PDF" prints just this view via the browser print dialog, same
+  approach as `printOverview()`. Nothing is stored server-side.
+- Zero beds or zero rate renders "—" everywhere rather than NaN/Infinity; occupancy
+  clamps to 100%, negatives clamp to 0
+- Tests: `tests/quickcalc.spec.js`, 4 `@smoke` tests
+
 **Cross-device conflict detection (migration 002)**
 - `bethel_data` has an `updated_at` column; every write explicitly advances it
 - Conditional UPDATE: `WHERE updated_at = <last_loaded_value>` — if another device wrote since your load, 0 rows are returned and the conflict state fires
@@ -47,14 +60,19 @@ Last updated: 2026-05-03 (conflict detection complete)
 
 ## Tests passing
 
-**19 passing, 0 skipped** (`npx playwright test`)
+**21 passing, 2 failing** of 23 (`npx playwright test`) — see the conflict-detection bug below.
 
 | File | Tests | Tags |
 |------|-------|------|
 | `tests/auth.spec.js` | invalid credentials error, logout + redirect, session persistence, corrupted token redirect | `@smoke` |
-| `tests/autosave.spec.js` | happy path, network drop + recovery, reload-while-pending, cross-device conflict detection, conflict override, quota stress (1000 pushes), pagehide flush | `@autosave` |
+| `tests/autosave.spec.js` | happy path, network drop + recovery, reload-while-pending, cross-device conflict detection ❌, conflict override ❌, quota stress (1000 pushes), pagehide flush | `@autosave` |
 | `tests/isolation.spec.js` | unauth redirect, two-user data isolation, unauthenticated API returns 0 rows | `@isolation` |
 | `tests/login-page.spec.js` | 375px no scroll, tap targets ≥44px, short-PW validation, mismatch validation, forgot-password view | `@smoke` |
+| `tests/quickcalc.spec.js` | defaults + profitable verdict, live recalc flips verdict, zero-beds em-dash states, rate range low/base/high | `@smoke` |
+
+`.env.test` is gitignored and does not travel with the repo. If the suite refuses to start with
+"SUPABASE_URL is not set", recreate it from `.env.test.example`; the `playwright-*` account
+passwords were rotated 2026-07-27 via the Supabase admin API and exist only in that local file.
 
 ---
 
@@ -62,11 +80,26 @@ Last updated: 2026-05-03 (conflict detection complete)
 
 1. **Manual two-device test** — one session as operator, one as fresh signup, on real iPhone and Android. Full flow end to end including the conflict banner (edit same home on two devices simultaneously). Can't be automated. Required before course launch.
 
-2. **Delete test accounts** — remove `playwright-a@bethel.test` and `playwright-b@bethel.test` from Supabase Auth → Users immediately before announcing to course members.
+2. **Delete test accounts** — remove `playwright-a@bethel.test` and `playwright-b@bethel.test` from Supabase Auth → Users immediately before announcing to course members. Passwords were rotated 2026-07-27; they live only in the local gitignored `.env.test`.
 
 3. **Separate test Supabase project** — currently test accounts live in the production project. Low urgency but clean this up before user count grows.
 
 ---
+
+## Known bugs
+
+- **Cross-device conflict detection does not fire (found 2026-07-27).** `lib/autosave.js`
+  `executeWrite()` treats every conflict as a possible false positive: it sets `_loadedAt = null`
+  and retries once. With `_loadedAt` null, `tryWrite()` takes the *unconditional upsert* branch,
+  which always succeeds — so the retry returns `'ok'`, the banner is hidden, and the stale write
+  silently overwrites the newer one. The "CHANGED ELSEWHERE" banner can effectively never appear.
+  Both conflict tests in `tests/autosave.spec.js` fail because of this, and they fail on a clean
+  checkout with no other changes present.
+  Impact: one user editing the same home on two devices (phone + laptop) can lose the older
+  device's edits with no warning. This does NOT cross user boundaries — RLS still isolates every
+  account, so no user can affect another user's data.
+  Fix needs its own TDD cycle: distinguish "our own keepalive advanced the timestamp" from
+  "another device wrote" instead of collapsing both into an unconditional upsert.
 
 ## Known limitations / future work
 

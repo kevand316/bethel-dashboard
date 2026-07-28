@@ -853,6 +853,227 @@ body::before {
   gap: 0.6rem;
 }
 
+/* ── QUICK CALC ── */
+.qc-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* Grid items default to min-width:auto, which lets the wide range table push the
+   whole page sideways on a phone. Let them shrink so .qc-range-scroll scrolls instead. */
+.qc-layout > * { min-width: 0; }
+
+.qc-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.qc-panel-head {
+  background: var(--bg3);
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.qc-panel-head .qc-title {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.qc-panel-head .qc-hint {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  margin-top: 3px;
+}
+
+.qc-fields { padding: 1rem; }
+
+.qc-field { margin-bottom: 0.85rem; }
+.qc-field:last-child { margin-bottom: 0; }
+
+.qc-field label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 0.35rem;
+}
+
+.qc-field input {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s;
+  -moz-appearance: textfield;
+}
+
+.qc-field input:focus { border-color: var(--gold); }
+
+.qc-field .qc-note {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  margin-top: 0.3rem;
+}
+
+.qc-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+/* Verdict banner */
+.qc-verdict-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-dim);
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.qc-verdict-box.good { border-left-color: var(--green); }
+.qc-verdict-box.bad { border-left-color: var(--red); }
+
+.qc-verdict {
+  font-family: var(--display);
+  font-size: 2.2rem;
+  letter-spacing: 3px;
+  line-height: 1;
+  color: var(--text-dim);
+}
+
+.qc-verdict-box.good .qc-verdict { color: var(--green); }
+.qc-verdict-box.bad .qc-verdict { color: var(--red); }
+
+.qc-verdict-sub {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text-mid);
+  line-height: 1.5;
+}
+
+.qc-pdf-btn {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.5rem 1.25rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.qc-pdf-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+/* Results — same visual language as the Operations cashflow strip */
+.qc-results {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.qc-cell {
+  padding: 1rem;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+
+.qc-cell:nth-child(3n) { border-right: none; }
+.qc-cell:nth-last-child(-n + 3) { border-bottom: none; }
+
+.qc-cell label {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.qc-cell .val {
+  font-family: var(--display);
+  font-size: 1.55rem;
+  letter-spacing: 2px;
+  line-height: 1;
+  color: var(--text);
+}
+
+.qc-cell .val.green { color: var(--green); }
+.qc-cell .val.red { color: var(--red); }
+.qc-cell .val.gold { color: var(--gold); }
+.qc-cell .val.blue { color: var(--blue); }
+.qc-cell .val.dim { color: var(--text-dim); }
+
+.qc-cell .sub {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  margin-top: 0.3rem;
+}
+
+/* Rate range strip */
+.qc-range-panel { margin-top: 1.25rem; }
+.qc-range-scroll { overflow-x: auto; }
+.qc-range { width: 100%; border-collapse: collapse; }
+
+.qc-range th,
+.qc-range td {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  padding: 0.7rem 1rem;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+
+.qc-range th {
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.qc-range th:first-child,
+.qc-range td:first-child {
+  text-align: left;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.6rem;
+}
+
+.qc-range tr:last-child td { border-bottom: none; }
+.qc-range .qc-col-base { color: var(--gold); }
+.qc-range td.qc-figure { color: var(--text); }
+.qc-range tr.qc-row-annual td { font-weight: 600; }
+.qc-range tr.qc-row-annual td.qc-figure { color: var(--green); }
+.qc-range tr.qc-row-annual td.qc-figure.neg { color: var(--red); }
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -884,6 +1105,8 @@ body::before {
   /* Ops tab — stack columns */
   .ops-layout-grid { grid-template-columns: 1fr; }
   .expense-form-grid { grid-template-columns: 1fr; }
+  /* Quick Calc — inputs above results, full width */
+  .qc-layout { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {
@@ -900,6 +1123,15 @@ body::before {
   /* Wide tables — allow horizontal scroll rather than squish */
   #view-projections .expense-table { min-width: 560px; }
   .compare-table { min-width: 480px; }
+  /* Quick Calc — 2-col results, same as the cashflow strip */
+  .qc-results { grid-template-columns: repeat(2, 1fr); }
+  .qc-cell:nth-child(3n) { border-right: 1px solid var(--border); }
+  .qc-cell:nth-child(2n) { border-right: none; }
+  .qc-cell:nth-last-child(-n + 3) { border-bottom: 1px solid var(--border); }
+  .qc-cell:nth-last-child(-n + 2) { border-bottom: none; }
+  .qc-cell label { font-size: 0.75rem; letter-spacing: 0.08em; }
+  .qc-verdict { font-size: 1.8rem; }
+  .qc-range { min-width: 420px; }
 }
 
 /* ── PRINT PDF STYLES ── */
@@ -917,6 +1149,10 @@ body::before {
   .home-card { page-break-inside: avoid; }
   .kpi-card { page-break-inside: avoid; }
   .print-timestamp { display: block !important; }
+  /* Quick Calc — side-by-side survives on paper; keep blocks off page breaks */
+  .qc-layout { grid-template-columns: 320px 1fr; gap: 1rem; }
+  .qc-panel, .qc-results, .qc-verdict-box { page-break-inside: avoid; }
+  .qc-field input { color: #e8edf5 !important; background: #1a2030 !important; }
   @page { margin: 0.5in; size: landscape; }
 }
 
@@ -1098,6 +1334,7 @@ body::before {
   <button class="tab active" onclick="switchTab('occupancy', event)">Overview</button>
   <button class="tab" data-tab="ops" onclick="switchTab('ops', event)">Operations</button>
   <button class="tab" onclick="switchTab('projections', event)">Projections</button>
+  <button class="tab" onclick="switchTab('quickcalc', event)">Quick Calc</button>
   <button class="tab" onclick="switchTab('reports', event)">Reports</button>
   <button class="no-print" onclick="printOverview()" style="margin-left:auto;font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⬇ Save PDF</button>
   <button class="no-print" onclick="saveSnapshot()" style="font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:var(--gold);border:1px solid var(--gold);color:var(--bg);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#d4a012'" onmouseout="this.style.background='var(--gold)'">📸 Save Snapshot</button>
@@ -1279,6 +1516,155 @@ body::before {
         <tbody id="projTable"></tbody>
         <tfoot id="projTotals"></tfoot>
       </table>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- QUICK CALC VIEW -->
+  <!-- Stateless scratch-pad. No Supabase, no autosave — values reset on reload. -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="view" id="view-quickcalc">
+
+    <div class="print-timestamp" id="qcPrintTimestamp"></div>
+
+    <div class="qc-verdict-box" id="qc-verdict-box">
+      <div class="qc-verdict" id="qc-verdict">—</div>
+      <div class="qc-verdict-sub" id="qc-verdict-sub">Enter a few numbers to size up a home.</div>
+      <button class="qc-pdf-btn no-print" id="qcPdfBtn" onclick="printQuickCalc()">⬇ Save Projection PDF</button>
+    </div>
+
+    <div class="qc-layout">
+
+      <!-- LEFT: inputs -->
+      <div class="qc-panel">
+        <div class="qc-panel-head">
+          <div class="qc-title">The Home</div>
+          <div class="qc-hint">Nothing here is saved — it resets when you reload</div>
+        </div>
+        <div class="qc-fields">
+          <div class="qc-pair">
+            <div class="qc-field">
+              <label for="qc-beds">Beds</label>
+              <input type="number" id="qc-beds" min="0" step="1" value="12" oninput="renderQuickCalc()">
+            </div>
+            <div class="qc-field">
+              <label for="qc-bedrooms">Bedrooms</label>
+              <input type="number" id="qc-bedrooms" min="0" step="1" value="4" oninput="renderQuickCalc()">
+            </div>
+          </div>
+          <div class="qc-field">
+            <div class="qc-note" id="qc-density">3.0 beds per bedroom · does not affect the math</div>
+          </div>
+          <div class="qc-field">
+            <label for="qc-occ">Occupancy Rate (%)</label>
+            <input type="number" id="qc-occ" min="0" max="100" step="1" value="90" oninput="renderQuickCalc()">
+          </div>
+          <div class="qc-field">
+            <label for="qc-rate">Monthly Rate Per Bed ($)</label>
+            <input type="number" id="qc-rate" min="0" step="25" value="850" oninput="renderQuickCalc()">
+          </div>
+          <div class="qc-field">
+            <label for="qc-expenses">Monthly Expenses — All In ($)</label>
+            <input type="number" id="qc-expenses" min="0" step="100" value="1200" oninput="renderQuickCalc()">
+            <div class="qc-note">Rent, utilities, food, staff — one flat number</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: results + range -->
+      <div>
+        <div class="qc-results">
+          <div class="qc-cell">
+            <label>Monthly Revenue</label>
+            <div class="val gold" id="qc-revenue">—</div>
+            <div class="sub" id="qc-occupied-sub">—</div>
+          </div>
+          <div class="qc-cell">
+            <label>Monthly Expenses</label>
+            <div class="val red" id="qc-expenses-out">—</div>
+            <div class="sub">flat estimate</div>
+          </div>
+          <div class="qc-cell">
+            <label>Monthly Cashflow</label>
+            <div class="val green" id="qc-cashflow">—</div>
+            <div class="sub" id="qc-margin-sub">—</div>
+          </div>
+          <div class="qc-cell">
+            <label>Annual Cashflow</label>
+            <div class="val blue" id="qc-annual">—</div>
+            <div class="sub">cashflow × 12</div>
+          </div>
+          <div class="qc-cell">
+            <label>Margin</label>
+            <div class="val" id="qc-margin">—</div>
+            <div class="sub">of revenue kept</div>
+          </div>
+          <div class="qc-cell">
+            <label>Breakeven Occupancy</label>
+            <div class="val" id="qc-breakeven">—</div>
+            <div class="sub" id="qc-breakeven-sub">to cover expenses</div>
+          </div>
+        </div>
+
+        <div class="qc-panel qc-range-panel">
+          <div class="qc-panel-head">
+            <div class="qc-title">If We Test The Rate</div>
+            <div class="qc-hint">Same home, same occupancy — only the rate per bed changes</div>
+          </div>
+          <div class="qc-fields">
+            <div class="qc-pair">
+              <div class="qc-field">
+                <label for="qc-low-rate">Low Rate ($)</label>
+                <input type="number" id="qc-low-rate" min="0" step="25" value="750" oninput="renderQuickCalc()">
+              </div>
+              <div class="qc-field">
+                <label for="qc-high-rate">High Rate ($)</label>
+                <input type="number" id="qc-high-rate" min="0" step="25" value="1000" oninput="renderQuickCalc()">
+              </div>
+            </div>
+          </div>
+          <div class="qc-range-scroll">
+            <table class="qc-range">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Low</th>
+                  <th class="qc-col-base">Base</th>
+                  <th>High</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Rate / bed</td>
+                  <td class="qc-figure" id="qc-low-rate-out">—</td>
+                  <td class="qc-figure" id="qc-base-rate-out">—</td>
+                  <td class="qc-figure" id="qc-high-rate-out">—</td>
+                </tr>
+                <tr>
+                  <td>Monthly revenue</td>
+                  <td class="qc-figure" id="qc-low-revenue">—</td>
+                  <td class="qc-figure" id="qc-base-revenue">—</td>
+                  <td class="qc-figure" id="qc-high-revenue">—</td>
+                </tr>
+                <tr>
+                  <td>Monthly cashflow</td>
+                  <td class="qc-figure" id="qc-low-cashflow">—</td>
+                  <td class="qc-figure" id="qc-base-cashflow">—</td>
+                  <td class="qc-figure" id="qc-high-cashflow">—</td>
+                </tr>
+                <tr class="qc-row-annual">
+                  <td>Annual cashflow</td>
+                  <td class="qc-figure" id="qc-low-annual">—</td>
+                  <td class="qc-figure" id="qc-base-annual">—</td>
+                  <td class="qc-figure" id="qc-high-annual">—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </div>
@@ -2774,7 +3160,135 @@ function switchTab(name, event) {
   $('view-' + name).classList.add('active');
   if (name === 'ops') renderCF();
   if (name === 'projections') renderProjections();
+  if (name === 'quickcalc') renderQuickCalc();
   if (name === 'reports') renderReports();
+}
+
+// ═══════════════════════════════════════════════════════
+// QUICK CALC
+// ═══════════════════════════════════════════════════════
+// Stateless. Reads its own inputs, writes its own outputs, touches nothing else.
+// No Supabase, no autosave, no `homes` — reloading the page wipes it by design.
+
+const DASH = '—';
+
+// Reads a numeric input, floors it at 0, and optionally caps it.
+// Blank / garbage / negative all collapse to 0 so nothing downstream sees NaN.
+function qcNum(id, max) {
+  const raw = parseFloat($(id).value);
+  const n = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+  return max === undefined ? n : Math.min(n, max);
+}
+
+const qcPct = n => Math.round(n) + '%';
+
+function renderQuickCalc() {
+  const beds = qcNum('qc-beds');
+  const bedrooms = qcNum('qc-bedrooms');
+  const occ = qcNum('qc-occ', 100);
+  const rate = qcNum('qc-rate');
+  const expenses = qcNum('qc-expenses');
+
+  // Beds per bedroom — context only, never feeds the money math.
+  $('qc-density').textContent = bedrooms > 0
+    ? `${(beds / bedrooms).toFixed(1)} beds per bedroom · does not affect the math`
+    : 'Add bedrooms to see beds per room · does not affect the math';
+
+  // With no beds or no rate there is no revenue basis at all. Every derived
+  // figure is undefined rather than zero — show DASH, same as the CoC zero-state.
+  const hasBasis = beds > 0 && rate > 0;
+  const fullRevenue = beds * rate;              // 100% occupancy
+  const revenue = fullRevenue * (occ / 100);
+  const cashflow = revenue - expenses;
+  const annual = cashflow * 12;
+
+  $('qc-expenses-out').textContent = fmt(expenses);
+  $('qc-revenue').textContent = hasBasis ? fmt(revenue) : DASH;
+  $('qc-cashflow').textContent = hasBasis ? fmt(cashflow) : DASH;
+  $('qc-annual').textContent = hasBasis ? fmt(annual) : DASH;
+
+  $('qc-occupied-sub').textContent = hasBasis
+    ? `${Math.round(beds * occ / 100)} of ${beds} beds filled`
+    : DASH;
+
+  // Cashflow and annual go red when negative
+  const cfClass = cashflow >= 0 ? 'green' : 'red';
+  $('qc-cashflow').className = 'val ' + (hasBasis ? cfClass : 'dim');
+  $('qc-annual').className = 'val ' + (hasBasis ? (cashflow >= 0 ? 'blue' : 'red') : 'dim');
+
+  // Margin — share of revenue kept. Undefined when there's no revenue.
+  const margin = revenue > 0 ? (cashflow / revenue) * 100 : null;
+  $('qc-margin').textContent = margin === null ? DASH : qcPct(margin);
+  $('qc-margin').className = 'val ' + (margin === null ? 'dim' : margin >= 0 ? 'green' : 'red');
+  $('qc-margin-sub').textContent = margin === null ? DASH : `${qcPct(margin)} margin`;
+
+  // Breakeven occupancy — the fill rate where cashflow hits zero.
+  // Over 100% is real arithmetic but impossible to operate; flag it rather than hide it.
+  const breakeven = hasBasis ? (expenses / fullRevenue) * 100 : null;
+  $('qc-breakeven').textContent = breakeven === null ? DASH : qcPct(breakeven);
+  $('qc-breakeven').className = 'val ' + (
+    breakeven === null ? 'dim' : breakeven > 100 ? 'red' : breakeven > occ ? 'gold' : 'green'
+  );
+  $('qc-breakeven-sub').textContent =
+    breakeven === null ? 'to cover expenses'
+      : breakeven > 100 ? 'over capacity — cannot break even'
+      : `to cover expenses · you assumed ${qcPct(occ)}`;
+
+  // Verdict
+  const box = $('qc-verdict-box');
+  if (!hasBasis) {
+    $('qc-verdict').textContent = DASH;
+    box.className = 'qc-verdict-box';
+    $('qc-verdict-sub').textContent = 'Enter beds and a monthly rate to see a projection.';
+  } else if (cashflow > 0) {
+    $('qc-verdict').textContent = 'PROFITABLE';
+    box.className = 'qc-verdict-box good';
+    $('qc-verdict-sub').textContent =
+      `${fmt(cashflow)} a month · ${fmt(annual)} a year at ${qcPct(occ)} occupancy`;
+  } else {
+    $('qc-verdict').textContent = 'NOT PROFITABLE';
+    box.className = 'qc-verdict-box bad';
+    $('qc-verdict-sub').textContent =
+      `Short ${fmt(Math.abs(cashflow))} a month at ${qcPct(occ)} occupancy`;
+  }
+
+  renderQuickCalcRange(beds, occ, expenses, rate);
+}
+
+// The rate range — same home, same occupancy, three price points.
+function renderQuickCalcRange(beds, occ, expenses, baseRate) {
+  const cols = {
+    low: qcNum('qc-low-rate'),
+    base: baseRate,
+    high: qcNum('qc-high-rate')
+  };
+
+  for (const [key, colRate] of Object.entries(cols)) {
+    const usable = beds > 0 && colRate > 0;
+    const rev = beds * colRate * (occ / 100);
+    const cf = rev - expenses;
+
+    $(`qc-${key}-rate-out`).textContent = usable ? fmt(colRate) : DASH;
+    $(`qc-${key}-revenue`).textContent = usable ? fmt(rev) : DASH;
+    $(`qc-${key}-cashflow`).textContent = usable ? fmt(cf) : DASH;
+    $(`qc-${key}-annual`).textContent = usable ? fmt(cf * 12) : DASH;
+    $(`qc-${key}-annual`).className = 'qc-figure' + (usable && cf < 0 ? ' neg' : '');
+  }
+}
+
+// Save the Quick Calc view to PDF via the browser print dialog — same approach
+// as printOverview(). Nothing is stored; the operator keeps the file.
+function printQuickCalc() {
+  const ts = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  $('qcPrintTimestamp').textContent = `Bethel Residency · Quick Projection · ${ts}`;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('print-active'));
+  $('view-quickcalc').classList.add('print-active');
+  setTimeout(() => {
+    window.print();
+    window.addEventListener('afterprint', () => {
+      $('view-quickcalc').classList.remove('print-active');
+    }, { once: true });
+  }, 150);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2844,6 +3358,7 @@ function updateDate() {
 
 updateDate();
 setInterval(updateDate, 60000);
+renderQuickCalc(); // stateless — populate from the default inputs, no data needed
 initData(); // loads from Supabase then renders
 </script>
 </body>
