@@ -2161,6 +2161,13 @@ let currentHome = 0;
 let editingBed = null;
 
 // Load from Supabase on startup
+// Writes the header save indicator directly. autosave.js owns this element once
+// the app is live; initData needs it during load, before autosave has anything to say.
+function setLoadStatus(cls, text) {
+  const el = document.getElementById('save-status');
+  if (el) { el.textContent = text; el.className = cls; }
+}
+
 async function initData() {
   // Auth gate: redirect to login.html if no active session.
   const session = await requireAuth();
@@ -2169,6 +2176,12 @@ async function initData() {
   // Populate email display in header — defensive: never show undefined.
   const emailEl = document.getElementById('session-email');
   if (emailEl) emailEl.textContent = session.user?.email || '';
+
+  // The indicator was blank for the whole load, so a slow network and a hung
+  // load looked identical — to the operator and to anyone debugging. The save
+  // contract is that this element always reflects real state, including "still
+  // working on it".
+  setLoadStatus('saving', 'LOADING...');
 
   // Init autosave with the authenticated user's ID, then drain any pending
   // queue entries from a previous session before reading Supabase state.
@@ -2182,7 +2195,18 @@ async function initData() {
   // them with stale loaded data, or new edits will clobber unsynced changes.
   const pendingHomes = window.autosave.getPendingData('homes', session.user.id);
 
-  const { data: loadedData, updatedAt, failed } = await sbGetWithTs('homes');
+  // A transient blip on this read used to end the session: one failure and
+  // initData gave up — blank indicator, no data, no retry — and the operator had
+  // to work out for themselves that a reload was needed. Everywhere else in this
+  // app a failed request is retried, not swallowed; the initial load is no
+  // different. Two quick retries cover a blip without stalling a real outage.
+  let loaded = await sbGetWithTs('homes');
+  for (let attempt = 1; loaded.failed && attempt <= 2; attempt++) {
+    setLoadStatus('saving', 'RETRYING...');
+    await new Promise((r) => setTimeout(r, attempt * 1000));
+    loaded = await sbGetWithTs('homes');
+  }
+  const { data: loadedData, updatedAt, failed } = loaded;
   let saved = loadedData;
 
   // If Supabase failed, try localStorage backup then pending queue
@@ -2204,8 +2228,11 @@ async function initData() {
       showToast('Supabase unreachable — loaded from pending writes. Saves will retry automatically.');
     }
 
-    // If still nothing, bail — do not render defaults
+    // If still nothing, bail — do not render defaults.
+    // Say so in the indicator too: a blank indicator reads as "fine", and this
+    // state is the opposite of fine — nothing loaded and nothing will save.
     if (!usedFallback) {
+      setLoadStatus('error', 'LOAD FAILED');
       showToast('Could not reach Supabase — reload to try again. Saves are disabled.');
       return;
     }
@@ -2320,8 +2347,7 @@ async function initData() {
   });
   renderAll();
   // Data loaded from Supabase — mark as in sync.
-  const statusEl = document.getElementById('save-status');
-  if (statusEl) { statusEl.textContent = 'SAVED ✓'; statusEl.className = 'saved'; }
+  setLoadStatus('saved', 'SAVED ✓');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3282,8 +3308,13 @@ function renderQuickCalc() {
   // With no beds or no rate there is no revenue basis at all. Every derived
   // figure is undefined rather than zero — show DASH, same as the CoC zero-state.
   const hasBasis = beds > 0 && rate > 0;
-  const fullRevenue = beds * rate;              // 100% occupancy
-  const revenue = fullRevenue * (occ / 100);
+
+  // Beds are people, not fractions. 85% of 12 beds is 10.2, and 0.2 of a resident
+  // pays nothing — billing 10.2 beds inflates every projection. Round DOWN, so the
+  // number is one the home can actually fill.
+  const occupiedBeds = Math.floor(beds * (occ / 100));
+  const fullRevenue = beds * rate;              // every bed filled
+  const revenue = occupiedBeds * rate;
   const cashflow = revenue - expenses;
   const annual = cashflow * 12;
 
@@ -3293,7 +3324,7 @@ function renderQuickCalc() {
   $('qc-annual').textContent = hasBasis ? fmt(annual) : DASH;
 
   $('qc-occupied-sub').textContent = hasBasis
-    ? `${Math.round(beds * occ / 100)} of ${beds} beds filled`
+    ? `${occupiedBeds} of ${beds} bed${beds === 1 ? '' : 's'} filled${occupiedBeds !== beds * (occ / 100) ? ' (rounded down)' : ''}`
     : DASH;
 
   // Cashflow and annual go red when negative
@@ -3309,15 +3340,18 @@ function renderQuickCalc() {
 
   // Breakeven occupancy — the fill rate where cashflow hits zero.
   // Over 100% is real arithmetic but impossible to operate; flag it rather than hide it.
-  const breakeven = hasBasis ? (expenses / fullRevenue) * 100 : null;
+  // Breakeven has to be a whole bed too — you cannot fill 7.9 beds, so the honest
+  // answer is the occupancy at which the 8th bed is filled.
+  const bedsToBreakEven = hasBasis ? Math.ceil(expenses / rate) : null;
+  const breakeven = hasBasis ? (bedsToBreakEven / beds) * 100 : null;
   $('qc-breakeven').textContent = breakeven === null ? DASH : qcPct(breakeven);
   $('qc-breakeven').className = 'val ' + (
     breakeven === null ? 'dim' : breakeven > 100 ? 'red' : breakeven > occ ? 'gold' : 'green'
   );
   $('qc-breakeven-sub').textContent =
     breakeven === null ? 'to cover expenses'
-      : breakeven > 100 ? 'over capacity — cannot break even'
-      : `to cover expenses · you assumed ${qcPct(occ)}`;
+      : breakeven > 100 ? `needs ${bedsToBreakEven} beds — the home has ${beds}`
+      : `${bedsToBreakEven} of ${beds} beds · you assumed ${qcPct(occ)}`;
 
   // Verdict
   const box = $('qc-verdict-box');
@@ -3360,9 +3394,10 @@ function renderQuickCalcRange(beds, occ, expenses, baseRate) {
     high: qcNum('qc-high-rate')
   };
 
+  const occupiedBeds = Math.floor(beds * (occ / 100));
   for (const [key, colRate] of Object.entries(cols)) {
     const usable = beds > 0 && colRate > 0;
-    const rev = beds * colRate * (occ / 100);
+    const rev = occupiedBeds * colRate;
     const cf = rev - expenses;
 
     $(`qc-${key}-rate-out`).textContent = usable ? fmt(colRate) : DASH;

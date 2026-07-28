@@ -35,7 +35,8 @@ async function openQuickCalc(page) {
 
 test.describe("@smoke profit calculator", () => {
   // ── Test 1: renders with defaults and reads PROFITABLE ────────────────────
-  // 12 beds x $850 x 90% = $9,180 revenue - $6,725 expenses = $2,455/mo.
+  // 90% of 12 beds rounds DOWN to 10 filled: 10 x $850 = $8,500 revenue,
+  // less $6,725 of expenses = $1,775/mo.
   // Fails if: the tab is missing, defaults differ, or the verdict is not profitable.
   test("opens with defaults and shows a profitable verdict", async ({ page }) => {
     await openQuickCalc(page);
@@ -51,12 +52,13 @@ test.describe("@smoke profit calculator", () => {
     await expect(page.locator("#qc-exp-staff")).toHaveValue("850");
     await expect(page.locator("#qc-exp-operations")).toHaveValue("100");
 
-    // 12 x $850 x 90% = $9,180 revenue, less $6,725 of expenses.
+    // Whole beds only: 90% of 12 is 10.8, which must be billed as 10.
     await expect(page.locator("#qc-verdict")).toHaveText("PROFITABLE");
-    await expect(page.locator("#qc-revenue")).toHaveText("$9,180");
+    await expect(page.locator("#qc-occupied-sub")).toContainText("10 of 12 beds filled");
+    await expect(page.locator("#qc-revenue")).toHaveText("$8,500");
     await expect(page.locator("#qc-expenses-out")).toHaveText("$6,725");
-    await expect(page.locator("#qc-cashflow")).toHaveText("$2,455");
-    await expect(page.locator("#qc-annual")).toHaveText("$29,460");
+    await expect(page.locator("#qc-cashflow")).toHaveText("$1,775");
+    await expect(page.locator("#qc-annual")).toHaveText("$21,300");
 
     // Annual cashflow must be a real, positive number
     expect(num(await page.locator("#qc-annual").textContent())).toBeGreaterThan(0);
@@ -119,15 +121,46 @@ test.describe("@smoke profit calculator", () => {
     }
 
     // 1000 + 200 + 300 + 400 + 100 = 2000, shown both on the input panel and
-    // in the results cell, and driving cashflow: $9,180 - $2,000 = $7,180.
+    // in the results cell, and driving cashflow: $8,500 - $2,000 = $6,500.
     await expect(page.locator("#qc-exp-total")).toHaveText("$2,000");
     await expect(page.locator("#qc-expenses-out")).toHaveText("$2,000");
-    await expect(page.locator("#qc-cashflow")).toHaveText("$7,180");
+    await expect(page.locator("#qc-cashflow")).toHaveText("$6,500");
 
     // Clearing one category must move the total, proving it is really summed.
     await page.locator("#qc-exp-staff").fill("0");
     await expect(page.locator("#qc-exp-total")).toHaveText("$1,600");
-    await expect(page.locator("#qc-cashflow")).toHaveText("$7,580");
+    await expect(page.locator("#qc-cashflow")).toHaveText("$6,900");
+  });
+
+  // ── Test 3b2: occupancy resolves to whole beds, rounded down ──────────────
+  // A bed is a person. 85% of 12 beds is 10.2, and 0.2 of a resident pays
+  // nothing — billing the fraction inflates every projection. Revenue must be
+  // filled-beds × rate, with filled beds floored.
+  //
+  // Fails if: revenue is computed from a fractional bed count.
+  test("occupancy rounds down to whole beds before revenue is calculated", async ({ page }) => {
+    await openQuickCalc(page);
+    await page.locator("#qc-rate").fill("800");
+
+    // beds, occupancy %, beds actually filled (floor), revenue at $800
+    const cases = [
+      [12, 85, 10, "$8,000"],
+      [12, 90, 10, "$8,000"],
+      [12, 100, 12, "$9,600"],
+      [12, 50, 6, "$4,800"],
+      [7, 85, 5, "$4,000"],
+      [20, 33, 6, "$4,800"],
+      [1, 99, 0, "$0"],
+    ];
+
+    for (const [beds, occ, filled, revenue] of cases) {
+      await page.locator("#qc-beds").fill(String(beds));
+      await page.locator("#qc-occ").fill(String(occ));
+      await expect(page.locator("#qc-occupied-sub")).toContainText(
+        `${filled} of ${beds} bed${beds === 1 ? "" : "s"} filled`
+      );
+      await expect(page.locator("#qc-revenue")).toHaveText(revenue);
+    }
   });
 
   // ── Test 3c: staff tracks the bed rate until overridden ───────────────────

@@ -167,6 +167,57 @@ test.describe("@autosave autosave queue", () => {
     await expect(page.locator("#save-status")).toHaveText("SAVED ✓", { timeout: 15000 });
   });
 
+  // ── Test 3d: a failed initial load must retry, not give up ────────────────
+  // initData() used to abandon the session on a single failed read: no data, no
+  // retry, and a blank save indicator that reads as "everything is fine". The
+  // operator's only route out was to guess that a reload was needed.
+  //
+  // This is also the cause of the intermittent "Received: ''" failure in
+  // signInAndWaitForLoad — a transient blip on the load read left the indicator
+  // blank for the full timeout because nothing was ever going to change it.
+  //
+  // Fails if: one failed GET is enough to leave the dashboard blank.
+  test("a failed initial load retries instead of leaving the dashboard blank", async ({ page }) => {
+    // Only the 'homes' read matters — the load also fetches 'snapshots', and
+    // failing whichever GET happens to be first tests nothing.
+    //
+    // A 500 rather than an aborted connection: the Supabase client retries a
+    // dropped socket by itself, so an abort never reaches initData as a failure.
+    // A server error is surfaced straight through, which is exactly the case
+    // initData handled by giving up.
+    let homesReads = 0;
+    await page.route(SB_REST, async (route) => {
+      const req = route.request();
+      if (req.method() === "GET" && req.url().includes("id=eq.homes")) {
+        homesReads += 1;
+        if (homesReads === 1) {
+          await route.fulfill({
+            status: 500,
+            contentType: "application/json",
+            body: JSON.stringify({ message: "transient upstream error" }),
+          });
+          return;
+        }
+      }
+      await route.continue();
+    });
+
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/login/, { timeout: 5000 });
+    await signIn(page, process.env.TEST_USER_A_EMAIL, process.env.TEST_USER_A_PASSWORD);
+
+    // The retry must carry the load through to a normal, in-sync dashboard.
+    await expect(page.locator("#save-status")).toHaveText("SAVED ✓", { timeout: 25000 });
+    expect(homesReads).toBeGreaterThan(1);
+
+    // And the data must actually be there — recovering the indicator alone is
+    // not recovering the session.
+    await goToOps(page);
+    await expect(page.locator('input[data-field="startupCost"]').first()).toBeVisible();
+
+    await page.unroute(SB_REST);
+  });
+
   // ── Test 4: Cross-device conflict detection ───────────────────────────────
   // Two browser contexts load the same row. Context A saves first (bumping
   // updated_at). Context B then tries to save — the conditional UPDATE finds

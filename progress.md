@@ -47,6 +47,10 @@ Last updated: 2026-07-27 (Profit Calculator tab; conflict detection fixed)
 - Staff mirrors the bed rate (the house lead occupies a bed rent-free) and keeps
   following it until the operator types their own figure, after which it is left alone.
   The rate range does NOT vary staff — only the rate charged per bed changes.
+- **Occupancy resolves to whole beds, rounded down.** 85% of 12 beds is 10.2, and a
+  fraction of a resident pays nothing, so revenue is `floor(beds x occupancy) x rate`.
+  Breakeven is whole-bed too: the occupancy at which the Nth bed is filled. Defaults
+  therefore show 10 of 12 filled at 90%, not 10.8.
 - Outputs recalculate on every keystroke: monthly revenue, expenses, cashflow, annual
   cashflow, margin, breakeven occupancy, and a PROFITABLE / BREAKS EVEN / NOT PROFITABLE verdict
 - Rate range strip: low / base / high rate side by side, so the operator can see the
@@ -55,7 +59,7 @@ Last updated: 2026-07-27 (Profit Calculator tab; conflict detection fixed)
   approach as `printOverview()`. Nothing is stored server-side.
 - Zero beds or zero rate renders "—" everywhere rather than NaN/Infinity; occupancy
   clamps to 100%, negatives clamp to 0
-- Tests: `tests/quickcalc.spec.js`, 6 `@smoke` tests
+- Tests: `tests/quickcalc.spec.js`, 7 `@smoke` tests
 
 **Cross-device conflict detection (migration 002)**
 - `bethel_data` has an `updated_at` column; every write explicitly advances it
@@ -69,7 +73,7 @@ Last updated: 2026-07-27 (Profit Calculator tab; conflict detection fixed)
 
 ## Tests passing
 
-**26 passing, 0 failing** (`npx playwright test`) — first fully green run; the two conflict
+**28 passing, 0 failing** (`npx playwright test`) — first fully green run; the two conflict
 tests had been red since they were written.
 
 | File | Tests | Tags |
@@ -123,6 +127,27 @@ the server and *every* later save reports a conflict — it took the suite from 
 **Proof.** `tests/autosave.spec.js` gained "stale write does not overwrite the newer value on the
 server", which asserts on the stored data rather than the banner: device A saves 31111, stale
 device B tries 32222, and Supabase must still hold 31111.
+
+## Fixed 2026-07-28: a failed initial load bricked the session (and caused a flaky test)
+
+`initData()` gave up after one failed read of the `homes` row: it showed a toast and
+returned *before* the line that sets the save indicator. The indicator stayed blank
+forever — not "offline", not "failed", blank, which reads as "everything is fine" —
+with no data loaded and no retry. The only way out was for the operator to guess that a
+reload was needed.
+
+This was also the intermittent suite failure: `signInAndWaitForLoad` timing out with
+`Received: ""`. Not a slow load — nothing was ever going to change that value.
+
+Worth recording for the next person who chases it: an aborted connection does **not**
+reproduce this. The Supabase client retries a dropped socket itself, so the abort never
+reaches `initData` as a failure and the load recovers on its own. A 500 response is
+passed straight through, and that is the case that was mishandled. The regression test
+uses a 500 for that reason.
+
+Fix: retry the initial read twice (1s, then 2s) before falling back to local copies, and
+never leave the indicator blank — `LOADING...` while working, `RETRYING...` between
+attempts, `LOAD FAILED` if it genuinely cannot load.
 
 ## Known limitations / future work
 
