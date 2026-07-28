@@ -166,6 +166,41 @@ test.describe("@smoke profit calculator", () => {
     }
   });
 
+  // ── Test 3b3: breakeven uses the same rounding as occupancy ───────────────
+  // Breakeven is a whole bed count and follows the ordinary rule: .5 and above
+  // rounds up. The single exception is a floor of one bed whenever there are any
+  // expenses at all — rounding alone would claim a home with $400 of costs breaks
+  // even at 0% occupancy, i.e. standing empty, which is nonsense.
+  //
+  // Fails if: breakeven always rounds up (the old ceil), or reports 0 beds while
+  // the home still has costs.
+  test("breakeven rounds to whole beds the same way occupancy does", async ({ page }) => {
+    await openQuickCalc(page);
+    await page.locator("#qc-beds").fill("12");
+    await page.locator("#qc-rate").fill("850");
+    for (const id of ["#qc-exp-utilities", "#qc-exp-supplies", "#qc-exp-staff", "#qc-exp-operations"]) {
+      await page.locator(id).fill("0");
+    }
+
+    // monthly expenses, beds' worth of rent needed, beds reported
+    const cases = [
+      [6725, "8 of 12 beds"], // 7.91 -> up
+      [6290, "7 of 12 beds"], // 7.40 -> DOWN (ceil would have said 8)
+      [5500, "6 of 12 beds"], // 6.47 -> down
+      [400, "1 of 12 beds"], // 0.47 -> would round to 0; floored at one paying bed
+      [0, "0 of 12 beds"], // no costs, nothing to cover
+    ];
+
+    for (const [expenses, expected] of cases) {
+      await page.locator("#qc-exp-rent").fill(String(expenses));
+      await expect(page.locator("#qc-breakeven-sub")).toContainText(expected);
+    }
+
+    // Beyond capacity it must say so rather than quoting an impossible percentage.
+    await page.locator("#qc-exp-rent").fill("12000");
+    await expect(page.locator("#qc-breakeven-sub")).toContainText("the home has 12");
+  });
+
   // ── Test 3c: staff tracks the bed rate until overridden ───────────────────
   // The house lead occupies a bed rent-free, so staffing cost ≈ one bed's rate.
   // Staff follows the rate field, but must stop the moment the operator types

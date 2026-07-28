@@ -3348,9 +3348,13 @@ function renderQuickCalc() {
 
   // Breakeven occupancy — the fill rate where cashflow hits zero.
   // Over 100% is real arithmetic but impossible to operate; flag it rather than hide it.
-  // Breakeven has to be a whole bed too — you cannot fill 7.9 beds, so the honest
-  // answer is the occupancy at which the 8th bed is filled.
-  const bedsToBreakEven = hasBasis ? Math.ceil(expenses / rate) : null;
+  // Breakeven is a whole bed count too, rounded the same ordinary way as occupancy.
+  // The one guard: with real expenses on the books, never report 0 beds. Rounding
+  // alone would say a home with $400 of costs and an $850 rate breaks even at 0%
+  // occupancy — i.e. empty — which is nonsense. Floor it at one paying bed.
+  const bedsToBreakEven = hasBasis
+    ? (expenses > 0 ? Math.max(1, Math.round(expenses / rate)) : 0)
+    : null;
   const breakeven = hasBasis ? (bedsToBreakEven / beds) * 100 : null;
   $('qc-breakeven').textContent = breakeven === null ? DASH : qcPct(breakeven);
   $('qc-breakeven').className = 'val ' + (

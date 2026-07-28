@@ -52,8 +52,9 @@ Last updated: 2026-07-27 (Profit Calculator tab; conflict detection fixed)
   Ordinary half-up rounding: 10.2 -> 10, 10.8 -> 11, exactly 8.5 -> 9. Flooring was tried
   first and rejected — it cost the home a nearly-full bed at 10.8.
   The occupancy line states which way it rounded, so the adjustment is never silent.
-  Breakeven still uses `ceil`, deliberately: it asks how many beds actually cover the
-  costs, and 7 beds genuinely does not cover what 7.9 beds' rent would.
+  Breakeven follows the same half-up rule, with one guard: with any expenses on the
+  books it never reports 0 beds, since rounding alone would claim a home with $400 of
+  costs breaks even standing empty.
 - Outputs recalculate on every keystroke: monthly revenue, expenses, cashflow, annual
   cashflow, margin, breakeven occupancy, and a PROFITABLE / BREAKS EVEN / NOT PROFITABLE verdict
 - Rate range strip: low / base / high rate side by side, so the operator can see the
@@ -62,7 +63,7 @@ Last updated: 2026-07-27 (Profit Calculator tab; conflict detection fixed)
   approach as `printOverview()`. Nothing is stored server-side.
 - Zero beds or zero rate renders "—" everywhere rather than NaN/Infinity; occupancy
   clamps to 100%, negatives clamp to 0
-- Tests: `tests/quickcalc.spec.js`, 7 `@smoke` tests
+- Tests: `tests/quickcalc.spec.js`, 8 `@smoke` tests
 
 **Cross-device conflict detection (migration 002)**
 - `bethel_data` has an `updated_at` column; every write explicitly advances it
@@ -76,7 +77,7 @@ Last updated: 2026-07-27 (Profit Calculator tab; conflict detection fixed)
 
 ## Tests passing
 
-**28 passing, 0 failing** (`npx playwright test`) — first fully green run; the two conflict
+**29 passing, 0 failing** (`npx playwright test`) — first fully green run; the two conflict
 tests had been red since they were written.
 
 | File | Tests | Tags |
