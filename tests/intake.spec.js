@@ -302,6 +302,74 @@ test.describe("@smoke intake tab", () => {
     expect(stored.lastName).toBe("Nakamura");
   });
 
+  // ── Test 17: reloading the page keeps you connected ───────────────────────
+  // Reported from real use: every reload dropped the operator back to a Connect
+  // button. The cause was relying on a silent token request at page load —
+  // Google's token request opens a popup, and browsers block popups that were
+  // not triggered by a click, so it failed every time.
+  //
+  // Note what makes this test meaningful: page.addInitScript re-runs on reload,
+  // which resets the fake Google's grantSilently back to false. So after the
+  // reload a silent request CANNOT succeed. If the app still lands on the intake
+  // list, the only possible explanation is that it reused a token it had already
+  // stored — which is exactly the fix.
+  //
+  // Fails if: a reload sends the operator back to the gate.
+  test("stays connected across a page reload without asking again", async ({ page }) => {
+    await openDashboardConnected(page);
+    await expect(page.locator("#intake-account-email")).toHaveText("operator@example.org");
+
+    await page.reload();
+    await page.getByRole("button", { name: "Intake", exact: true }).click();
+
+    // No clicking Connect. It must already be connected.
+    await expect(page.locator("#intake-list")).toHaveClass(/active/, { timeout: 10000 });
+    await expect(page.locator("#intake-gate")).not.toHaveClass(/active/);
+    await expect(page.locator("#intake-account-email")).toHaveText("operator@example.org");
+
+    // And it is genuinely usable, not just displaying a connected-looking shell.
+    await page.locator("#intake-new-btn").click();
+    await fill(page, "firstName", "Reload");
+    await expect(savedStatus(page)).toHaveText("SAVED TO DRIVE ✓", { timeout: 10000 });
+  });
+
+  // ── Test 18: signing out does not leave a live credential behind ──────────
+  // The flip side of remembering the token. On a shared machine, an explicit
+  // sign-out must not leave something in localStorage that still reaches the
+  // intake records — those are the client files.
+  //
+  // Fails if: the Drive token survives sign-out.
+  test("signing out of the dashboard clears the stored Drive token", async ({ page }) => {
+    await openDashboardConnected(page);
+
+    const before = await page.evaluate(() =>
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("bethel.drive."))
+        .map((k) => !!JSON.parse(localStorage.getItem(k)).token)
+    );
+    expect(before).toEqual([true]); // a token really was stored
+
+    await page.locator('[data-action="logout"]').click();
+    // Wait for the login form rather than the URL: the dev server rewrites
+    // /login.html to /login, and that redirect makes waitForURL race the
+    // navigation and abort.
+    await expect(page.locator("#email")).toBeVisible({ timeout: 10000 });
+
+    const after = await page.evaluate(() =>
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("bethel.drive."))
+        .map((k) => ({
+          token: JSON.parse(localStorage.getItem(k)).token,
+          email: JSON.parse(localStorage.getItem(k)).email,
+        }))
+    );
+    // Token gone, but the email is kept so signing back in is one click rather
+    // than a fresh Google consent screen.
+    expect(after).toHaveLength(1);
+    expect(after[0].token).toBeUndefined();
+    expect(after[0].email).toBe("operator@example.org");
+  });
+
   // ── Test 16: Drive's own housekeeping is not a conflict ───────────────────
   // The bug that made this whole check worth rewriting. The first version used
   // Drive's `version` field, which the API documents as reflecting "every change
