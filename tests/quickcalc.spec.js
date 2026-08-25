@@ -36,7 +36,7 @@ async function openQuickCalc(page) {
 test.describe("@smoke profit calculator", () => {
   // ── Test 1: renders with defaults and reads PROFITABLE ────────────────────
   // 90% of 12 beds is 10.8, which rounds to 11 filled: 11 x $850 = $9,350
-  // revenue, less $6,725 of expenses = $2,625/mo.
+  // revenue, less $7,350 of expenses = $2,000/mo.
   // Fails if: the tab is missing, defaults differ, or the verdict is not profitable.
   test("opens with defaults and shows a profitable verdict", async ({ page }) => {
     await openQuickCalc(page);
@@ -47,18 +47,22 @@ test.describe("@smoke profit calculator", () => {
     await expect(page.locator("#qc-rate")).toHaveValue("850");
     // Typical starting figures for a 12-bed home. Staff mirrors the bed rate.
     await expect(page.locator("#qc-exp-rent")).toHaveValue("5000");
-    await expect(page.locator("#qc-exp-utilities")).toHaveValue("600");
-    await expect(page.locator("#qc-exp-supplies")).toHaveValue("175");
+    await expect(page.locator("#qc-exp-utilities")).toHaveValue("800");
+    await expect(page.locator("#qc-exp-supplies")).toHaveValue("200");
     await expect(page.locator("#qc-exp-staff")).toHaveValue("850");
-    await expect(page.locator("#qc-exp-operations")).toHaveValue("100");
+    await expect(page.locator("#qc-exp-operations")).toHaveValue("500");
+
+    // Profit Range opens $50 either side of the bed rate.
+    await expect(page.locator("#qc-low-rate")).toHaveValue("800");
+    await expect(page.locator("#qc-high-rate")).toHaveValue("900");
 
     // Whole beds only: 90% of 12 is 10.8, billed as 11.
     await expect(page.locator("#qc-verdict")).toHaveText("PROFITABLE");
     await expect(page.locator("#qc-occupied-sub")).toContainText("11 of 12 beds filled");
     await expect(page.locator("#qc-revenue")).toHaveText("$9,350");
-    await expect(page.locator("#qc-expenses-out")).toHaveText("$6,725");
-    await expect(page.locator("#qc-cashflow")).toHaveText("$2,625");
-    await expect(page.locator("#qc-annual")).toHaveText("$31,500");
+    await expect(page.locator("#qc-expenses-out")).toHaveText("$7,350");
+    await expect(page.locator("#qc-cashflow")).toHaveText("$2,000");
+    await expect(page.locator("#qc-annual")).toHaveText("$24,000");
 
     // Annual cashflow must be a real, positive number
     expect(num(await page.locator("#qc-annual").textContent())).toBeGreaterThan(0);
@@ -243,5 +247,34 @@ test.describe("@smoke profit calculator", () => {
     expect(Number.isFinite(low)).toBe(true);
     expect(base).toBeGreaterThan(low);
     expect(high).toBeGreaterThan(base);
+  });
+
+  // ── Test 5: Profit Range brackets the bed rate until overridden ───────────
+  // The range is meant to answer "what if I charged a bit less / a bit more",
+  // so it opens $50 either side of whatever rate is on screen. Same rule as
+  // staff: the moment the operator types their own price, we stop touching it.
+  //
+  // Fails if: the range rates stay at their starting figures when the bed rate
+  // moves, or a hand-entered price gets overwritten by a later rate change.
+  test("profit range sits $50 either side of the bed rate until overridden", async ({ page }) => {
+    await openQuickCalc(page);
+    await expect(page.locator("#qc-low-rate")).toHaveValue("800");
+    await expect(page.locator("#qc-high-rate")).toHaveValue("900");
+
+    await page.locator("#qc-rate").fill("1200");
+    await expect(page.locator("#qc-low-rate")).toHaveValue("1150");
+    await expect(page.locator("#qc-high-rate")).toHaveValue("1250");
+
+    // A rate under the spread must not produce a negative low.
+    await page.locator("#qc-rate").fill("30");
+    await expect(page.locator("#qc-low-rate")).toHaveValue("0");
+    await expect(page.locator("#qc-high-rate")).toHaveValue("80");
+
+    // Hand-entered prices survive later rate changes — low only.
+    await page.locator("#qc-rate").fill("850");
+    await page.locator("#qc-low-rate").fill("600");
+    await page.locator("#qc-rate").fill("900");
+    await expect(page.locator("#qc-low-rate")).toHaveValue("600");
+    await expect(page.locator("#qc-high-rate")).toHaveValue("950"); // still tracking
   });
 });

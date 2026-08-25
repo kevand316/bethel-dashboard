@@ -1602,11 +1602,13 @@ body::before {
             </div>
             <div class="qc-field">
               <label for="qc-exp-utilities">Utilities ($)</label>
-              <input type="number" id="qc-exp-utilities" min="0" step="25" value="600" oninput="renderQuickCalc()">
+              <input type="number" id="qc-exp-utilities" min="0" step="25" value="800" oninput="renderQuickCalc()">
+              <div class="qc-note">Electricity, gas, water, Wi-Fi</div>
             </div>
             <div class="qc-field">
               <label for="qc-exp-supplies">Supplies ($)</label>
-              <input type="number" id="qc-exp-supplies" min="0" step="25" value="175" oninput="renderQuickCalc()">
+              <input type="number" id="qc-exp-supplies" min="0" step="25" value="200" oninput="renderQuickCalc()">
+              <div class="qc-note">Paper towels, toilet paper, detergent, cleaning supplies, replenishables</div>
             </div>
             <div class="qc-field">
               <label for="qc-exp-staff">Staff ($)</label>
@@ -1616,8 +1618,8 @@ body::before {
             </div>
             <div class="qc-field qc-field-wide">
               <label for="qc-exp-operations">Operations ($)</label>
-              <input type="number" id="qc-exp-operations" min="0" step="25" value="100" oninput="renderQuickCalc()">
-              <div class="qc-note">Insurance, maintenance, admin, food — everything else</div>
+              <input type="number" id="qc-exp-operations" min="0" step="25" value="500" oninput="renderQuickCalc()">
+              <div class="qc-note">Insurance, admin, software, maintenance, budget — everything else</div>
             </div>
           </div>
           <div class="qc-note">Starting figures are typical for a 12-bed home — change any of them</div>
@@ -1661,18 +1663,24 @@ body::before {
 
         <div class="qc-panel qc-range-panel">
           <div class="qc-panel-head">
-            <div class="qc-title">If We Test The Rate</div>
-            <div class="qc-hint">Same home, same occupancy — only the rate per bed changes</div>
+            <div class="qc-title">Profit Range</div>
+            <div class="qc-hint">What the same home earns if you charged less or more per bed</div>
           </div>
           <div class="qc-fields">
+            <div class="qc-note">
+              Same home, same beds, same occupancy — the only thing that changes is the rate per bed.
+              Low and high start $50 either side of your rate; type over them to test any price.
+            </div>
             <div class="qc-pair">
               <div class="qc-field">
                 <label for="qc-low-rate">Low Rate ($)</label>
-                <input type="number" id="qc-low-rate" min="0" step="25" value="750" oninput="renderQuickCalc()">
+                <input type="number" id="qc-low-rate" min="0" step="25" value="800"
+                       oninput="qcLowEdited = true; renderQuickCalc()">
               </div>
               <div class="qc-field">
                 <label for="qc-high-rate">High Rate ($)</label>
-                <input type="number" id="qc-high-rate" min="0" step="25" value="1000" oninput="renderQuickCalc()">
+                <input type="number" id="qc-high-rate" min="0" step="25" value="900"
+                       oninput="qcHighEdited = true; renderQuickCalc()">
               </div>
             </div>
           </div>
@@ -3255,6 +3263,12 @@ const DASH = '—';
 // operator types their own figure, after which we stop touching it.
 let qcStaffEdited = false;
 
+// Same deal for the two Profit Range rates: they sit $50 either side of the bed
+// rate until the operator types a price of their own, then they stay put.
+let qcLowEdited = false;
+let qcHighEdited = false;
+const QC_RANGE_SPREAD = 50;
+
 // Reads a numeric input, floors it at 0, and optionally caps it.
 // Blank / garbage / negative all collapse to 0 so nothing downstream sees NaN.
 function qcNum(id, max) {
@@ -3283,6 +3297,20 @@ function renderQuickCalc() {
   const staffInput = $('qc-exp-staff');
   if (!qcStaffEdited && document.activeElement !== staffInput) {
     staffInput.value = rate;
+  }
+
+  // Profit Range brackets the bed rate by $50 each way. Only while there IS a
+  // rate — mirroring a blank rate would put a $0 low and a $50 high on screen,
+  // which reads as a real price point and isn't one.
+  if (rate > 0) {
+    const lowInput = $('qc-low-rate');
+    const highInput = $('qc-high-rate');
+    if (!qcLowEdited && document.activeElement !== lowInput) {
+      lowInput.value = Math.max(0, rate - QC_RANGE_SPREAD);
+    }
+    if (!qcHighEdited && document.activeElement !== highInput) {
+      highInput.value = rate + QC_RANGE_SPREAD;
+    }
   }
 
   // Expenses are entered per category and summed. Anything the four named buckets
