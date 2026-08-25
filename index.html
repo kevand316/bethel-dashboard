@@ -6,9 +6,14 @@
 <title>Bethel Residency — Operations Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="lib/supabase.js"></script>
 <script src="lib/auth.js"></script>
 <script src="lib/autosave.js"></script>
+<script src="lib/drive.js"></script>
+<script src="lib/intake-form.js"></script>
+<script src="lib/intake-autosave.js"></script>
+<script src="lib/intake.js"></script>
 <style>
 :root {
   --bg: #0a0e14;
@@ -1101,6 +1106,404 @@ body::before {
 .qc-range tr.qc-row-annual td.qc-figure { color: var(--green); }
 .qc-range tr.qc-row-annual td.qc-figure.neg { color: var(--red); }
 
+/* ═══════════════════════════════════════════════════════
+   INTAKE TAB
+   ═══════════════════════════════════════════════════════
+   Two visual registers on purpose. The chrome — toolbar, list, banners — is
+   dashboard dark like every other tab. The form itself is a light document,
+   carried over from intake.bethelresidency.com: sixty fields of long-form data
+   entry read better on paper-coloured stock than on near-black, and it is the
+   same thing that prints. Everything under .intake-doc is scoped so none of
+   those light styles can leak into the rest of the dashboard. */
+
+.intake-pane { display: none; }
+.intake-pane.active { display: block; }
+
+/* ── notices ─────────────────────────────────────────── */
+.intake-notice { display: none; }
+.intake-notice.show {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  padding: 0.7rem 1rem;
+  margin-bottom: 1rem;
+  border-left: 3px solid var(--gold);
+  background: var(--bg2);
+  color: var(--text);
+}
+.intake-notice.error { border-left-color: var(--red); }
+.intake-notice.warn { border-left-color: var(--gold); }
+.intake-notice.info { border-left-color: var(--blue); }
+
+/* ── gate ────────────────────────────────────────────── */
+.intake-gate-card {
+  max-width: 620px;
+  margin: 2.5rem auto;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  padding: 2.5rem 2.25rem;
+  text-align: center;
+}
+.intake-gate-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+.intake-gate-card h2 {
+  font-family: var(--display);
+  font-size: 1.4rem;
+  letter-spacing: 2px;
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+.intake-gate-card p {
+  font-size: 0.86rem;
+  line-height: 1.65;
+  color: var(--text-dim);
+  margin-bottom: 0.9rem;
+  text-align: left;
+}
+.intake-gate-card strong { color: var(--text); }
+.intake-gate-advice {
+  text-align: left;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--text-dim);
+  background: rgba(240, 180, 41, 0.07);
+  border-left: 3px solid var(--gold);
+  padding: 0.85rem 1rem;
+  margin: 1.25rem 0 1.5rem;
+}
+.intake-gate-advice strong { color: var(--gold); display: block; margin-bottom: 0.25rem; }
+.intake-gate-foot {
+  margin-top: 1.25rem;
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+.intake-known {
+  margin-top: 0.75rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+/* ── buttons ─────────────────────────────────────────── */
+.intake-btn-primary,
+.intake-btn-ghost {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.6rem 1.35rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.intake-btn-primary { background: var(--gold); border: 1px solid var(--gold); color: var(--bg); }
+.intake-btn-primary:hover { background: #d4a012; }
+.intake-btn-primary:disabled { opacity: 0.55; cursor: default; }
+.intake-btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
+.intake-btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+.intake-linkbtn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-left: 0.5rem;
+}
+.intake-linkbtn:hover { color: var(--red); }
+
+/* ── list ────────────────────────────────────────────── */
+.intake-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+.intake-toolbar-titles { flex: 1; min-width: 220px; }
+.intake-h1 { font-family: var(--display); font-size: 1.1rem; letter-spacing: 3px; color: var(--text); }
+.intake-sub { font-family: var(--mono); font-size: 0.62rem; color: var(--text-dim); margin-top: 3px; }
+.intake-listbar { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }
+.intake-search {
+  flex: 1;
+  max-width: 320px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  padding: 0.55rem 0.85rem;
+  outline: none;
+}
+.intake-search:focus { border-color: var(--gold); }
+.intake-count { font-family: var(--mono); font-size: 0.65rem; color: var(--text-dim); }
+
+.intake-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-bottom: none;
+}
+.intake-row:last-child { border-bottom: 1px solid var(--border); }
+.intake-row:hover { background: var(--bg3); }
+.intake-row-main { flex: 1; min-width: 0; }
+.intake-row-name {
+  font-size: 0.95rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.intake-row-meta { font-family: var(--mono); font-size: 0.62rem; color: var(--text-dim); margin-top: 2px; }
+.intake-status {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.intake-status-approved { color: var(--green); border-color: var(--green); }
+.intake-status-denied { color: var(--red); border-color: var(--red); }
+.intake-status-waitlist,
+.intake-status-pending-review { color: var(--gold); border-color: var(--gold); }
+.intake-row-open {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.45rem 1rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.intake-row-open:hover { border-color: var(--gold); color: var(--gold); }
+.intake-row-del {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0.25rem 0.4rem;
+}
+.intake-row-del:hover { color: var(--red); }
+.intake-empty {
+  padding: 3rem 1rem;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  border: 1px dashed var(--border);
+}
+
+/* ── form chrome ─────────────────────────────────────── */
+.intake-formbar {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+.intake-form-heading { flex: 1; min-width: 180px; }
+.intake-form-title { font-family: var(--display); font-size: 1.15rem; letter-spacing: 2px; color: var(--text); }
+.intake-progress-text { font-family: var(--mono); font-size: 0.62rem; color: var(--text-dim); margin-top: 2px; }
+.intake-save-status {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+.intake-save-status.saving { color: var(--gold); }
+.intake-save-status.saved { color: var(--green); }
+.intake-save-status.offline { color: var(--gold); }
+.intake-save-status.error { color: var(--red); }
+
+.intake-progress { height: 3px; background: var(--bg3); margin-bottom: 1.25rem; }
+.intake-progress-fill { height: 3px; background: var(--gold); width: 0; transition: width 0.35s ease; }
+
+.intake-bar {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 0.7rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  background: rgba(240, 180, 41, 0.12);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+}
+.intake-bar-btn {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 0.35rem 0.85rem;
+  background: var(--gold);
+  border: 1px solid var(--gold);
+  color: var(--bg);
+  cursor: pointer;
+}
+.intake-bar-btn.secondary { background: transparent; color: var(--gold); }
+
+/* ── the form document (light, scoped) ───────────────── */
+.intake-doc {
+  --doc-navy: #0f1f3d;
+  --doc-gold: #c9a84c;
+  --doc-cream: #faf7f2;
+  --doc-white: #ffffff;
+  --doc-text: #1a1a2e;
+  --doc-muted: #6b7280;
+  --doc-line: #d4c9b0;
+  max-width: 880px;
+  margin: 0 auto;
+}
+.intake-doc .if-section {
+  background: var(--doc-white);
+  border: 1px solid var(--doc-line);
+  border-radius: 14px;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+}
+.intake-doc .if-section-head {
+  background: var(--doc-navy);
+  padding: 0.9rem 1.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+}
+.intake-doc .if-section-icon {
+  width: 30px; height: 30px;
+  background: rgba(201, 168, 76, 0.2);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+.intake-doc .if-section-title {
+  flex: 1;
+  font-family: var(--sans);
+  font-size: 0.98rem;
+  font-weight: 500;
+  color: #fff;
+  margin: 0;
+}
+.intake-doc .if-section-badge {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+}
+.intake-doc .if-section-badge.complete { background: rgba(45, 122, 79, 0.35); color: #6ee7a0; }
+.intake-doc .if-chevron { color: var(--doc-gold); font-size: 0.85rem; transition: transform 0.25s; }
+.intake-doc .if-section.collapsed .if-chevron { transform: rotate(-90deg); }
+.intake-doc .if-section.collapsed .if-section-body { display: none; }
+
+.intake-doc .if-section-body {
+  padding: 1.35rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.1rem;
+}
+.intake-doc .if-wide { grid-column: 1 / -1; }
+.intake-doc .if-divider {
+  grid-column: 1 / -1;
+  height: 1px;
+  background: #f0ebe0;
+  margin: 0.35rem 0;
+}
+.intake-doc .if-group { display: flex; flex-direction: column; gap: 0.35rem; }
+.intake-doc .if-label {
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--doc-muted);
+}
+.intake-doc .if-req { color: var(--doc-gold); margin-left: 2px; }
+.intake-doc .if-hint { font-size: 0.72rem; color: var(--doc-muted); font-style: italic; }
+
+.intake-doc input,
+.intake-doc select,
+.intake-doc textarea {
+  font-family: var(--sans);
+  font-size: 0.92rem;
+  color: var(--doc-text);
+  background: var(--doc-cream);
+  border: 1.5px solid var(--doc-line);
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.intake-doc input:focus,
+.intake-doc select:focus,
+.intake-doc textarea:focus {
+  border-color: var(--doc-navy);
+  background: var(--doc-white);
+  box-shadow: 0 0 0 3px rgba(15, 31, 61, 0.08);
+}
+.intake-doc textarea { resize: vertical; min-height: 80px; }
+.intake-doc select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  padding-right: 2.4rem;
+}
+
+.intake-doc .if-choices { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.intake-doc .if-choices label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--doc-text);
+  background: var(--doc-cream);
+  border: 1.5px solid var(--doc-line);
+  border-radius: 8px;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.intake-doc .if-choices input {
+  width: auto;
+  border: none;
+  background: none;
+  padding: 0;
+  box-shadow: none;
+  accent-color: var(--doc-navy);
+}
+.intake-doc .if-choices label:has(input:checked) {
+  background: var(--doc-navy);
+  border-color: var(--doc-navy);
+  color: #fff;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1159,6 +1562,14 @@ body::before {
   .qc-cell label { font-size: 0.75rem; letter-spacing: 0.08em; }
   .qc-verdict { font-size: 1.8rem; }
   .qc-range { min-width: 420px; }
+  /* Intake — a two-column form at 375px squeezes every field to nothing.
+     One column, and let the toolbars wrap instead of overflowing. */
+  .intake-doc .if-section-body { grid-template-columns: 1fr; }
+  .intake-gate-card { padding: 1.75rem 1.25rem; margin: 1.25rem auto; }
+  .intake-search { max-width: none; }
+  .intake-row { flex-wrap: wrap; }
+  .intake-row-main { flex-basis: 100%; }
+  .intake-form-title { font-size: 1rem; }
 }
 
 /* ── PRINT PDF STYLES ── */
@@ -1181,6 +1592,35 @@ body::before {
   .qc-panel, .qc-results, .qc-verdict-box { page-break-inside: avoid; }
   .qc-field input { color: #e8edf5 !important; background: #1a2030 !important; }
   @page { margin: 0.5in; size: landscape; }
+
+  /* Intake prints as a client packet, not a dashboard screenshot: white paper,
+     portrait, dark text, every section expanded. printIntake() puts
+     .printing-intake on <body> and injects a portrait @page, because @page
+     itself cannot be scoped to a selector. */
+  body.printing-intake { background: #fff !important; }
+  body.printing-intake .header,
+  body.printing-intake .live-badge,
+  body.printing-intake #save-status,
+  body.printing-intake .session-email,
+  body.printing-intake .logout-btn { display: none !important; }
+  body.printing-intake .intake-doc { max-width: none; }
+  body.printing-intake .intake-doc .if-section {
+    page-break-inside: avoid;
+    border-color: #999;
+  }
+  body.printing-intake .intake-doc .if-section.collapsed .if-section-body { display: grid !important; }
+  body.printing-intake .intake-doc input,
+  body.printing-intake .intake-doc select,
+  body.printing-intake .intake-doc textarea {
+    color: #1a1a2e !important;
+    background: #fff !important;
+    border-color: #999 !important;
+  }
+  body.printing-intake #intake-print-header {
+    display: block !important;
+    color: #1a1a2e !important;
+    border-bottom-color: #999 !important;
+  }
 }
 
 .print-timestamp {
@@ -1362,6 +1802,7 @@ body::before {
   <button class="tab" data-tab="ops" onclick="switchTab('ops', event)">Operations</button>
   <button class="tab" onclick="switchTab('projections', event)">Projections</button>
   <button class="tab" onclick="switchTab('quickcalc', event)">Profit Calculator</button>
+  <button class="tab" onclick="switchTab('intake', event)">Intake</button>
   <button class="tab" onclick="switchTab('reports', event)">Reports</button>
   <button class="no-print" onclick="printOverview()" style="margin-left:auto;font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⬇ Save PDF</button>
   <button class="no-print" onclick="saveSnapshot()" style="font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:var(--gold);border:1px solid var(--gold);color:var(--bg);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#d4a012'" onmouseout="this.style.background='var(--gold)'">📸 Save Snapshot</button>
@@ -1724,6 +2165,118 @@ body::before {
           </div>
         </div>
       </div>
+
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- INTAKE VIEW -->
+  <!-- ═══════════════════════════════════════ -->
+  <!-- Client answers NEVER touch Supabase. Everything here reads and writes the
+       operator's own Google Drive; see lib/drive.js for why. -->
+  <div class="view" id="view-intake">
+
+    <div class="print-timestamp" id="intake-print-header"></div>
+    <div class="intake-notice" id="intake-notice"></div>
+
+    <!-- ── 1. GATE: no Drive, no form ────────────────────────────────────── -->
+    <div class="intake-pane" id="intake-gate">
+
+      <div class="intake-gate-card" id="intake-gate-connect">
+        <div class="intake-gate-icon">🔒</div>
+        <h2>Connect Google Drive to start taking intakes</h2>
+        <p>
+          Intake forms hold Social Security numbers, dates of birth, Medi-Cal IDs,
+          medical history and criminal background. None of that is ever stored on
+          this dashboard — every answer is saved straight into <strong>your own
+          Google Drive</strong>, in a folder called “Bethel Intake Forms”, and
+          nowhere else.
+        </p>
+        <p>
+          That is also why the form stays locked until you connect: without Drive
+          there is nowhere safe to put what you type.
+        </p>
+        <div class="intake-gate-advice">
+          <strong>For safety, a Google Workspace account is best.</strong>
+          Workspace can be covered by Google’s HIPAA business associate agreement,
+          which is what makes it appropriate for client health information. You can
+          connect any Gmail account you like, but a personal one is not covered by
+          that agreement — that choice is yours to make.
+        </div>
+        <button class="intake-btn-primary" id="intake-connect-btn">Connect Google Drive</button>
+        <div class="intake-known" id="intake-known-account"></div>
+        <div class="intake-gate-foot">
+          This dashboard asks only for permission to files it creates itself. It
+          cannot see, open or touch anything else in your Drive.
+        </div>
+      </div>
+
+      <div class="intake-gate-card" id="intake-gate-unconfigured" style="display:none">
+        <div class="intake-gate-icon">⚙️</div>
+        <h2>Google Drive is not set up yet</h2>
+        <p>
+          This dashboard has no Google client ID configured, so the intake form
+          cannot save anywhere. See <code>INTAKE-SETUP.md</code> in the repository
+          for the one-time setup.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- ── 2. LIST ───────────────────────────────────────────────────────── -->
+    <div class="intake-pane" id="intake-list">
+
+      <div class="intake-toolbar">
+        <div class="intake-toolbar-titles">
+          <div class="intake-h1">CLIENT INTAKE FORMS</div>
+          <div class="intake-sub">
+            Saved in your Google Drive ·
+            <span id="intake-account-email"></span>
+            <button class="intake-linkbtn" id="intake-disconnect-btn">Disconnect</button>
+          </div>
+        </div>
+        <button class="intake-btn-ghost" id="intake-refresh-btn">↻ Refresh</button>
+        <button class="intake-btn-primary" id="intake-new-btn">+ New Intake</button>
+      </div>
+
+      <div class="intake-listbar">
+        <input type="search" id="intake-search" class="intake-search" placeholder="Search by client name...">
+        <div class="intake-count" id="intake-count"></div>
+      </div>
+
+      <div id="intake-list-body"></div>
+
+    </div>
+
+    <!-- ── 3. FORM ───────────────────────────────────────────────────────── -->
+    <div class="intake-pane" id="intake-form">
+
+      <div class="intake-formbar no-print">
+        <button class="intake-btn-ghost" id="intake-back-btn">← All intakes</button>
+        <div class="intake-form-heading">
+          <div class="intake-form-title" id="intake-form-title">New intake</div>
+          <div class="intake-progress-text" id="intake-progress-text"></div>
+        </div>
+        <div class="intake-save-status" id="intake-save-status"></div>
+        <button class="intake-btn-ghost" id="intake-print-btn">⬇ Save as PDF (this device)</button>
+      </div>
+
+      <div class="intake-progress no-print"><div class="intake-progress-fill" id="intake-progress-fill"></div></div>
+
+      <div class="intake-bar warn no-print" id="intake-held-bar" style="display:none">
+        GOOGLE DRIVE DISCONNECTED — your typing is held, nothing is lost
+        <button class="intake-bar-btn" id="intake-reconnect-btn">RECONNECT AND SAVE</button>
+      </div>
+
+      <div class="intake-bar warn no-print" id="intake-conflict-bar" style="display:none">
+        THIS INTAKE CHANGED SOMEWHERE ELSE
+        <button class="intake-bar-btn" id="intake-reload-btn">LOAD THAT VERSION</button>
+        <button class="intake-bar-btn secondary" id="intake-override-btn">KEEP MINE</button>
+      </div>
+
+      <!-- The form is rendered from lib/intake-form.js, not written by hand. -->
+      <div class="intake-doc" id="intake-form-fields"></div>
 
     </div>
 
@@ -2184,6 +2737,12 @@ async function initData() {
   // Populate email display in header — defensive: never show undefined.
   const emailEl = document.getElementById('session-email');
   if (emailEl) emailEl.textContent = session.user?.email || '';
+
+  // Bring up the Intake tab alongside the dashboard load rather than after it.
+  // It talks to Google, not Supabase, so it has no reason to wait on `homes` —
+  // and deliberately not awaited, so a slow or unreachable Google can never hold
+  // the rest of the dashboard hostage.
+  window.intake.init(session).catch((e) => console.warn('[intake] init failed:', e));
 
   // The indicator was blank for the whole load, so a slow network and a hung
   // load looked identical — to the operator and to anyone debugging. The save
@@ -3240,6 +3799,11 @@ async function renderReports() {
 }
 
 function switchTab(name, event) {
+  // Walking away from a half-typed intake must not strand it in memory. Drive is
+  // the only place it is allowed to live, so push it there on the way out — the
+  // form stays mounted, so nothing is lost even if the save is still in flight.
+  if (name !== 'intake' && window.intakeSave?.hasUnsavedWork()) window.intakeSave.flush();
+
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   event.target.classList.add('active');
