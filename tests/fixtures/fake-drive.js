@@ -65,6 +65,7 @@ function installFakeDrive() {
   const store = (window.__drive = {
     files: new Map(),
     nextId: 1,
+    nextRevision: 0,
     // Test controls
     failNext: null, // { status } applied to the next request
     delayMs: 0, // slows every request, for racing the UI
@@ -73,8 +74,21 @@ function installFakeDrive() {
     // expiry, since the live token lives in a closure the
     // test cannot reach into
     requests: [], // every request, for asserting what was actually sent
-    // Lets a test simulate another device writing the file.
-    bumpVersion(id) {
+    // Another device writing the record: new bytes, so a new content revision.
+    // This is a genuine conflict and must be caught.
+    writeFromOtherDevice(id) {
+      const f = store.files.get(id);
+      if (!f) return;
+      f.version = String(Number(f.version) + 1);
+      f.headRevisionId = "rev-" + ++store.nextRevision;
+    },
+
+    // Drive moving `version` on its own — re-indexing, thumbnails, housekeeping
+    // "changes not visible to the user", which the API explicitly warns about.
+    // The bytes did not change, so headRevisionId must NOT move, and this must
+    // NOT be reported to the operator as somebody else's edit. This is the exact
+    // false alarm that made the conflict banner fire on a single laptop.
+    serverSideTouch(id) {
       const f = store.files.get(id);
       if (f) f.version = String(Number(f.version) + 1);
     },
@@ -155,6 +169,7 @@ function installFakeDrive() {
       if (!file) return json({ error: { message: "Not found" } }, 404);
       file.content = opts.body;
       file.version = String(Number(file.version) + 1);
+      file.headRevisionId = "rev-" + ++store.nextRevision;
       file.modifiedTime = new Date().toISOString();
       return json({ id: file.id });
     }
@@ -173,6 +188,7 @@ function installFakeDrive() {
           trashed: false,
           content: "",
           version: "1",
+          headRevisionId: "rev-" + ++store.nextRevision,
           modifiedTime: new Date().toISOString(),
         });
         return json({ id });
@@ -204,7 +220,12 @@ function installFakeDrive() {
             headers: { "Content-Type": "application/json" },
           });
         }
-        return json({ id: file.id, name: file.name, version: file.version });
+        return json({
+          id: file.id,
+          name: file.name,
+          version: file.version,
+          headRevisionId: file.headRevisionId,
+        });
       }
       if (method === "PATCH") {
         const meta = JSON.parse(opts.body || "{}");
@@ -212,11 +233,12 @@ function installFakeDrive() {
         if (meta.appProperties !== undefined) file.appProperties = meta.appProperties;
         if (meta.trashed !== undefined) file.trashed = meta.trashed;
         // Real Drive bumps `version` on ANY server-side change, metadata
-        // included. Modelling that faithfully is the point: lib/drive.js renames
-        // the file after writing content, so if it read its new version before
-        // that rename it would be one behind and reject its own next save as
-        // somebody else's edit. That is the exact bug the Solid Ground packet
-        // shipped, and test 9 only catches it if this bumps here too.
+        // included — but a rename does not create a new CONTENT revision, so
+        // headRevisionId stays put. Modelling that difference faithfully is the
+        // whole point: lib/drive.js renames the file after every save, so using
+        // `version` as the conflict token made it flag its own rename as another
+        // device's edit. Tests 9 and 16 only catch that if this bumps `version`
+        // and leaves headRevisionId alone, exactly as Drive does.
         file.version = String(Number(file.version) + 1);
         return json({ id: file.id });
       }

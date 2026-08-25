@@ -272,26 +272,27 @@ test.describe("@smoke intake tab", () => {
 
   // ── Test 8: a second device does not get silently overwritten ─────────────
   // Same class of bug the Supabase autosave had: last-write-wins quietly
-  // discarding the other device's work. Drive's version is the guard.
+  // discarding the other device's work. The head content revision is the guard.
   //
-  // Fails if: a save proceeds over a changed file, or the operator is not told.
+  // Fails if: a save proceeds over a genuinely changed file, or the operator is
+  // not told and offered the choice.
   test("refuses to overwrite an intake changed somewhere else", async ({ page }) => {
     await openDashboardConnected(page);
     await page.locator("#intake-new-btn").click();
     await fill(page, "firstName", "Ellis");
     await expect(savedStatus(page)).toHaveText("SAVED TO DRIVE ✓", { timeout: 10000 });
 
-    // Another device writes the same file.
+    // Another device writes the same file — real new bytes, real new revision.
     await page.evaluate(() => {
       const f = window.__drive.intakeFiles()[0];
-      window.__drive.bumpVersion(f.id);
+      window.__drive.writeFromOtherDevice(f.id);
     });
 
     await fill(page, "lastName", "Nakamura");
     await expect(page.locator("#intake-conflict-bar")).toBeVisible({ timeout: 10000 });
-    await expect(savedStatus(page)).toHaveText("CHANGED ELSEWHERE");
+    await expect(savedStatus(page)).toHaveText("NOT SAVED YET");
 
-    // Choosing to keep this version must actually write it.
+    // Choosing to keep what was typed here must actually write it.
     await page.locator("#intake-override-btn").click();
     await expect(savedStatus(page)).toHaveText("SAVED TO DRIVE ✓", { timeout: 10000 });
     const stored = await page.evaluate(() => {
@@ -299,6 +300,54 @@ test.describe("@smoke intake tab", () => {
       return window.__drive.contentOf(f.id);
     });
     expect(stored.lastName).toBe("Nakamura");
+  });
+
+  // ── Test 16: Drive's own housekeeping is not a conflict ───────────────────
+  // The bug that made this whole check worth rewriting. The first version used
+  // Drive's `version` field, which the API documents as reflecting "every change
+  // made to the file on the server, even those not visible to the user" — our
+  // own rename after each save, plus Google's re-indexing. A single operator on
+  // a single laptop got told their intake had been "changed somewhere else" by
+  // nobody, repeatedly, mid-form.
+  //
+  // A conflict warning that cries wolf is worse than none: it trains people to
+  // dismiss the one that matters.
+  //
+  // Fails if: server-side churn that leaves the bytes untouched surfaces to the
+  // operator as somebody else's edit.
+  test("Drive's own metadata churn never looks like someone else's edit", async ({ page }) => {
+    await openDashboardConnected(page);
+    await page.locator("#intake-new-btn").click();
+    await fill(page, "firstName", "Solo");
+    await expect(savedStatus(page)).toHaveText("SAVED TO DRIVE ✓", { timeout: 10000 });
+
+    // Type, and between every save let Drive shuffle `version` underneath us the
+    // way it really does. None of this touches the file's content.
+    for (const [field, value] of [
+      ["lastName", "Operator"],
+      ["phone", "9095550100"],
+      ["dob", "1985-02-02"],
+      ["lastAddress", "Riverside, CA"],
+      ["ec1Name", "Pat Operator"],
+    ]) {
+      await page.evaluate(() => {
+        const f = window.__drive.intakeFiles()[0];
+        window.__drive.serverSideTouch(f.id);
+        window.__drive.serverSideTouch(f.id);
+      });
+      await fill(page, field, value);
+      await expect(savedStatus(page)).toHaveText("SAVED TO DRIVE ✓", { timeout: 10000 });
+      await expect(page.locator("#intake-conflict-bar")).toBeHidden();
+    }
+
+    // Everything typed is in Drive, and the operator was never interrupted.
+    const stored = await page.evaluate(() => {
+      const f = window.__drive.intakeFiles()[0];
+      return window.__drive.contentOf(f.id);
+    });
+    expect(stored.lastName).toBe("Operator");
+    expect(stored.ec1Name).toBe("Pat Operator");
+    expect(stored.lastAddress).toBe("Riverside, CA");
   });
 
   // ── Test 9: consecutive saves keep working ────────────────────────────────

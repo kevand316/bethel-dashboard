@@ -1360,6 +1360,17 @@ body::before {
   cursor: pointer;
 }
 .intake-bar-btn.secondary { background: transparent; color: var(--gold); }
+/* The conflict bar has to explain itself in a sentence, so it needs normal
+   sentence casing and line height rather than the bar's clipped mono shout. */
+.intake-bar-text {
+  flex: 1;
+  min-width: 220px;
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.5;
+}
 
 /* ── the form document (light, scoped) ───────────────── */
 .intake-doc {
@@ -2270,9 +2281,13 @@ body::before {
       </div>
 
       <div class="intake-bar warn no-print" id="intake-conflict-bar" style="display:none">
-        THIS INTAKE CHANGED SOMEWHERE ELSE
-        <button class="intake-bar-btn" id="intake-reload-btn">LOAD THAT VERSION</button>
-        <button class="intake-bar-btn secondary" id="intake-override-btn">KEEP MINE</button>
+        <span class="intake-bar-text">
+          This intake was also edited somewhere else — another device, or this form
+          open in a second tab. Your latest typing has <strong>not</strong> been saved
+          yet. Which copy should win?
+        </span>
+        <button class="intake-bar-btn" id="intake-override-btn">KEEP WHAT I TYPED</button>
+        <button class="intake-bar-btn secondary" id="intake-reload-btn">USE THE OTHER COPY</button>
       </div>
 
       <!-- The form is rendered from lib/intake-form.js, not written by hand. -->
