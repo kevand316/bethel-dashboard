@@ -84,18 +84,16 @@ one, since this project will belong to whoever owns it long-term.
 
 ## Part 2 — Put the client ID in the dashboard
 
-Open `lib/drive.js` and replace the placeholder on the line near the top:
+Open `lib/drive.js` and set `CONFIGURED_CLIENT_ID` near the top:
 
 ```js
-const PLACEHOLDER_CLIENT_ID = "PASTE_YOUR_GOOGLE_OAUTH_CLIENT_ID";
-const GOOGLE_CLIENT_ID = window.BETHEL_GOOGLE_CLIENT_ID || PLACEHOLDER_CLIENT_ID;
+const CONFIGURED_CLIENT_ID = "1234567890-abcdefghijklmnop.apps.googleusercontent.com";
 ```
 
-Change `PLACEHOLDER_CLIENT_ID` to your real ID:
-
-```js
-const PLACEHOLDER_CLIENT_ID = "1234567890-abcdefghijklmnop.apps.googleusercontent.com";
-```
+**Leave `PLACEHOLDER_CLIENT_ID` exactly as it is.** It is the "not set up yet"
+sentinel: `isConfigured()` decides whether the Intake tab works by checking the
+live ID against it. Putting a real value there would make that check compare the
+ID to itself, and the tab would report itself unconfigured forever.
 
 Commit and push. GitHub Pages will redeploy in a minute or two.
 
