@@ -29,8 +29,18 @@
   --blue: #3498db;
   --blue-dim: #1a4a6e;
   --text: #e8edf5;
-  --text-mid: #8899aa;
-  --text-dim: #445566;
+  /* Operator instruction, 2026-08-25: text on this dashboard is white, or gold
+     when it is highlighted or selected. Nothing dim. These two used to be a
+     washed-out slate that sat almost on top of the background — labels, hints
+     and sub-lines were technically present and practically unreadable. They are
+     kept as separate names only so the ~100 existing call sites did not all have
+     to change; they are no longer "dimmer" than --text and must not become so.
+     For a genuinely recessive element, use --gold or spacing, not grey. */
+  --text-mid: #e8edf5;
+  --text-dim: #e8edf5;
+  /* The old dim value survives ONLY for the few borders that used to borrow the
+     text colour. Borders may be subtle; text may not. */
+  --line-soft: #445566;
   --mono: 'IBM Plex Mono', monospace;
   --sans: 'IBM Plex Sans', sans-serif;
   --display: 'Bebas Neue', sans-serif;
@@ -171,7 +181,7 @@ body::before {
 
 .logout-btn:hover {
   color: var(--text);
-  border-color: var(--text-mid);
+  border-color: var(--line-soft);
 }
 
 /* TABS */
@@ -201,7 +211,7 @@ body::before {
   border-right: none;
 }
 
-.tab:hover { color: var(--text-mid); }
+.tab:hover { color: var(--gold); }
 .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
 
 /* MAIN */
@@ -788,7 +798,7 @@ body::before {
   border-color: var(--border);
 }
 
-.btn-ghost:hover { border-color: var(--text-mid); color: var(--text); }
+.btn-ghost:hover { border-color: var(--line-soft); color: var(--text); }
 
 .btn-red {
   background: transparent;
@@ -972,7 +982,7 @@ body::before {
 .qc-verdict-box {
   background: var(--bg2);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--text-dim);
+  border-left: 3px solid var(--line-soft);
   padding: 1.1rem 1.25rem;
   margin-bottom: 1.25rem;
   display: flex;
@@ -1379,7 +1389,7 @@ body::before {
   --doc-cream: #faf7f2;
   --doc-white: #ffffff;
   --doc-text: #1a1a2e;
-  --doc-muted: #6b7280;
+  --doc-muted: #1a1a2e;
   --doc-line: #d4c9b0;
   max-width: 880px;
   margin: 0 auto;
@@ -1425,7 +1435,7 @@ body::before {
   padding: 0.25rem 0.6rem;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.6);
+  color: #ffffff;
 }
 .intake-doc .if-section-badge.complete { background: rgba(45, 122, 79, 0.35); color: #6ee7a0; }
 .intake-doc .if-chevron { color: var(--doc-gold); font-size: 0.85rem; transition: transform 0.25s; }
@@ -1638,7 +1648,7 @@ body::before {
   display: none;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.65rem;
-  color: #445566;
+  color: #e8edf5;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 0.5rem 0;
@@ -1658,20 +1668,20 @@ body::before {
 .snapshot-card .snap-date { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 3px; color: #e8edf5; margin-bottom: 0.2rem; }
 .snapshot-card .snap-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; color: #f0b429; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 0.85rem; }
 .snapshot-card .snap-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-.snap-stat label { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; color: #445566; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2px; }
+.snap-stat label { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; color: #e8edf5; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2px; }
 .snap-stat span { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; font-weight: 600; color: #f0b429; }
-.snap-delete { position: absolute; top: 0.6rem; right: 0.6rem; background: none; border: none; color: #445566; cursor: pointer; font-size: 0.8rem; padding: 0.2rem 0.4rem; transition: color 0.15s; }
+.snap-delete { position: absolute; top: 0.6rem; right: 0.6rem; background: none; border: none; color: #e8edf5; cursor: pointer; font-size: 0.8rem; padding: 0.2rem 0.4rem; transition: color 0.15s; }
 .snap-delete:hover { color: #e74c3c; }
 .compare-panel { background: #111620; border: 1px solid #1e2d45; overflow-x: auto; margin-top: 1.5rem; }
 .compare-header { background: #1a2030; padding: 0.85rem 1.25rem; border-bottom: 1px solid #1e2d45; display: flex; align-items: center; justify-content: space-between; }
 .compare-table { width: 100%; border-collapse: collapse; }
 .compare-table th, .compare-table td { padding: 0.7rem 1.25rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; border-bottom: 1px solid rgba(30,45,69,0.5); text-align: right; }
-.compare-table th:first-child, .compare-table td:first-child { text-align: left; color: #8899aa; }
-.compare-table thead th { font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: #445566; font-weight: 400; }
+.compare-table th:first-child, .compare-table td:first-child { text-align: left; color: #e8edf5; }
+.compare-table thead th { font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: #e8edf5; font-weight: 400; }
 .delta-pos { color: #2ecc71; }
 .delta-neg { color: #e74c3c; }
-.delta-zero { color: #445566; }
-.no-snaps-msg { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: #445566; text-align: center; padding: 3rem; }
+.delta-zero { color: #e8edf5; }
+.no-snaps-msg { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: #e8edf5; text-align: center; padding: 3rem; }
 
 /* SAVE STATUS INDICATOR */
 #save-status {
