@@ -227,6 +227,23 @@ button[type="submit"]:disabled {
 
 .success-msg.visible { display: block; }
 
+/* Neither a success nor an error: the account exists, which is ordinary, but it
+   means no email went out and the operator has to do something different. */
+.notice-msg {
+  display: none;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--gold-dim);
+  border-left: 3px solid var(--gold);
+  background: rgba(240, 180, 41, 0.07);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.notice-msg.visible { display: block; }
+.notice-msg .toggle-link { margin-top: 6px; display: inline-block; }
+
 .footer {
   margin-top: 24px;
   text-align: center;
@@ -296,6 +313,13 @@ button[type="submit"]:disabled {
       <button type="submit" id="signup-btn">Create Account</button>
       <div class="error-msg" id="signup-error"></div>
       <div class="success-msg" id="signup-success">Check your email to confirm your account.</div>
+      <!-- Shown when Supabase reports the address already has an account. It
+           answers with a fake success in that case and sends nothing, so this
+           has to be a separate message or the page lies to the operator. -->
+      <div class="notice-msg" id="signup-exists">
+        <span id="signup-exists-text">An account already exists for this email.</span>
+        <button type="button" class="toggle-link" id="resend-confirm-btn">Resend the confirmation email</button>
+      </div>
     </form>
     <div class="mode-toggle">
       Already have an account? <button class="toggle-link" id="to-login">Sign in</button>
@@ -414,10 +438,27 @@ button[type="submit"]:disabled {
   const signupBtn  = document.getElementById('signup-btn');
   const signupErr  = document.getElementById('signup-error');
   const signupOk   = document.getElementById('signup-success');
+  const signupExists = document.getElementById('signup-exists');
+  const existsText   = document.getElementById('signup-exists-text');
+  const resendBtn    = document.getElementById('resend-confirm-btn');
+
+  // One definition of where a confirmation link lands. This host also has to be
+  // in the Supabase Auth redirect allowlist, or the link in the email dead-ends.
+  const SIGNUP_REDIRECT = 'https://dashboard.bethelresidency.com/';
+
+  // Remembered so "resend" knows which address to resend to.
+  let lastSignupEmail = '';
 
   signupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     signupErr.classList.remove('visible');
+    // A second attempt must not sit under the previous attempt's verdict.
+    signupExists.classList.remove('visible');
+    signupOk.classList.remove('visible');
+    resendBtn.style.display = '';
+    resendBtn.disabled = false;
+    resendBtn.textContent = 'Resend the confirmation email';
+    existsText.textContent = 'An account already exists for this email. If you never received the confirmation email, resend it below. Otherwise sign in, or use "Forgot password".';
 
     const email   = document.getElementById('su-email').value.trim();
     const pw      = document.getElementById('su-password').value;
@@ -442,7 +483,7 @@ button[type="submit"]:disabled {
       email,
       password: pw,
       options: {
-        emailRedirectTo: 'https://dashboard.bethelresidency.com/',
+        emailRedirectTo: SIGNUP_REDIRECT,
       },
     });
 
@@ -455,12 +496,61 @@ button[type="submit"]:disabled {
     }
 
     // Email confirmation is on — do not auto-redirect.
-    // Always show success when there is no error. Supabase sends a confirmation
-    // email to new users and silently handles existing emails server-side.
-    // Do NOT gate on data.user being non-null — with email confirmation enabled,
-    // Supabase may return a null or partial user for new signups pending confirmation.
+    //
+    // The catch, and the reason people were "creating an account and never
+    // getting the email": when the address already has an account, Supabase's
+    // user-enumeration protection returns HTTP 200 with a REAL-LOOKING but fake
+    // user — random id, confirmation_sent_at filled in — and an empty
+    // `identities` array, and it sends no email at all. This page used to treat
+    // that as success and say "check your email" to someone who would never
+    // receive one. `identities: []` is the documented tell; it is the only thing
+    // in the response that distinguishes a new signup from a silent no-op.
+    const alreadyRegistered = Array.isArray(data?.user?.identities)
+      && data.user.identities.length === 0;
+
+    if (alreadyRegistered) {
+      lastSignupEmail = email;
+      signupExists.classList.add('visible');
+      signupBtn.disabled = false;
+      signupBtn.textContent = 'Create Account';
+      return;
+    }
+
     signupOk.classList.add('visible');
     signupBtn.textContent = 'Account created';
+  });
+
+  // ── Resend confirmation ────────────────────────────────────────────────────
+  // For the case the message above describes: the account exists but was never
+  // confirmed, so the operator needs another copy of the original email rather
+  // than a new account. Supabase rate-limits this, and that error is worth
+  // showing verbatim — "wait 60 seconds" is actionable, a silent no-op is not.
+  resendBtn.addEventListener('click', async () => {
+    if (!lastSignupEmail) return;
+    resendBtn.disabled = true;
+    resendBtn.textContent = 'Sending...';
+    signupErr.classList.remove('visible');
+
+    const { error: resendError } = await client.auth.resend({
+      type: 'signup',
+      email: lastSignupEmail,
+      options: { emailRedirectTo: SIGNUP_REDIRECT },
+    });
+
+    if (resendError) {
+      // Supabase returns this when the account is already confirmed. That is not
+      // a failure the operator can act on by waiting — they should just sign in.
+      signupErr.textContent = /already (been )?confirmed/i.test(resendError.message)
+        ? 'That account is already confirmed — sign in with your password, or use "Forgot password".'
+        : resendError.message;
+      signupErr.classList.add('visible');
+      resendBtn.disabled = false;
+      resendBtn.textContent = 'Resend the confirmation email';
+      return;
+    }
+
+    existsText.textContent = 'Confirmation email sent again to ' + lastSignupEmail + '. Check spam if it is not there in a minute.';
+    resendBtn.style.display = 'none';
   });
 
   // ── Reset-password form ────────────────────────────────────────────────────

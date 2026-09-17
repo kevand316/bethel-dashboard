@@ -100,6 +100,93 @@ test.describe("@smoke login page UI", () => {
     await expect(page.locator("#signup-error")).toContainText("do not match");
   });
 
+  // ── Signup against an address that already has an account ─────────────────
+  // Kev's report, 2026-09-17: "when people create an account, they're not
+  // receiving the confirmation email."
+  //
+  // The cause is not SMTP. Supabase's user-enumeration protection answers a
+  // signup for an existing address with HTTP 200 and a convincing fake user —
+  // random id, confirmation_sent_at populated — distinguished from a real
+  // signup only by an empty `identities` array. It sends no email. This page
+  // used to show "Check your email to confirm your account" for that response,
+  // so every repeat signup told someone to wait for mail that was never sent.
+  //
+  // The response below is a verbatim capture from the live project.
+  //
+  // Fails if: an already-registered address is reported as a new account.
+  test("signup: an address that already has an account says so, and never claims an email was sent", async ({ page }) => {
+    await page.route(/\/auth\/v1\/signup/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "5c6cb877-f5f1-407e-8024-b1d153ec8baf",
+          aud: "authenticated",
+          role: "authenticated",
+          email: "already-registered@example.com",
+          confirmation_sent_at: "2026-09-17T23:41:51.407977691Z",
+          app_metadata: { provider: "email", providers: ["email"] },
+          user_metadata: {},
+          identities: [],
+          created_at: "2026-09-17T23:41:51.4Z",
+          updated_at: "2026-09-17T23:41:51.4Z",
+          is_anonymous: false,
+        }),
+      })
+    );
+
+    await page.goto("/login");
+    await page.locator("#to-signup").click();
+    await page.locator("#su-email").fill("already-registered@example.com");
+    await page.locator("#su-password").fill("correct-horse-battery");
+    await page.locator("#su-confirm").fill("correct-horse-battery");
+    await page.locator("#signup-btn").click();
+
+    await expect(page.locator("#signup-exists")).toBeVisible();
+    await expect(page.locator("#signup-exists")).toContainText("already exists");
+
+    // The part that did the damage: this must not be on screen.
+    await expect(page.locator("#signup-success")).not.toBeVisible();
+    await expect(page.locator("#signup-btn")).toHaveText("Create Account");
+  });
+
+  // ── A genuinely new signup still reports success ──────────────────────────
+  // The guard above must key on `identities`, not on "any signup response", or
+  // it would break the case it exists to protect.
+  //
+  // Fails if: a real new signup stops saying "check your email".
+  test("signup: a brand-new address still says to check your email", async ({ page }) => {
+    await page.route(/\/auth\/v1\/signup/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "11111111-2222-3333-4444-555555555555",
+          aud: "authenticated",
+          role: "authenticated",
+          email: "brand-new@example.com",
+          confirmation_sent_at: "2026-09-17T23:41:51.407977691Z",
+          app_metadata: { provider: "email", providers: ["email"] },
+          user_metadata: {},
+          identities: [{ id: "abc", user_id: "11111111-2222-3333-4444-555555555555", provider: "email" }],
+          created_at: "2026-09-17T23:41:51.4Z",
+          updated_at: "2026-09-17T23:41:51.4Z",
+          is_anonymous: false,
+        }),
+      })
+    );
+
+    await page.goto("/login");
+    await page.locator("#to-signup").click();
+    await page.locator("#su-email").fill("brand-new@example.com");
+    await page.locator("#su-password").fill("correct-horse-battery");
+    await page.locator("#su-confirm").fill("correct-horse-battery");
+    await page.locator("#signup-btn").click();
+
+    await expect(page.locator("#signup-success")).toBeVisible();
+    await expect(page.locator("#signup-exists")).not.toBeVisible();
+  });
+
   // ── Test 5: forgot-password link shows reset view ─────────────────────────
   // Clicking "Forgot password?" must hide the login view and show #reset-view.
   // This is pure JS view-switching — no network call.
