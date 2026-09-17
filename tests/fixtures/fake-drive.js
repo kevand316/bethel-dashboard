@@ -23,6 +23,11 @@ function installFakeDrive() {
     interactiveFails: null, // set to an error string to simulate a closed popup
     email: "operator@example.org",
     revokedCount: 0,
+    // Every requestAccessToken the app makes, in order, as { interactive }.
+    // Google's token client ALWAYS opens a popup window, interactive or not, so
+    // "did we call this at all, and was it off a click?" is the only question
+    // that matters for whether an unprompted popup appears.
+    tokenRequests: [],
   });
 
   window.google = {
@@ -34,6 +39,7 @@ function installFakeDrive() {
             error_callback: null,
             requestAccessToken(opts) {
               const interactive = opts && opts.prompt === "consent";
+              auth.tokenRequests.push({ interactive });
               setTimeout(() => {
                 if (interactive && auth.interactiveFails) {
                   return client.callback({ error: auth.interactiveFails });

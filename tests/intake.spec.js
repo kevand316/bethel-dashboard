@@ -333,6 +333,53 @@ test.describe("@smoke intake tab", () => {
     await expect(savedStatus(page)).toHaveText("SAVED TO DRIVE ✓", { timeout: 10000 });
   });
 
+  // ── Test 17b: Google is never asked for anything the operator did not click ─
+  // Kev's report, 2026-09-17: "when you log in, you get this automatic pop-up
+  // window to sign into the Google account. That should not be happening."
+  //
+  // The cause was a pair of requestToken(false) calls — one in resume() on page
+  // load, one in freshToken() when the token aged out — written on the
+  // assumption that a non-interactive request is silent. It is not. Google
+  // Identity Services opens a popup for EVERY requestAccessToken; prompt:""
+  // only trims what the popup contains. So merely loading the dashboard threw an
+  // account chooser at the operator.
+  //
+  // Fails if: anything calls Google's token client without a click behind it.
+  test("never opens a Google popup the operator did not ask for", async ({ page }) => {
+    await openDashboardConnected(page);
+
+    // Consent is on file and Google would happily answer a silent request — the
+    // exact condition under which the old code fired one on every load.
+    await page.evaluate(() => {
+      window.__auth.grantSilently = true;
+    });
+
+    await page.reload();
+    await page.getByRole("button", { name: "Intake", exact: true }).click();
+    await expect(page.locator("#intake-list")).toHaveClass(/active/, { timeout: 10000 });
+
+    // Reconnected from the stored token, with nothing asked of Google.
+    expect(await page.evaluate(() => window.__auth.tokenRequests)).toEqual([]);
+
+    // And an expired token must wait for the button rather than popping up.
+    await page.evaluate(() => {
+      const key = Object.keys(localStorage).find((k) => k.startsWith("bethel.drive."));
+      const hint = JSON.parse(localStorage.getItem(key));
+      hint.expiresAt = Date.now() - 1000;
+      localStorage.setItem(key, JSON.stringify(hint));
+    });
+    await page.reload();
+    await page.getByRole("button", { name: "Intake", exact: true }).click();
+    await expect(page.locator("#intake-gate")).toHaveClass(/active/, { timeout: 10000 });
+    await expect(page.locator("#intake-connect-btn")).toHaveText("Reconnect Google Drive");
+    expect(await page.evaluate(() => window.__auth.tokenRequests)).toEqual([]);
+
+    // Only now, off a real click, is Google allowed to appear.
+    await page.locator("#intake-connect-btn").click();
+    await expect(page.locator("#intake-list")).toHaveClass(/active/, { timeout: 10000 });
+    expect(await page.evaluate(() => window.__auth.tokenRequests)).toEqual([{ interactive: true }]);
+  });
+
   // ── Test 18: signing out does not leave a live credential behind ──────────
   // The flip side of remembering the token. On a shared machine, an explicit
   // sign-out must not leave something in localStorage that still reaches the
