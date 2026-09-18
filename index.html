@@ -2714,10 +2714,27 @@ function persistData() {
   window.autosave.push('homes', homes);
 }
 
-// Periodic heartbeat — flush any stale queue entries every 60s.
+// Periodic heartbeat — pick up anything still sitting in the queue every 60s.
+//
+// This used to call flush(), which is the UNLOAD path: it cancels the pending
+// debounce timer and replaces a real, confirmed write with a fire-and-forget
+// keepalive whose response nobody ever reads. Running that on a timer meant a
+// heartbeat landing inside the debounce window turned a save that was about to
+// happen into one that might not, with no retry left behind and the indicator
+// stuck on SAVING. retryPending() does a proper awaited write and never touches
+// a timer that is already counting down.
 setInterval(() => {
-  if (dataLoaded) window.autosave.flush();
+  if (dataLoaded) window.autosave.retryPending();
 }, 60000);
+
+// Coming back to the tab is the moment to make good on anything the keepalive
+// left unconfirmed. flush() fires on the way out and cannot know whether the
+// write landed; this is the first point at which we can find out and, if it did
+// not, say so instead of showing a stale SAVED.
+document.addEventListener('visibilitychange', () => {
+  if (!dataLoaded) return;
+  if (document.visibilityState === 'visible') window.autosave.retryPending();
+});
 
 // Flush queue on page close — autosave.flush() does a keepalive fetch so the
 // write completes even after the page unloads. dataLoaded guard prevents
@@ -2912,9 +2929,19 @@ async function initData() {
     return;
   }
 
-  dataLoaded = true;
+  // The order here used to be the other way round, and that was a live way to
+  // lose everything: `dataLoaded = true` was set BEFORE this shape check, so a
+  // row that loaded but did not match the expected shape left `homes` sitting on
+  // DEFAULT_HOMES with saving already armed. The next keystroke would then push
+  // the five demo properties over the operator's real row. The dataLoaded guard
+  // exists precisely to stop that, so it cannot be set until real data is in.
   if (saved && Array.isArray(saved) && saved.length > 0 && saved[0].beds) {
     homes = saved;
+    dataLoaded = true;
+  } else {
+    setLoadStatus('error', 'LOAD FAILED');
+    showToast('Your data came back in an unexpected shape — nothing has been changed. Reload to try again; saving is off until it loads cleanly.');
+    return;
   }
   // Apply recup status
   homes.forEach(home => {
@@ -3222,7 +3249,7 @@ function renderCF() {
                 <div style="width:8px;height:8px;border-radius:50%;background:${dotColor};border:1px solid ${dotBorder};flex-shrink:0;opacity:0.8"></div>
                 <div style="flex:1;min-width:0">
                   <input type="text" value="${esc(bed.name || '')}" placeholder="${isMgr ? 'House Lead' : 'Client name...'}"
-                    onchange="updateClientName(${hi},${bi},this.value)"
+                    oninput="queueClientName(${hi},${bi},this.value)" onchange="updateClientName(${hi},${bi},this.value)"
                     style="font-family:var(--sans);font-size:0.8rem;color:var(--text);font-weight:500;background:transparent;border:none;border-bottom:1px solid transparent;width:100%;outline:none;padding:2px 0;transition:all 0.2s;"
                     onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='transparent'">
                   <div style="font-family:var(--mono);font-size:0.6rem;color:var(--text-dim);margin-top:1px">Bed ${bed.id}${bed.moveIn ? ' · '+bed.moveIn : ''}</div>
@@ -3243,7 +3270,7 @@ function renderCF() {
             <td style="padding:0.6rem 0.75rem;text-align:right">
               <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px">
                 <span style="font-family:var(--mono);font-size:0.72rem;color:var(--text-dim)">$</span>
-                <input type="number" value="${bed.rate}" onchange="updateClientRate(${hi},${bi},this.value)"
+                <input type="number" value="${bed.rate}" oninput="queueClientRate(${hi},${bi},this.value)" onchange="updateClientRate(${hi},${bi},this.value)"
                   style="font-family:var(--mono);font-size:0.82rem;font-weight:600;color:${rateColor};background:transparent;border:none;border-bottom:1px solid var(--border);width:65px;text-align:right;outline:none;padding:2px 0;transition:border-color 0.2s;"
                   onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border)'">
                 <span style="font-family:var(--mono);font-size:0.58rem;color:var(--text-dim)">/mo</span>
@@ -3296,7 +3323,7 @@ function renderCF() {
       expHtml += `
         <tr style="border-bottom:1px solid rgba(30,45,69,0.5);transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
           <td style="padding:0.5rem 1rem;width:55%">
-            <input type="text" value="${esc(item.name)}" onchange="updateExpenseName(${hi},${realIdx},this.value)"
+            <input type="text" value="${esc(item.name)}" oninput="queueExpenseName(${hi},${realIdx},this.value)" onchange="updateExpenseName(${hi},${realIdx},this.value)"
               style="font-family:var(--mono);font-size:0.75rem;color:var(--text-mid);background:transparent;border:none;border-bottom:1px solid transparent;width:100%;outline:none;padding:1px 0;transition:all 0.2s;"
               onfocus="this.style.borderColor='var(--gold)';this.style.color='var(--text)'" onblur="this.style.borderColor='transparent';this.style.color='var(--text-mid)'">
           </td>
@@ -3445,6 +3472,19 @@ function updateStartupCost(hi, val) {
   if ($('view-ops').classList.contains('active')) renderCF();
 }
 
+// A field that only commits on `change` is a field that is still only in the DOM
+// when the operator hits reload — `change` fires on blur, and a reload does not
+// blur anything. The expense AMOUNT already had a `queue*` twin on `oninput` for
+// exactly this reason; the name and rate fields did not, so whatever was being
+// typed at the moment of a refresh was simply gone. These twins commit the value
+// to `homes` and start the autosave debounce on every keystroke, and
+// deliberately do NOT re-render: re-rendering mid-keystroke rebuilds the input
+// and throws away the caret. The `onchange` versions still run on blur and do
+// the rendering.
+function queueClientName(hi, bi, val) {
+  homes[hi].beds[bi].name = val;
+  persistData();
+}
 function updateClientName(hi, bi, val) {
   homes[hi].beds[bi].name = val;
   persistData();
@@ -3453,6 +3493,15 @@ function updateClientName(hi, bi, val) {
   if ($('view-projections').classList.contains('active')) renderProjections();
 }
 
+function queueClientRate(hi, bi, val) {
+  const rate = parseFloat(val) || 0;
+  homes[hi].beds[bi].rate = rate;
+  const bed = homes[hi].beds[bi];
+  if (bed.status !== 'vacant' && bed.status !== 'manager') {
+    bed.status = rate >= 3000 ? 'recup' : 'occupied';
+  }
+  persistData();
+}
 function updateClientRate(hi, bi, val) {
   const rate = parseFloat(val) || 0;
   homes[hi].beds[bi].rate = rate;
@@ -3486,6 +3535,10 @@ function updateExpenseLine(hi, ei, val) {
   renderAll();
 }
 
+function queueExpenseName(hi, ei, val) {
+  homes[hi].expenses[ei].name = val;
+  persistData();
+}
 function updateExpenseName(hi, ei, val) {
   homes[hi].expenses[ei].name = val;
   persistData();
