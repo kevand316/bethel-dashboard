@@ -158,8 +158,7 @@ test.describe("@rent rent tracker", () => {
     await expect(page.locator(".rt-row")).toContainText("Old Resident");
     expect((await charges(PREV)).map((c) => c.resident_name)).toEqual(["Old Resident"]); // not re-synced
 
-    await page.fill("#rtMonth", OLD.slice(0, 7));
-    await page.locator("#rtMonth").dispatchEvent("change");
+    for (let i = 0; i < 5; i++) await page.click("#rtPrev"); // six months back
     await expect(page.locator("#rtCreate")).toBeVisible({ timeout: 10000 });
 
     await page.click("#rtHistoryBtn");
@@ -179,21 +178,23 @@ test.describe("@rent rent tracker", () => {
   });
 
   test("each home collapses and expands, and the choice is remembered", async ({ page }) => {
+    await setRoster([...HOMES(), { id: 2, name: "Second House", address: "", startupCost: 0, catOrder: [], expenses: [],
+      beds: [{ id: 1, status: "occupied", name: "Second Person", rate: 500, moveIn: "" }] }]);
     await openRent(page);
-    await expect(page.locator(".rt-row:visible")).toHaveCount(2, { timeout: 10000 });
+    await expect(page.locator(".rt-row:visible")).toHaveCount(3, { timeout: 10000 });
     const head = page.locator(".rt-home-head", { hasText: "Test House" });
     await expect(head).toContainText("2 unpaid");
     await head.click();
-    await expect(page.locator(".rt-row:visible")).toHaveCount(0);
+    await expect(page.locator(".rt-row:visible")).toHaveCount(1);
     await expect(head).toHaveAttribute("aria-expanded", "false");
     await page.reload();
     await page.getByRole("button", { name: "Rent", exact: true }).click();
     await expect(page.locator(".rt-home-head", { hasText: "Test House" })).toHaveAttribute("aria-expanded", "false", { timeout: 10000 });
-    await page.click("#rtExpandAll");
-    await expect(page.locator(".rt-row:visible")).toHaveCount(2);
-    await page.click("#rtCollapseAll");
+    await page.click("#rtToggleAll"); // collapse the rest
     await expect(page.locator(".rt-row:visible")).toHaveCount(0);
-    await page.click("#rtExpandAll");
+    await expect(page.locator("#rtToggleAll")).toHaveText("Expand all");
+    await page.click("#rtToggleAll");
+    await expect(page.locator(".rt-row:visible")).toHaveCount(3);
   });
 
   test("@isolation another account sees none of this", async ({ page }) => {

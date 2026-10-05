@@ -815,16 +815,20 @@ body::before {
 .btn-red:hover { background: rgba(231,76,60,0.1); }
 
 /* REPORTS TAB (lib/reports.js) */
-.rp-toolbar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.rp-toolbar { display: flex; align-items: center; gap: 0.5rem; }
+.rp-toolbar .tm-btn { padding: 0.55rem 0.9rem; }
 .rp-heading { flex: 1 1 200px; }
 .rp-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.5rem 0 1rem; }
-.rp-chip { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text);
-  background: var(--bg2); border: 1px solid var(--border); padding: 0.5rem 0.75rem; min-height: 40px; cursor: pointer; }
+.rp-chip { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text);
+  background: transparent; border: 1px solid var(--border); padding: 0.45rem 0.7rem; min-height: 38px; cursor: pointer; }
 .rp-chip span { color: var(--gold); margin-left: 0.25rem; }
 .rp-chip.active { border-color: var(--gold); color: var(--gold); }
-.rp-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 1rem; margin-bottom: 1rem; }
+.rp-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+.rp-filters > .tm-select { width: auto; flex: 1 1 160px; min-height: 40px; }
+.rp-dates { display: flex; align-items: center; gap: 0.4rem; flex: 2 1 300px; }
+.rp-dates .tm-select { flex: 1 1 0; min-width: 0; min-height: 40px; }
 .rp-card { display: block; width: 100%; text-align: left; font: inherit; color: inherit; background: var(--bg2);
-  border: 1px solid var(--border); padding: 1rem; margin-bottom: 0.75rem; cursor: pointer; }
+  border: 1px solid var(--border); padding: 0.8rem 1rem; margin-bottom: 0.5rem; cursor: pointer; }
 .rp-card:hover, .rp-card:focus-visible { border-color: var(--gold); outline: none; }
 .rp-card.rp-urgent { border-left: 4px solid #ff8a7a; }
 .rp-card-top { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
@@ -832,14 +836,14 @@ body::before {
   border: 1px solid var(--gold); padding: 0.15rem 0.45rem; }
 .rp-badge-urgent { color: #ff8a7a; border-color: #ff8a7a; }
 .rp-when { font-family: var(--mono); font-size: 0.72rem; color: var(--text); margin-left: auto; }
-.rp-title { font-family: var(--display); font-size: 1.2rem; letter-spacing: 1.5px; color: var(--text); margin-top: 0.5rem; overflow-wrap: anywhere; }
+.rp-title { font-family: var(--display); font-size: 1.15rem; letter-spacing: 1.5px; color: var(--text); overflow-wrap: anywhere; flex: 1 1 auto; }
 .rp-summary { font-size: 0.9rem; color: var(--text); margin-top: 0.25rem; overflow-wrap: anywhere; }
 .rp-meta { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; margin-top: 0.5rem; font-family: var(--mono); font-size: 0.72rem; color: var(--gold); }
 .rp-textarea { width: 100%; min-height: 90px; resize: vertical; font-family: var(--sans); }
-.rp-detail { position: fixed; inset: 0; z-index: 200; background: rgba(5,8,14,0.75); display: flex; align-items: flex-start;
+.rp-detail { position: fixed; inset: 0; z-index: 3000; background: rgba(5,8,14,0.8); display: flex; align-items: flex-start;
   justify-content: center; padding: calc(env(safe-area-inset-top, 0px) + 1rem) 1rem 1rem; overflow-y: auto; }
 .rp-detail[hidden] { display: none; }
-.rp-detail-inner { background: var(--bg); border: 1px solid var(--gold); width: 100%; max-width: 720px; padding: 1.25rem; }
+.rp-detail-inner { background: var(--bg); border: 1px solid var(--gold); width: 100%; max-width: 720px; padding: 1.25rem; margin: auto 0; }
 .rp-detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.75rem; }
 .rp-detail-title { font-family: var(--display); font-size: 1.5rem; letter-spacing: 2px; color: var(--text); margin-top: 0.5rem; overflow-wrap: anywhere; }
 .rp-close { flex: 0 0 auto; min-width: 44px; min-height: 44px; }
@@ -873,9 +877,12 @@ body.rp-detail-open { overflow: hidden; }
 .rt-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.5rem 0 1rem; }
 .rt-nav { flex: 0 0 auto; min-width: 44px; min-height: 44px; }
 .rt-title { font-family: var(--display); font-size: 1.4rem; letter-spacing: 2px; color: var(--text); min-width: 10ch; text-align: center; }
-.rt-month { width: auto; flex: 0 1 170px; }
+.rt-bar-gap { flex: 1; }
+.rt-link { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold);
+  background: none; border: none; padding: 0.5rem; min-height: 40px; cursor: pointer; }
+.rt-link:hover { text-decoration: underline; }
 .rt-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; }
-.rt-tot { background: var(--bg2); border: 1px solid var(--border); padding: 0.75rem; }
+.rt-tot { background: var(--bg2); border: 1px solid var(--border); padding: 0.6rem 0.75rem; }
 .rt-tot label { display: block; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); }
 .rt-tot span { font-family: var(--display); font-size: 1.4rem; letter-spacing: 1px; color: var(--text); }
 .rt-ok { color: var(--green) !important; }
@@ -889,31 +896,73 @@ body.rp-detail-open { overflow: hidden; }
 .rt-collapsed .rt-home-head { margin-bottom: 0; }
 .rt-home-name { font-family: var(--display); font-size: 1.15rem; letter-spacing: 2px; color: var(--text); }
 .rt-home-tot { font-family: var(--mono); font-size: 0.75rem; color: var(--gold); }
-.rt-row { background: var(--bg2); border: 1px solid var(--border); border-left: 4px solid #ff8a7a; padding: 0.75rem 1rem; margin-bottom: 0.5rem; }
+.rt-row { background: var(--bg2); border: 1px solid var(--border); border-left: 3px solid #ff8a7a; padding: 0.6rem 0.9rem;
+  margin-bottom: 0.4rem; display: grid; grid-template-columns: minmax(180px, 1.2fr) 2fr auto; gap: 0.35rem 1rem; align-items: center; }
+@media (max-width: 900px) { .rt-row { grid-template-columns: 1fr; } }
 .rt-row.rt-partial { border-left-color: var(--gold); }
 .rt-row.rt-paid { border-left-color: var(--green); }
-.rt-main { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.rt-name { font-size: 1rem; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
-.rt-bed { font-family: var(--mono); font-size: 0.7rem; color: var(--gold); margin-left: 0.5rem; font-weight: 400; }
-.rt-status { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.2rem 0.5rem; border: 1px solid #ff8a7a; color: #ff8a7a; }
+.rt-who { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; min-width: 0; }
+.rt-name { font-size: 0.95rem; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.rt-bed { font-family: var(--mono); font-size: 0.68rem; color: var(--gold); }
+.rt-status { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.15rem 0.45rem; border: 1px solid #ff8a7a; color: #ff8a7a; }
 .rt-partial .rt-status { border-color: var(--gold); color: var(--gold); }
 .rt-paid .rt-status { border-color: var(--green); color: var(--green); }
-.rt-figs { display: flex; flex-wrap: wrap; gap: 0.35rem 1.25rem; margin-top: 0.5rem; font-family: var(--mono); font-size: 0.78rem; color: var(--text); }
-.rt-fig b { color: var(--text); margin-left: 0.25rem; }
-.rt-due-wrap { margin-left: 0.25rem; }
-.rt-due-input { width: 6.5rem; font-family: var(--mono); font-size: 0.8rem; color: var(--text); background: var(--bg3); border: 1px solid var(--border); padding: 0.3rem 0.4rem; min-height: 36px; }
-.rt-last { font-family: var(--mono); font-size: 0.7rem; color: var(--gold); margin-top: 0.35rem; }
-.rt-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
-.rt-actions .btn { flex: 0 0 auto; min-height: 40px; }
-.rt-partial-input { flex: 0 1 120px; min-height: 40px; }
-.rt-pays { margin-top: 0.5rem; border-top: 1px solid var(--border); }
-.rt-pay { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.3rem 0; font-family: var(--mono); font-size: 0.75rem; color: var(--text); }
-.rt-pay .btn { flex: 0 0 auto; padding: 0.3rem 0.6rem; min-height: 36px; }
+.rt-figs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; font-family: var(--mono); font-size: 0.75rem; color: var(--text); }
+.rt-fig b { color: var(--text); margin-left: 0.2rem; }
+.rt-fig.rt-bad b { color: #ff8a7a; }
+.rt-due-input { width: 5.5rem; margin-left: 0.2rem; font-family: var(--mono); font-size: 0.78rem; color: var(--text); background: var(--bg3); border: 1px solid var(--border); padding: 0.25rem 0.4rem; min-height: 34px; }
+.rt-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; justify-content: flex-end; }
+@media (max-width: 900px) { .rt-actions { justify-content: flex-start; } }
+.rt-actions .btn { flex: 0 0 auto; min-height: 38px; padding: 0.45rem 0.8rem; font-size: 0.66rem; }
+.rt-actions .rt-partial-input { flex: 0 0 96px; width: 96px; min-height: 38px; padding: 0.3rem 0.5rem; }
+.rt-pays { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; font-family: var(--mono); font-size: 0.7rem; color: var(--text); }
+.rt-last { color: var(--gold); }
+.rt-pay { display: inline-flex; align-items: center; gap: 0.1rem; }
+.rt-pay .tm-link { min-height: 28px; padding: 0.1rem 0.35rem; }
+.rt-msg:empty { display: none; }
 .rt-hist-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; width: 100%; text-align: left; font: inherit; font-size: 0.85rem;
   color: var(--text); background: transparent; border: none; border-bottom: 1px solid var(--border); padding: 0.6rem 0; cursor: pointer; }
 .rt-hist-row:hover { color: var(--gold); }
 
 /* TEAM TAB (lib/team.js) */
+.tm-person { display: grid; grid-template-columns: 1fr auto; gap: 0.25rem 1rem; padding: 0.75rem 1rem; margin-bottom: 0.5rem; }
+.tm-person-main { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.tm-person .tm-name { font-size: 1.05rem; }
+.tm-person .tm-meta { grid-column: 1; margin-top: 0; gap: 0.2rem 1rem; font-size: 0.82rem; }
+.tm-person .tm-phone { margin-top: 0; }
+.tm-person .tm-invite-msg { grid-column: 1 / -1; }
+.tm-links { grid-column: 2; grid-row: 1 / span 2; display: flex; align-items: center; gap: 0.25rem; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 600px) { .tm-person { grid-template-columns: 1fr; } .tm-links { grid-column: 1; grid-row: auto; justify-content: flex-start; } }
+.tm-link { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold);
+  background: none; border: none; padding: 0.4rem 0.5rem; min-height: 36px; cursor: pointer; }
+.tm-link:hover { text-decoration: underline; }
+.tm-link-red { color: #ff8a7a; }
+.tm-head { display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem; }
+.tm-head-title { flex: 1; margin-top: 0; margin-bottom: 0; }
+.tm-form-title { font-family: var(--display); font-size: 1.1rem; letter-spacing: 2px; color: var(--gold); margin-bottom: 0.75rem; }
+#tmFormPanel { margin-top: 1rem; }
+#teamList { margin-top: 1rem; }
+.tm-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.tm-inline .tm-select { width: auto; flex: 1 1 150px; min-height: 40px; }
+.tm-inline-word { font-family: var(--mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--gold); }
+.tm-scroll { overflow-x: auto; border: 1px solid var(--border); background: var(--bg2); }
+.tm-roles { width: 100%; min-width: 760px; border-collapse: collapse; }
+.tm-roles th { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold);
+  font-weight: 600; text-align: center; padding: 0.65rem 0.5rem; border-bottom: 1px solid var(--border); }
+.tm-roles th:first-child, .tm-roles td:first-child { text-align: left; padding-left: 1rem; }
+.tm-roles td { padding: 0.5rem; text-align: center; border-bottom: 1px solid var(--border); color: var(--text); }
+.tm-roles tr:last-child td { border-bottom: none; }
+.tm-roles td:first-child { font-family: var(--display); font-size: 1.05rem; letter-spacing: 1.5px; }
+.tm-roles input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--gold); cursor: pointer; }
+.tm-role-x { background: none; border: none; color: var(--text); opacity: 0.6; font-size: 1rem; cursor: pointer; min-width: 36px; min-height: 36px; }
+.tm-role-x:hover { color: #ff8a7a; opacity: 1; }
+.tm-role-add { margin-top: 0.75rem; }
+.tm-settings { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0 1rem; }
+@media (max-width: 700px) { .tm-settings { grid-template-columns: 1fr; } }
+.tm-settings .tm-select, .tm-settings input { min-height: 44px; }
+.tm-divider { border-top: 1px solid var(--border); margin: 1rem 0; }
+.tm-join-state { margin-top: 0; flex: 1 1 260px; }
+.jr-head { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); margin: 1rem 0 0.5rem; }
 .tm-role .tm-role-delete { font-size: 0.65rem; padding: 0.35rem 0.75rem; min-height: 36px; }
 .tm-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 1rem; }
 @media (max-width: 600px) { .tm-form-grid { grid-template-columns: 1fr; } }
@@ -1749,11 +1798,10 @@ body.rp-detail-open { overflow: hidden; }
       <button class="btn btn-ghost rt-nav" id="rtPrev" type="button" aria-label="Previous month">◀</button>
       <div class="rt-title" id="rtTitle"></div>
       <button class="btn btn-ghost rt-nav" id="rtNext" type="button" aria-label="Next month">▶</button>
-      <input type="month" id="rtMonth" class="tm-select rt-month" aria-label="Pick a month">
-      <button class="btn btn-ghost tm-btn" id="rtToday" type="button">This month</button>
-      <button class="btn btn-ghost tm-btn" id="rtHistoryBtn" type="button">History</button>
-      <button class="btn btn-ghost tm-btn" id="rtCollapseAll" type="button">Collapse all</button>
-      <button class="btn btn-ghost tm-btn" id="rtExpandAll" type="button">Expand all</button>
+      <button class="rt-link" id="rtToday" type="button" hidden>Back to this month</button>
+      <span class="rt-bar-gap"></span>
+      <button class="rt-link" id="rtToggleAll" type="button">Collapse all</button>
+      <button class="rt-link" id="rtHistoryBtn" type="button">History</button>
     </div>
     <div class="tm-panel rt-history" id="rtHistory" hidden></div>
     <div class="rt-totals" id="rtTotals"></div>
@@ -1769,8 +1817,8 @@ body.rp-detail-open { overflow: hidden; }
 
     <div class="rp-toolbar">
       <div class="section-title rp-heading">Reports</div>
-      <button class="btn btn-ghost tm-btn" id="anBtn" type="button">📣 Send announcement</button>
-      <button class="btn btn-gold tm-btn" id="rpNewBtn" type="button">＋ New report</button>
+      <button class="btn btn-ghost tm-btn" id="anBtn" type="button">📣 Announce</button>
+      <button class="btn btn-gold tm-btn" id="rpNewBtn" type="button">＋ New</button>
     </div>
 
     <div class="tm-panel" id="anPanel" hidden>
@@ -1824,10 +1872,13 @@ body.rp-detail-open { overflow: hidden; }
     <div class="rp-chips" id="rpChips"></div>
 
     <div class="rp-filters">
-      <div class="qc-field"><label for="rpHome">Home</label><select id="rpHome" class="tm-select"></select></div>
-      <div class="qc-field"><label for="rpPerson">Person</label><select id="rpPerson" class="tm-select"></select></div>
-      <div class="qc-field"><label for="rpFrom">From</label><input type="date" id="rpFrom" class="tm-select"></div>
-      <div class="qc-field"><label for="rpTo">To</label><input type="date" id="rpTo" class="tm-select"></div>
+      <select id="rpHome" class="tm-select" aria-label="Home"></select>
+      <select id="rpPerson" class="tm-select" aria-label="Person"></select>
+      <span class="rp-dates">
+        <input type="date" id="rpFrom" class="tm-select" aria-label="From date">
+        <span class="tm-inline-word">to</span>
+        <input type="date" id="rpTo" class="tm-select" aria-label="To date">
+      </span>
     </div>
 
     <div id="rpList"></div>
@@ -1840,26 +1891,13 @@ body.rp-detail-open { overflow: hidden; }
   <!-- ═══════════════════════════════════════ -->
   <div class="view" id="view-team">
 
-    <div class="section-title">Organization</div>
-    <div class="tm-panel">
-      <div class="qc-field">
-        <label for="orgNameInput">Organization name (shows under HouseBoss and in every text)</label>
-        <input type="text" id="orgNameInput" maxlength="80" placeholder="e.g. Sunrise Homes" autocomplete="organization">
-      </div>
-      <div class="tm-grid">
-        <div class="qc-field"><label for="orgReminderHour">Daily report reminder at</label>
-          <select id="orgReminderHour" class="tm-select"><option value="0">12:00 am</option><option value="1">1:00 am</option><option value="2">2:00 am</option><option value="3">3:00 am</option><option value="4">4:00 am</option><option value="5">5:00 am</option><option value="6">6:00 am</option><option value="7">7:00 am</option><option value="8">8:00 am</option><option value="9">9:00 am</option><option value="10">10:00 am</option><option value="11">11:00 am</option><option value="12">12:00 pm</option><option value="13">1:00 pm</option><option value="14">2:00 pm</option><option value="15">3:00 pm</option><option value="16">4:00 pm</option><option value="17">5:00 pm</option><option value="18">6:00 pm</option><option value="19">7:00 pm</option><option value="20">8:00 pm</option><option value="21">9:00 pm</option><option value="22">10:00 pm</option><option value="23">11:00 pm</option></select></div>
-        <div class="qc-field"><label for="orgEscalationHour">Tell their supervisor next morning at</label>
-          <select id="orgEscalationHour" class="tm-select"><option value="0">12:00 am</option><option value="1">1:00 am</option><option value="2">2:00 am</option><option value="3">3:00 am</option><option value="4">4:00 am</option><option value="5">5:00 am</option><option value="6">6:00 am</option><option value="7">7:00 am</option><option value="8">8:00 am</option><option value="9">9:00 am</option><option value="10">10:00 am</option><option value="11">11:00 am</option><option value="12">12:00 pm</option><option value="13">1:00 pm</option><option value="14">2:00 pm</option><option value="15">3:00 pm</option><option value="16">4:00 pm</option><option value="17">5:00 pm</option><option value="18">6:00 pm</option><option value="19">7:00 pm</option><option value="20">8:00 pm</option><option value="21">9:00 pm</option><option value="22">10:00 pm</option><option value="23">11:00 pm</option></select></div>
-      </div>
-      <div class="tm-row">
-        <button class="btn btn-gold tm-btn" id="orgNameSave" type="button">Save</button>
-        <span class="tm-msg" id="orgNameStatus" aria-live="polite"></span>
-      </div>
+    <div class="tm-head">
+      <div class="section-title tm-head-title">Team</div>
+      <button class="btn btn-gold tm-btn" id="tmOpenForm" type="button">＋ Add person</button>
     </div>
 
-    <div class="section-title" id="tmFormTitle">Add a person</div>
-    <div class="tm-panel">
+    <div class="tm-panel" id="tmFormPanel" hidden>
+      <div class="tm-form-title" id="tmFormTitle">Add a person</div>
       <div class="tm-form-grid">
         <div class="qc-field"><label for="tmName">Name</label>
           <input type="text" id="tmName" maxlength="80" autocomplete="off" placeholder="Full name"></div>
@@ -1877,50 +1915,60 @@ body.rp-detail-open { overflow: hidden; }
       <div class="tm-error" id="tmError" aria-live="polite"></div>
       <div class="tm-form-foot">
         <button class="btn btn-gold tm-btn" id="tmAdd" type="button">Add person</button>
-        <button class="btn btn-ghost tm-btn" id="tmCancel" type="button" hidden>Cancel</button>
-        <span class="tm-note tm-foot-note">They get one text asking them to reply YES. Until they do, they can't text in.</span>
+        <button class="btn btn-ghost tm-btn" id="tmCancel" type="button">Cancel</button>
+        <span class="tm-note tm-foot-note">They get one text asking them to reply YES.</span>
       </div>
     </div>
 
-    <div class="section-title">Join by text</div>
-    <div class="tm-panel">
-      <div class="tm-note" style="margin-top:0" id="jcState"></div>
-      <div class="tm-row" style="margin-top:0.75rem">
-        <button class="btn btn-gold tm-btn" id="jcOn" type="button">Turn on join code</button>
-        <button class="btn btn-ghost tm-btn" id="jcNew" type="button" hidden>New code</button>
-        <button class="btn btn-red tm-btn" id="jcOff" type="button" hidden>Turn off</button>
-        <span class="tm-msg" id="jcMsg" aria-live="polite"></span>
-      </div>
-      <div class="an-label" style="margin-top:1rem">Join requests</div>
-      <div id="jrList"></div>
-    </div>
-
-    <div class="section-title">Team</div>
+    <div id="jrList"></div>
     <div id="teamList"></div>
 
     <div class="section-title">Notifications</div>
     <div class="tm-panel">
-      <div class="tm-note" style="margin-top:0">Every report goes to the sender's supervisor; urgent ones go all the way up the chain. Add people who should also hear about certain reports.</div>
-      <div class="tm-grid" style="margin-top:0.75rem">
-        <div class="qc-field"><label for="nrBucket">Reports</label><select id="nrBucket" class="tm-select"></select></div>
-        <div class="qc-field"><label for="nrHome">At</label><select id="nrHome" class="tm-select"></select></div>
-        <div class="qc-field"><label for="nrMember">Text</label><select id="nrMember" class="tm-select"></select></div>
+      <div class="tm-inline">
+        <span class="tm-inline-word">Text</span>
+        <select id="nrMember" class="tm-select" aria-label="Who to text"></select>
+        <span class="tm-inline-word">about</span>
+        <select id="nrBucket" class="tm-select" aria-label="Which reports"></select>
+        <span class="tm-inline-word">at</span>
+        <select id="nrHome" class="tm-select" aria-label="Which home"></select>
+        <button class="btn btn-ghost tm-btn" id="nrAdd" type="button">Add</button>
       </div>
-      <div class="tm-row">
-        <button class="btn btn-ghost tm-btn" id="nrAdd" type="button">Add rule</button>
-        <span class="tm-msg" id="nrMsg" aria-live="polite"></span>
-      </div>
+      <span class="tm-msg" id="nrMsg" aria-live="polite"></span>
       <div id="nrList"></div>
+      <div class="tm-note">Reports always go to the sender's supervisor, and to the whole chain when urgent.</div>
     </div>
 
     <div class="section-title">Roles</div>
-    <div id="roleList"></div>
+    <div class="tm-scroll"><table class="tm-roles" id="roleList"></table></div>
+    <div class="tm-row tm-role-add">
+      <input type="text" id="roleNewName" class="tm-input" maxlength="60" placeholder="New role, e.g. Maintenance">
+      <button class="btn btn-ghost tm-btn" id="roleAdd" type="button">Add role</button>
+      <span class="tm-msg" id="roleMsg" aria-live="polite"></span>
+    </div>
+
+    <div class="section-title">Settings</div>
     <div class="tm-panel">
-      <div class="tm-row">
-        <input type="text" id="roleNewName" class="tm-input" maxlength="60" placeholder="New role, e.g. Maintenance">
-        <button class="btn btn-ghost tm-btn" id="roleAdd" type="button">Add role</button>
+      <div class="tm-settings">
+        <div class="qc-field tm-set-name"><label for="orgNameInput">Organization name</label>
+          <input type="text" id="orgNameInput" maxlength="80" placeholder="e.g. Sunrise Homes" autocomplete="organization"></div>
+        <div class="qc-field"><label for="orgReminderHour">Daily report reminder</label>
+          <select id="orgReminderHour" class="tm-select"><option value="0">12:00 am</option><option value="1">1:00 am</option><option value="2">2:00 am</option><option value="3">3:00 am</option><option value="4">4:00 am</option><option value="5">5:00 am</option><option value="6">6:00 am</option><option value="7">7:00 am</option><option value="8">8:00 am</option><option value="9">9:00 am</option><option value="10">10:00 am</option><option value="11">11:00 am</option><option value="12">12:00 pm</option><option value="13">1:00 pm</option><option value="14">2:00 pm</option><option value="15">3:00 pm</option><option value="16">4:00 pm</option><option value="17">5:00 pm</option><option value="18">6:00 pm</option><option value="19">7:00 pm</option><option value="20">8:00 pm</option><option value="21">9:00 pm</option><option value="22">10:00 pm</option><option value="23">11:00 pm</option></select></div>
+        <div class="qc-field"><label for="orgEscalationHour">Tell supervisor next day</label>
+          <select id="orgEscalationHour" class="tm-select"><option value="0">12:00 am</option><option value="1">1:00 am</option><option value="2">2:00 am</option><option value="3">3:00 am</option><option value="4">4:00 am</option><option value="5">5:00 am</option><option value="6">6:00 am</option><option value="7">7:00 am</option><option value="8">8:00 am</option><option value="9">9:00 am</option><option value="10">10:00 am</option><option value="11">11:00 am</option><option value="12">12:00 pm</option><option value="13">1:00 pm</option><option value="14">2:00 pm</option><option value="15">3:00 pm</option><option value="16">4:00 pm</option><option value="17">5:00 pm</option><option value="18">6:00 pm</option><option value="19">7:00 pm</option><option value="20">8:00 pm</option><option value="21">9:00 pm</option><option value="22">10:00 pm</option><option value="23">11:00 pm</option></select></div>
       </div>
-      <div class="tm-msg" id="roleMsg" aria-live="polite"></div>
+      <div class="tm-row">
+        <button class="btn btn-gold tm-btn" id="orgNameSave" type="button">Save</button>
+        <span class="tm-msg" id="orgNameStatus" aria-live="polite"></span>
+      </div>
+      <div class="tm-divider"></div>
+      <div class="tm-row">
+        <span class="tm-note tm-join-state" id="jcState"></span>
+        <button class="btn btn-ghost tm-btn" id="jcOn" type="button">Turn on join code</button>
+        <button class="btn btn-ghost tm-btn" id="jcNew" type="button" hidden>New code</button>
+        <button class="btn btn-ghost tm-btn" id="jcOff" type="button" hidden>Turn off</button>
+        <span class="tm-msg" id="jcMsg" aria-live="polite"></span>
+      </div>
     </div>
 
   </div>
