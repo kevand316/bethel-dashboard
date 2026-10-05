@@ -23,9 +23,22 @@ export type Draft = {
   } | null;
 };
 
-export type Turn = { reply: string; ready: boolean; cancel: boolean; announcement_reply: boolean; draft: Draft | null };
+export type Turn = {
+  intent: "rent" | "report" | "other";
+  reply: string; ready: boolean; cancel: boolean; announcement_reply: boolean; draft: Draft | null;
+  // Rent payments and "who owes" questions are extracted here and handled by code.
+  rent: { kind: "payment" | "question"; resident_name: string | null; amount: number | null; month: string | null; home_id: number | null } | null;
+};
 
-const SYSTEM = `You are the HouseBoss texting assistant. Staff at a housing organization text you in plain language to file reports. Understand what happened, ask short follow-up questions only until you have what is needed, then confirm.
+const SYSTEM = `You are the HouseBoss texting assistant. Staff at a housing organization text you in plain language for one of two jobs:
+(A) RENT: a resident paid rent ("Grant paid his rent", "Marcus paid 300", "Grant paid his October rent"), or a question about who owes rent ("who owes rent?", "who hasn't paid at Oak St?").
+(B) REPORTS: anything else that happened (incidents, maintenance, cleaning, move-ins/outs, inventory).
+
+Set intent first: "rent" for (A), "report" for (B), "other" for greetings or anything else.
+For (A) RENT: fill the rent field and do nothing else. kind = payment or question. resident_name as written (null for questions). amount = the number paid, or null if they didn't say (means paid in full). month = YYYY-MM only if they named a month (e.g. "October rent" in 2026 = 2026-10), else null. home_id only if they named a home. Leave draft exactly as it was (or null), ready = false, reply = "". Code does the rest.
+A move-in or move-out is a report, not rent, even if a price is mentioned.
+
+For (B) REPORTS: rent = null. Understand what happened, ask short follow-up questions only until you have what is needed, then confirm.
 
 Buckets (pick exactly one):
 - incidents: anything that happened with or between clients. subtype: emergency | conflict | complaint | other.
@@ -48,10 +61,11 @@ Rules:
 - Log what you are told as told. Do not warn about or filter health or personal details.
 - urgent is true only for emergencies: someone in danger, medical emergency, fire, flood, police needed now.
 - Resolve "today", "yesterday", "this morning" using the local date and time given.
-- When the draft is complete: ready = true, and the reply is a one-line summary followed by "Reply YES to submit, or tell me what to change."
+- For reports, always return the draft with everything known so far, even while still asking questions. draft is never null once a report has started.
+- When the draft is complete: ready = true, and the reply is a one-line summary followed by "Reply YES to submit, or tell me what to change." ready = true always comes with the full draft.
 - If they change something after a summary, update the draft and summarize again.
 - If they say cancel, never mind, or similar: cancel = true and reply that nothing was filed.
-- If the text is not a report (a question, a greeting), say briefly that you can file reports by text (incidents, maintenance, cleanings, move-ins/outs, inventory) and ask what they want to report. draft stays as it was.
+- If the text is neither rent nor a report (a question, a greeting), say briefly that you can file reports by text (incidents, maintenance, cleanings, move-ins/outs, inventory) and ask what they want to report. draft stays as it was.
 - If photos were sent, say they will be attached.
 - For move_ins_outs also fill roster: action (move_in or move_out), resident_name, rate (monthly bed price as a number, move-ins only, null if not said), date (YYYY-MM-DD, resolve "today" etc.), bed_number (only if they named a bed). For every other bucket roster is null.
 - title: under 80 characters, e.g. "Upstairs toilet leaking". summary: one or two sentences. facts: the key details as label/value pairs.
@@ -62,8 +76,23 @@ const nullable = (schema: Record<string, unknown>) => ({ anyOf: [schema, { type:
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["reply", "ready", "cancel", "announcement_reply", "draft"],
+  required: ["intent", "rent", "reply", "ready", "cancel", "announcement_reply", "draft"],
   properties: {
+    // Decided first: the JSON is generated in this order, so the model commits to
+    // what kind of text this is before filling anything else.
+    intent: { type: "string", enum: ["rent", "report", "other"] },
+    rent: nullable({
+      type: "object",
+      additionalProperties: false,
+      required: ["kind", "resident_name", "amount", "month", "home_id"],
+      properties: {
+        kind: { type: "string", enum: ["payment", "question"] },
+        resident_name: nullable({ type: "string" }),
+        amount: nullable({ type: "number" }),
+        month: nullable({ type: "string" }),
+        home_id: nullable({ type: "integer" }),
+      },
+    }),
     reply: { type: "string" },
     announcement_reply: { type: "boolean" },
     ready: { type: "boolean" },
@@ -133,22 +162,35 @@ export async function runTurn(ctx: TurnContext): Promise<Turn> {
   ].join("\n\n");
 
   // deno-lint-ignore no-explicit-any
-  const res: any = await client().beta.messages.create({
-    model: "claude-opus-5-5",
-    max_tokens: 4000,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
-    system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content: prompt }],
+  const ask = async (messages: any[]): Promise<Turn> => {
     // deno-lint-ignore no-explicit-any
-  } as any);
+    const res: any = await client().beta.messages.create({
+      model: "claude-opus-5-5",
+      max_tokens: 4000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
+      system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
+      messages,
+      // deno-lint-ignore no-explicit-any
+    } as any);
+    if (res.stop_reason === "refusal") throw new Error("model refused");
+    const out = res.content.find((b: { type: string }) => b.type === "text")?.text;
+    if (!out) throw new Error(`no text in response (stop_reason ${res.stop_reason})`);
+    return JSON.parse(out) as Turn;
+  };
 
-  if (res.stop_reason === "refusal") throw new Error("model refused");
-  const text = res.content.find((b: { type: string }) => b.type === "text")?.text;
-  if (!text) throw new Error(`no text in response (stop_reason ${res.stop_reason})`);
-  const turn = JSON.parse(text) as Turn;
+  const first = [{ role: "user", content: prompt }];
+  let turn = await ask(first);
+  // A summary asking for YES with no draft behind it would make YES file nothing.
+  // Ask once more, showing the model its own answer; never let it through as ready.
+  if (turn.intent === "report" && (turn.ready || /reply yes/i.test(turn.reply)) && !turn.draft) {
+    turn = await ask([...first, { role: "assistant", content: JSON.stringify(turn) },
+      { role: "user", content: "Your answer asks for YES but draft is null. Return the same answer with the complete draft filled in." }]);
+    if (!turn.draft) turn.ready = false;
+  }
   if (!ctx.recentAnnouncement) turn.announcement_reply = false;
+  if (turn.intent !== "rent") turn.rent = null;
   // A draft can only be complete with a bucket the code knows and a title.
   if (turn.draft && (!BUCKETS.includes(turn.draft.bucket) || !turn.draft.title?.trim())) turn.ready = false;
   return turn;

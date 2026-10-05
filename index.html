@@ -16,6 +16,7 @@
 <script src="lib/intake.js"></script>
 <script src="lib/team.js"></script>
 <script src="lib/reports.js"></script>
+<script src="lib/rent.js"></script>
 <style>
 :root {
   --bg: #0a0e14;
@@ -866,6 +867,45 @@ body.rp-detail-open { overflow: hidden; }
   body.printing-report #rpPrint .tm-actions, body.printing-report #rpPrint .rp-close { display: none !important; }
   .rp-print-head { font-family: var(--mono); font-size: 0.75rem; margin-bottom: 1rem; }
 }
+
+/* RENT TAB (lib/rent.js) */
+.rt-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.5rem 0 1rem; }
+.rt-nav { flex: 0 0 auto; min-width: 44px; min-height: 44px; }
+.rt-title { font-family: var(--display); font-size: 1.4rem; letter-spacing: 2px; color: var(--text); min-width: 10ch; text-align: center; }
+.rt-month { width: auto; flex: 0 1 170px; }
+.rt-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; }
+.rt-tot { background: var(--bg2); border: 1px solid var(--border); padding: 0.75rem; }
+.rt-tot label { display: block; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); }
+.rt-tot span { font-family: var(--display); font-size: 1.4rem; letter-spacing: 1px; color: var(--text); }
+.rt-ok { color: var(--green) !important; }
+.rt-bad { color: #ff8a7a !important; }
+.rt-home { margin-bottom: 1.25rem; }
+.rt-home-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; border-bottom: 1px solid var(--gold); padding-bottom: 0.35rem; margin-bottom: 0.5rem; }
+.rt-home-name { font-family: var(--display); font-size: 1.15rem; letter-spacing: 2px; color: var(--text); }
+.rt-home-tot { font-family: var(--mono); font-size: 0.75rem; color: var(--gold); }
+.rt-row { background: var(--bg2); border: 1px solid var(--border); border-left: 4px solid #ff8a7a; padding: 0.75rem 1rem; margin-bottom: 0.5rem; }
+.rt-row.rt-partial { border-left-color: var(--gold); }
+.rt-row.rt-paid { border-left-color: var(--green); }
+.rt-main { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.rt-name { font-size: 1rem; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.rt-bed { font-family: var(--mono); font-size: 0.7rem; color: var(--gold); margin-left: 0.5rem; font-weight: 400; }
+.rt-status { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.2rem 0.5rem; border: 1px solid #ff8a7a; color: #ff8a7a; }
+.rt-partial .rt-status { border-color: var(--gold); color: var(--gold); }
+.rt-paid .rt-status { border-color: var(--green); color: var(--green); }
+.rt-figs { display: flex; flex-wrap: wrap; gap: 0.35rem 1.25rem; margin-top: 0.5rem; font-family: var(--mono); font-size: 0.78rem; color: var(--text); }
+.rt-fig b { color: var(--text); margin-left: 0.25rem; }
+.rt-due-wrap { margin-left: 0.25rem; }
+.rt-due-input { width: 6.5rem; font-family: var(--mono); font-size: 0.8rem; color: var(--text); background: var(--bg3); border: 1px solid var(--border); padding: 0.3rem 0.4rem; min-height: 36px; }
+.rt-last { font-family: var(--mono); font-size: 0.7rem; color: var(--gold); margin-top: 0.35rem; }
+.rt-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
+.rt-actions .btn { flex: 0 0 auto; min-height: 40px; }
+.rt-partial-input { flex: 0 1 120px; min-height: 40px; }
+.rt-pays { margin-top: 0.5rem; border-top: 1px solid var(--border); }
+.rt-pay { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.3rem 0; font-family: var(--mono); font-size: 0.75rem; color: var(--text); }
+.rt-pay .btn { flex: 0 0 auto; padding: 0.3rem 0.6rem; min-height: 36px; }
+.rt-hist-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; width: 100%; text-align: left; font: inherit; font-size: 0.85rem;
+  color: var(--text); background: transparent; border: none; border-bottom: 1px solid var(--border); padding: 0.6rem 0; cursor: pointer; }
+.rt-hist-row:hover { color: var(--gold); }
 
 /* TEAM TAB (lib/team.js) */
 .rp-roster { border: 1px solid var(--border); padding: 0.75rem; margin: 0.75rem 0; color: var(--text); }
@@ -1930,6 +1970,7 @@ body.rp-detail-open { overflow: hidden; }
 <div class="tabs">
   <button class="tab active" onclick="switchTab('occupancy', event)">Overview</button>
   <button class="tab" data-tab="ops" onclick="switchTab('ops', event)">Operations</button>
+  <button class="tab" onclick="switchTab('rent', event)">Rent</button>
   <button class="tab" onclick="switchTab('quickcalc', event)">Profit Calculator</button>
   <button class="tab" onclick="switchTab('intake', event)">Intake</button>
   <button class="tab" onclick="switchTab('rlog', event)">Reports</button>
@@ -2113,6 +2154,26 @@ body.rp-detail-open { overflow: hidden; }
   </div>
 
 
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- RENT VIEW: lib/rent.js. Monthly paid/owed checklist. -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="view" id="view-rent">
+
+    <div class="rt-bar">
+      <button class="btn btn-ghost rt-nav" id="rtPrev" type="button" aria-label="Previous month">◀</button>
+      <div class="rt-title" id="rtTitle"></div>
+      <button class="btn btn-ghost rt-nav" id="rtNext" type="button" aria-label="Next month">▶</button>
+      <input type="month" id="rtMonth" class="tm-select rt-month" aria-label="Pick a month">
+      <button class="btn btn-ghost tm-btn" id="rtToday" type="button">This month</button>
+      <button class="btn btn-ghost tm-btn" id="rtHistoryBtn" type="button">History</button>
+    </div>
+    <div class="tm-panel rt-history" id="rtHistory" hidden></div>
+    <div class="rt-totals" id="rtTotals"></div>
+    <div id="rtBody"></div>
+    <div class="tm-note">Staff can text it in too: "Grant paid his rent", "Marcus paid 300", "Who owes rent?"</div>
+
+  </div>
 
   <!-- ═══════════════════════════════════════ -->
   <!-- REPORTS (LOG) VIEW: lib/reports.js. Texted, typed and calculator reports. -->
@@ -3039,6 +3100,8 @@ let homes = JSON.parse(JSON.stringify(DEFAULT_HOMES));
 // lib/team.js reads the home list for its pickers. `homes` is reassigned on load,
 // so expose a live getter rather than a copy.
 Object.defineProperty(window, 'homes', { get: () => homes, configurable: true });
+// True once the real roster has loaded (never the built-in placeholder homes).
+window.isDataLoaded = () => dataLoaded;
 
 // After the roster changes on the server (a move-in/out applied from Reports), pull
 // the new roster into this tab. Only when this tab has nothing unsaved: if it does,
@@ -3081,6 +3144,7 @@ async function initData() {
   // Organization name for the header; also not awaited, same reason.
   window.team.init(session).catch((e) => console.warn('[team] init failed:', e));
   window.reports.init();
+  window.rent.init();
 
   // The indicator was blank for the whole load, so a slow network and a hung
   // load looked identical — to the operator and to anyone debugging. The save
@@ -4193,6 +4257,7 @@ function switchTab(name, event) {
   if (name === 'reports') renderReports();
   if (name === 'team') window.team.open();
   if (name === 'rlog') window.reports.open();
+  if (name === 'rent') window.rent.open();
 }
 
 // ═══════════════════════════════════════════════════════

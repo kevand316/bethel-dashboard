@@ -458,6 +458,45 @@ draft: move-in or move-out, the resident's name, the bed price (move-ins), and t
   banner instead of overwriting. Tested both ways.
 - The report records what was applied, by whom, and when.
 
+## Step 6 detailed spec: Rent tracker (status: DONE, live 2026-10-05)
+
+**Data (migration 010)**
+- `rent_charges`: one row per resident per month: month, home, bed, resident name, and
+  amount due (from the bed price when created, editable).
+- `rent_payments`: payments against a charge (amount, date, who logged it, dashboard or
+  text, note). Deleting a payment is allowed and logged.
+- `rent_events`: the change log (due edited, payment added or removed: who and when).
+
+**Dashboard: new "Rent" tab**
+- Opens on the current month; month picker plus ◀ ▶ arrows browse any month.
+- **The current month's checklist builds itself from the roster**: every occupied or
+  Recuperative Care bed with a name gets a row (due = bed price). Opening the current
+  month again adds anyone who moved in since; it never deletes rows. Past months stay
+  frozen as they were; an empty past month offers "Create from current roster".
+- **Rows are grouped by home**: resident, bed, due (editable), paid, balance, status
+  (Paid / Partial / Unpaid), last paid date, who logged it, and **past due** (unpaid
+  balance from earlier months for the same resident at the same home).
+- **On each row:** **Paid in full** pays the remaining balance in one tap; a partial
+  amount box plus **Add**; and a payments list with **Remove**.
+- **Totals** per home and overall: expected, collected, outstanding, past due.
+- **History**: a list of months with expected, collected and outstanding; click one to
+  open it.
+
+**By text** (role switch "Log rent"):
+- "Grant paid his rent" → finds Grant on this month's checklist and confirms:
+  "[Org] Grant Smith, Oak St, October rent: $650 paid in full. Reply YES." YES records it.
+- "Grant paid 300" → partial; the reply includes the remaining balance.
+- **Asks instead of guessing** when:
+  - two residents match
+  - no one matches
+  - it's within the first 5 or last 3 days of a month and no month was said
+    ("Is this for October or November?")
+- **The amount doesn't match**: an amount above what's owed is refused with what's owed.
+- "Who owes rent?" / "Who hasn't paid at Oak St?" → a list of unpaid and partial
+  residents with balances. No YES needed.
+- The AI only extracts (payment or question, name, amount, month, home). Matching,
+  amounts and recording are code.
+
 ## Build order
 1. Organization profile + Team page
 2. Inbound texting plus AI conversation, filing reports (Virtual Phone)

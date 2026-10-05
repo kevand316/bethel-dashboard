@@ -16,6 +16,10 @@ import { type Draft, parseAnnouncement, runTurn } from "../_shared/ai.ts";
 import { describeRecipients, recentAnnouncementFor, relayReply, resolveAudience, sendAnnouncement } from "../_shared/announce.ts";
 import { notifyReport } from "../_shared/notify.ts";
 import { applyRosterChange, decideRoster } from "../_shared/roster.ts";
+import {
+  balance, chargesFor, localYmd, matchResident, money, monthKey, monthName, recordPayment, type RentAsk,
+  shiftMonth, syncCurrentMonth,
+} from "../_shared/rent.ts";
 
 const WEBHOOK_URL = Deno.env.get("SMS_WEBHOOK_URL")!; // the exact URL Twilio calls
 const DRAFT_TTL_MS = 2 * 60 * 60 * 1000;
@@ -35,7 +39,9 @@ type Conversation = {
   history: { from: "staff" | "assistant"; text: string }[];
   // A report draft, or a pending announcement waiting for YES.
   draft: (Draft & { ready?: boolean; kind?: undefined }) |
-    { kind: "announcement"; message: string; recipient_ids: string[]; ready: true } | null;
+    { kind: "announcement"; message: string; recipient_ids: string[]; ready: true } |
+    { kind: "rent"; charge_id: string; amount: number; month: string; resident: string; ready: true } |
+    { kind: "rent_month"; ask: RentAsk; options: string[]; ready: false } | null;
   photos: { path: string; type: string }[];
   status: string; updated_at: string;
 };
@@ -182,7 +188,7 @@ async function handle(p: Record<string, string>) {
       await deleteMedia(url);
     }
 
-    const { data: role } = await admin.from("team_roles").select("name, can_announce, can_approve_roster").eq("id", member.role_id).eq("user_id", userId).maybeSingle();
+    const { data: role } = await admin.from("team_roles").select("name, can_announce, can_approve_roster, can_log_rent").eq("id", member.role_id).eq("user_id", userId).maybeSingle();
     const save = (fields: Record<string, unknown>) => admin.from("sms_conversations")
       .update({ ...fields, updated_at: new Date().toISOString() }).eq("id", conv!.id).eq("user_id", userId);
 
@@ -200,6 +206,38 @@ async function handle(p: Record<string, string>) {
         : { ok: false, message: `No roster change with code ${decision[2]}.` };
       await sendSms(admin, userId, phone, res.ok ? `Done ✓ ${res.message}` : res.message);
       return finish("processed", userId);
+    }
+
+    // ── Rent: a payment waiting for YES, or "which month?" waiting for an answer ──
+    const rentCtx = () => ({ userId, phone, member, org, canLog: role?.can_log_rent === true, save, finish });
+    if (conv.draft?.kind === "rent") {
+      const d = conv.draft;
+      if (YES.has(kw)) {
+        await recordPayment(admin, userId, d.charge_id, d.amount, member.name);
+        const [c] = (await chargesFor(admin, userId, d.month, null)).filter((x) => x.id === d.charge_id);
+        await save({ status: "filed" });
+        await sendSms(admin, userId, phone,
+          `Recorded ✓ ${d.resident}, ${monthName(d.month)}: ${money(d.amount)}. Balance ${money(c ? balance(c) : 0)}.`);
+        return finish("processed", userId);
+      }
+      if (NO.has(kw)) {
+        await save({ status: "cancelled" });
+        await sendSms(admin, userId, phone, "Not recorded.");
+        return finish("processed", userId);
+      }
+      await save({ status: "cancelled" });
+      conv = (await admin.from("sms_conversations").insert({ user_id: userId, phone, member_id: member.id }).select("*").single()).data as Conversation;
+    } else if (conv.draft?.kind === "rent_month") {
+      const d = conv.draft;
+      const pick = /^\d$/.test(kw) ? d.options[Number(kw) - 1]
+        : d.options.find((m) => body.toLowerCase().includes(monthName(m).toLowerCase()));
+      if (pick) {
+        await save({ status: "cancelled" });
+        conv = (await admin.from("sms_conversations").insert({ user_id: userId, phone, member_id: member.id }).select("*").single()).data as Conversation;
+        return handleRent({ ...d.ask, month: pick.slice(0, 7) }, { ...rentCtx(), conv });
+      }
+      await save({ status: "cancelled" });
+      conv = (await admin.from("sms_conversations").insert({ user_id: userId, phone, member_id: member.id }).select("*").single()).data as Conversation;
     }
 
     // ── Announcements ──────────────────────────────────────────────────────────
@@ -299,6 +337,8 @@ async function handle(p: Record<string, string>) {
       return finish("failed", userId, String(e));
     }
 
+    if (turn.rent) return handleRent(turn.rent, { ...rentCtx(), conv });
+
     // A reply to an announcement goes back to whoever sent it.
     if (turn.announcement_reply && ann) {
       await relayReply(admin, userId, ann, { name: member.name }, body);
@@ -328,6 +368,74 @@ async function handle(p: Record<string, string>) {
     console.error("[sms-inbound] error:", e);
     await finish("failed", null, String(e));
   }
+}
+
+type RentCtx = {
+  userId: string; phone: string; member: Member; org: { name: string; timezone: string }; canLog: boolean;
+  conv: Conversation;
+  finish: (status: string, userId?: string | null, error?: string | null) => unknown;
+};
+
+// Rent by text: confirm a payment (recorded on YES) or answer "who owes".
+async function handleRent(ask: RentAsk, ctx: RentCtx) {
+  const { userId, phone, org, conv } = ctx;
+  const setDraft = (draft: unknown) => admin.from("sms_conversations")
+    .update({ draft, updated_at: new Date().toISOString() }).eq("id", conv.id).eq("user_id", userId);
+  if (!ctx.canLog) {
+    await sendSms(admin, userId, phone, "Your role can't log rent. Ask the owner to turn on Log rent for your role.");
+    return ctx.finish("processed", userId);
+  }
+  const today = localYmd(org.timezone);
+  const current = monthKey(today.y, today.m);
+  let month = ask.month && /^\d{4}-\d{2}$/.test(ask.month) ? `${ask.month}-01` : null;
+
+  // Near a month boundary, a payment with no month named is ambiguous: ask.
+  if (!month && ask.kind === "payment") {
+    const lastDay = new Date(Date.UTC(today.y, today.m, 0)).getUTCDate();
+    const options = today.d <= 5 ? [shiftMonth(current, -1), current] : today.d > lastDay - 3 ? [current, shiftMonth(current, 1)] : null;
+    if (options) {
+      await setDraft({ kind: "rent_month", ask, options, ready: false });
+      await sendSms(admin, userId, phone, `Is this for ${options.map((m, i) => `${i + 1}) ${monthName(m)}`).join(" or ")} rent? Reply 1 or 2.`);
+      return ctx.finish("processed", userId);
+    }
+  }
+  month = month || current;
+  if (month === current) await syncCurrentMonth(admin, userId, month);
+  const charges = await chargesFor(admin, userId, month, ask.home_id);
+
+  if (ask.kind === "question") {
+    const owed = charges.filter((c) => balance(c) > 0);
+    const total = owed.reduce((s, c) => s + balance(c), 0);
+    await sendSms(admin, userId, phone, owed.length
+      ? `[${org.name}] ${monthName(month)} rent still owed: ${owed.map((c) => `${c.resident_name} ${money(balance(c))}`).join(", ")}. Total ${money(total)}.`
+      : charges.length ? `[${org.name}] Everyone's paid for ${monthName(month)} ✓` : `No rent list for ${monthName(month)} yet.`);
+    return ctx.finish("processed", userId);
+  }
+
+  const matches = ask.resident_name ? matchResident(charges, ask.resident_name) : [];
+  if (!matches.length) {
+    await sendSms(admin, userId, phone, `I couldn't find ${ask.resident_name || "that resident"} on the ${monthName(month)} rent list. Check the name and try again.`);
+    return ctx.finish("processed", userId);
+  }
+  if (matches.length > 1) {
+    await sendSms(admin, userId, phone, `Which one? ${matches.map((c) => `${c.resident_name} (${c.home_name})`).join(", ")}. Text the full name, e.g. "${matches[0].resident_name} paid".`);
+    return ctx.finish("processed", userId);
+  }
+  const c = matches[0];
+  const owed = balance(c);
+  if (owed <= 0) {
+    await sendSms(admin, userId, phone, `${c.resident_name} is already paid in full for ${monthName(month)} ✓`);
+    return ctx.finish("processed", userId);
+  }
+  const amount = ask.amount != null && ask.amount > 0 ? Math.round(ask.amount * 100) / 100 : owed;
+  if (amount > owed) {
+    await sendSms(admin, userId, phone, `${c.resident_name} only owes ${money(owed)} for ${monthName(month)}. Text the amount actually paid.`);
+    return ctx.finish("processed", userId);
+  }
+  await setDraft({ kind: "rent", charge_id: c.id, amount, month, resident: c.resident_name, ready: true });
+  const what = amount >= owed ? `${money(amount)} paid in full` : `${money(amount)} paid; ${money(owed - amount)} still owed after this`;
+  await sendSms(admin, userId, phone, `[${org.name}] ${c.resident_name}, ${c.home_name}, ${monthName(month)} rent: ${what}. Reply YES to record it.`);
+  return ctx.finish("processed", userId);
 }
 
 // A filed move-in/out either changes the roster now (sender may approve) or waits
