@@ -352,7 +352,10 @@ webhooks to the deployed function and checks:
 - a clear report gets filed in the right bucket
 - an account can't receive another account's texts
 
-## Step 3 detailed spec: Reports tab + Profit Calculator saves (status: in progress)
+## Step 3 detailed spec: Reports tab + Profit Calculator saves (status: DONE, live 2026-10-05)
+
+Note: "projection" here always means a Profit Calculator result saved to Reports, named by the
+potential home's address. Unrelated to the Overview page's Property Projections table.
 
 - The old "Reports" tab (saved snapshots) is renamed **Snapshots**. The new **Reports**
   tab sits before it.

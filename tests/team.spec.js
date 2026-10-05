@@ -84,7 +84,7 @@ test.describe("@team team page", () => {
     const org = `Playwright Org ${Date.now() % 100000}`;
     await page.fill("#orgNameInput", org);
     await page.click("#orgNameSave");
-    await expect(page.locator("#orgNameStatus")).toHaveText(/saved/i, { timeout: 10000 });
+    await expect(page.locator("#orgNameStatus")).toHaveText(/Saved ✓/, { timeout: 10000 });
     await expect(page.locator("#brandSub")).toHaveText(org);
 
     await page.reload();
@@ -122,7 +122,7 @@ test.describe("@team team page", () => {
     await openTeam(page);
     await page.fill("#orgNameInput", "Invite Test Org");
     await page.click("#orgNameSave");
-    await expect(page.locator("#orgNameStatus")).toHaveText(/saved/i, { timeout: 10000 });
+    await expect(page.locator("#orgNameStatus")).toHaveText(/Saved ✓/, { timeout: 10000 });
     await addPerson(page, "Invitee", "(213) 555-0146");
     const card = page.locator(".tm-card", { hasText: "Invitee" });
     await expect(card.locator(".tm-invite-msg")).toContainText(/invite text sent/i, { timeout: 20000 });

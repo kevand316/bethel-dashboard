@@ -20,7 +20,7 @@ async function userId(email) {
 }
 
 async function seed(uid, rows) {
-  const { data, error } = await admin.from("reports").insert(rows.map((r) => ({ user_id: uid, source: "text", ...r }))).select("*");
+  const { data, error } = await admin.from("reports").insert(rows.map((r) => ({ user_id: uid, source: "text", subtype: null, urgent: false, details: {}, ...r }))).select("*");
   if (error) throw error;
   return data;
 }
@@ -95,7 +95,7 @@ test.describe("@reports reports tab", () => {
     await detail.locator(".rp-edit").click();
     await page.fill("#rpEditTitle", "Fridge replaced");
     await page.click("#rpEditSave");
-    await expect(page.locator("#rpEditStatus")).toHaveText(/saved/i, { timeout: 10000 });
+    await expect(page.locator("#rpEditStatus")).toHaveText(/Saved ✓/, { timeout: 10000 });
     await page.reload();
     await openReports(page);
     await expect(page.locator(".rp-card", { hasText: "Fridge replaced" })).toBeVisible({ timeout: 10000 });
@@ -154,7 +154,7 @@ test.describe("@reports reports tab", () => {
     await page.click("#qcSaveReportBtn");
     await page.fill("#qcSaveAddress", "1420 Elm St");
     await page.click("#qcSaveConfirm");
-    await expect(page.locator("#qcSaveStatus")).toHaveText(/saved/i, { timeout: 10000 });
+    await expect(page.locator("#qcSaveStatus")).toHaveText(/Saved ✓/, { timeout: 10000 });
 
     // Same address again: offered Replace / Keep both. Replace leaves one.
     await page.fill("#qc-beds", "12");
@@ -162,7 +162,7 @@ test.describe("@reports reports tab", () => {
     await page.fill("#qcSaveAddress", "1420 Elm St");
     await page.click("#qcSaveConfirm");
     await page.click("#qcSaveReplace");
-    await expect(page.locator("#qcSaveStatus")).toHaveText(/saved/i, { timeout: 10000 });
+    await expect(page.locator("#qcSaveStatus")).toHaveText(/Saved ✓/, { timeout: 10000 });
     const { data } = await admin.from("reports").select("bucket, source, title, details").eq("user_id", A).eq("bucket", "projections");
     expect(data).toHaveLength(1);
     expect(data[0]).toMatchObject({ source: "calculator", title: "1420 Elm St" });
