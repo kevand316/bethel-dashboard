@@ -19,7 +19,7 @@ import { newToken, sha256 } from "../_shared/google.ts";
 import { applyRosterChange, decideRoster } from "../_shared/roster.ts";
 import {
   balance, chargesFor, localYmd, matchResident, money, monthKey, monthName, recordPayment, type RentAsk,
-  shiftMonth, syncCurrentMonth,
+  syncCurrentMonth,
 } from "../_shared/rent.ts";
 
 const WEBHOOK_URL = Deno.env.get("SMS_WEBHOOK_URL")!; // the exact URL Twilio calls
@@ -41,8 +41,7 @@ type Conversation = {
   // A report draft, or a pending announcement waiting for YES.
   draft: (Draft & { ready?: boolean; kind?: undefined }) |
     { kind: "announcement"; message: string; recipient_ids: string[]; ready: true } |
-    { kind: "rent"; charge_id: string; amount: number; month: string; resident: string; ready: true } |
-    { kind: "rent_month"; ask: RentAsk; options: string[]; ready: false } | null;
+    { kind: "rent"; charge_id: string; amount: number; month: string; resident: string; ready: true } | null;
   photos: { path: string; type: string }[];
   status: string; updated_at: string;
 };
@@ -280,7 +279,7 @@ async function handle(p: Record<string, string>) {
       return finish("processed", userId);
     }
 
-    // ── Rent: a payment waiting for YES, or "which month?" waiting for an answer ──
+    // ── Rent: a payment waiting for YES ─────────────────────────────────────────
     const rentCtx = () => ({ userId, phone, member, org, canLog: role?.can_log_rent === true, save, finish });
     if (conv.draft?.kind === "rent") {
       const d = conv.draft;
@@ -296,17 +295,6 @@ async function handle(p: Record<string, string>) {
         await save({ status: "cancelled" });
         await sendSms(admin, userId, phone, "Not recorded.");
         return finish("processed", userId);
-      }
-      await save({ status: "cancelled" });
-      conv = (await admin.from("sms_conversations").insert({ user_id: userId, phone, member_id: member.id }).select("*").single()).data as Conversation;
-    } else if (conv.draft?.kind === "rent_month") {
-      const d = conv.draft;
-      const pick = /^\d$/.test(kw) ? d.options[Number(kw) - 1]
-        : d.options.find((m) => body.toLowerCase().includes(monthName(m).toLowerCase()));
-      if (pick) {
-        await save({ status: "cancelled" });
-        conv = (await admin.from("sms_conversations").insert({ user_id: userId, phone, member_id: member.id }).select("*").single()).data as Conversation;
-        return handleRent({ ...d.ask, month: pick.slice(0, 7) }, { ...rentCtx(), conv });
       }
       await save({ status: "cancelled" });
       conv = (await admin.from("sms_conversations").insert({ user_id: userId, phone, member_id: member.id }).select("*").single()).data as Conversation;
@@ -461,16 +449,8 @@ async function handleRent(ask: RentAsk, ctx: RentCtx) {
   const current = monthKey(today.y, today.m);
   let month = ask.month && /^\d{4}-\d{2}$/.test(ask.month) ? `${ask.month}-01` : null;
 
-  // Near a month boundary, a payment with no month named is ambiguous: ask.
-  if (!month && ask.kind === "payment") {
-    const lastDay = new Date(Date.UTC(today.y, today.m, 0)).getUTCDate();
-    const options = today.d <= 5 ? [shiftMonth(current, -1), current] : today.d > lastDay - 3 ? [current, shiftMonth(current, 1)] : null;
-    if (options) {
-      await setDraft({ kind: "rent_month", ask, options, ready: false });
-      await sendSms(admin, userId, phone, `Is this for ${options.map((m, i) => `${i + 1}) ${monthName(m)}`).join(" or ")} rent? Reply 1 or 2.`);
-      return ctx.finish("processed", userId);
-    }
-  }
+  // No month named means this month: once the 1st arrives, that's the month being
+  // collected. Older months are fixed on the Rent tab, not by text.
   month = month || current;
   if (month === current) await syncCurrentMonth(admin, userId, month);
   const charges = await chargesFor(admin, userId, month, ask.home_id);

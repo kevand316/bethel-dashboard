@@ -486,11 +486,9 @@ draft: move-in or move-out, the resident's name, the bed price (move-ins), and t
 - "Grant paid his rent" → finds Grant on this month's checklist and confirms:
   "[Org] Grant Smith, Oak St, October rent: $650 paid in full. Reply YES." YES records it.
 - "Grant paid 300" → partial; the reply includes the remaining balance.
-- **Asks instead of guessing** when:
-  - two residents match
-  - no one matches
-  - it's within the first 5 or last 3 days of a month and no month was said
-    ("Is this for October or November?")
+- **Asks instead of guessing** when two residents match or no one matches.
+- **No month named = the current month**, always (Kev, 2026-10-05: from the 1st, that's the
+  month being collected; earlier months are fixed on the Rent tab). No "which month?" question.
 - **The amount doesn't match**: an amount above what's owed is refused with what's owed.
 - "Who owes rent?" / "Who hasn't paid at Oak St?" → a list of unpaid and partial
   residents with balances. No YES needed.

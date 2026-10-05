@@ -262,6 +262,12 @@ test.describe("@rent rent tracker", () => {
       await expect(row(page, "Joe Park").locator(".rt-status")).toHaveText(/unpaid/i);
     });
 
+    test("no month named means this month, with no 'which month?' question", async ({ request }) => {
+      const r = await text(request, P.manager, "Grant paid his rent");
+      expect(r).toMatch(new RegExp(`Grant Smith, Test House, ${MONTH_NAME} rent: \\$700 paid in full\\. Reply YES`));
+      expect(r).not.toMatch(/Is this for/);
+    });
+
     test("a partial payment reports the remaining balance", async ({ request }) => {
       let r = await text(request, P.manager, `Marcus paid 1000 toward ${MONTH_NAME} rent`);
       expect(r).toMatch(/\$1,000/);
