@@ -258,6 +258,36 @@ without one while still saving to the account owner's Drive folder.
 projections bucket, with inputs/results in a jsonb column), and the Storage bucket `report-photos`. All tables carry `user_id` with RLS.
 Edge functions use the service_role key from Supabase secrets, never from the repo.
 
+## Step 1 detailed spec: Organization profile + Team page (status: DONE, live 2026-10-05)
+
+Done so far:
+- [x] Migration `003_org_profile_and_team.sql` applied 2026-10-05: `org_profiles`,
+      `team_roles`, `team_members`, RLS on all three, cross-account references blocked,
+      dashboard can never set a person "active".
+- [x] Failing tests committed: `tests/team.spec.js` (8 tests).
+- [x] `lib/team.js` wired in; Team tab live; 8/8 team tests + full suite green
+      (only the untracked, pre-existing `tests/contrast.spec.js` failures remain).
+
+What the operator will see:
+- Header reads **HOUSEBOSS** with the organization name underneath ("Operations Dashboard"
+  until a name is set). Browser tab title follows. Print headers use the org name.
+- New **Team** tab, four sections, top to bottom:
+  1. **Organization**: name field + Save. Shows "Saved ✓" only after Supabase confirms.
+  2. **Add a person**: name, phone (any format; stored +1XXXXXXXXXX), role, homes
+     ("All homes" or pick specific ones), reports to. Bad phone or a duplicate number on
+     the same team is refused with a plain-English message.
+  3. **Team**: one card per person: name, phone, status, role, homes, reports to, with
+     Edit and Remove (Remove asks "Yes, remove / Keep" first).
+     Status is **Pending: waiting for their YES** until texting is live (step 2).
+  4. **Roles**: Owner, Operations Manager, House Manager created automatically. Each has
+     on/off switches: file reports, approve move-ins/outs, log rent, send announcements,
+     request intake links. Add custom roles; remove a role only if no one has it.
+- Works at 375px phone width with no sideways scrolling.
+
+Not in step 1: sending invite texts (step 2), login.html rebrand (with the domain move).
+
+Done when: all 8 team tests pass, the full suite passes, Kev has seen it, then push.
+
 ## Build order
 1. Organization profile + Team page
 2. Inbound texting plus AI conversation, filing reports (Virtual Phone)

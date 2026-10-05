@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bethel Residency — Operations Dashboard</title>
+<title>HouseBoss</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -14,6 +14,7 @@
 <script src="lib/intake-form.js"></script>
 <script src="lib/intake-autosave.js"></script>
 <script src="lib/intake.js"></script>
+<script src="lib/team.js"></script>
 <style>
 :root {
   --bg: #0a0e14;
@@ -807,6 +808,38 @@ body::before {
 }
 
 .btn-red:hover { background: rgba(231,76,60,0.1); }
+
+/* TEAM TAB (lib/team.js) */
+.tm-panel { background: var(--bg2); border: 1px solid var(--border); padding: 1rem; margin-bottom: 1rem; }
+.tm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 1rem; }
+.tm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+.tm-btn { flex: 0 0 auto; min-height: 44px; }
+.tm-msg { font-family: var(--mono); font-size: 0.75rem; color: var(--gold); }
+.tm-error { font-family: var(--mono); font-size: 0.8rem; color: #ff8a7a; margin-top: 0.5rem; }
+.tm-error:empty { display: none; }
+.tm-note, .tm-empty { font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim); margin-top: 0.75rem; }
+.tm-empty { padding: 1rem; border: 1px dashed var(--border); margin: 0 0 1rem; }
+.tm-select, .tm-input {
+  font-family: var(--mono); font-size: 0.8rem; color: var(--text); background: var(--bg3);
+  border: 1px solid var(--border); padding: 0.5rem 0.75rem; width: 100%; min-height: 40px; outline: none;
+}
+.tm-input { flex: 1 1 200px; width: auto; }
+.tm-select:focus, .tm-input:focus { border-color: var(--gold); }
+.tm-check { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text); padding: 0.3rem 0; cursor: pointer; }
+.tm-check input { width: 18px; height: 18px; accent-color: var(--gold); }
+.tm-homes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 1rem; margin-top: 0.25rem; }
+.tm-card, .tm-role { background: var(--bg2); border: 1px solid var(--border); padding: 1rem; margin-bottom: 0.75rem; }
+.tm-card-top, .tm-role-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; flex-wrap: wrap; }
+.tm-name { font-family: var(--display); font-size: 1.15rem; letter-spacing: 2px; color: var(--text); }
+.tm-phone { font-family: var(--mono); font-size: 0.8rem; color: var(--gold); margin-top: 2px; }
+.tm-status { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.25rem 0.5rem; border: 1px solid var(--border); color: var(--text); }
+.tm-status-active { border-color: var(--green); color: var(--green); }
+.tm-status-pending { border-color: var(--gold); color: var(--gold); }
+.tm-meta { display: flex; flex-wrap: wrap; gap: 0.35rem 1.25rem; margin-top: 0.75rem; font-size: 0.85rem; color: var(--text); }
+.tm-meta b { font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); font-weight: 600; margin-right: 0.35rem; }
+.tm-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+.tm-actions .btn, .tm-role-delete { flex: 0 0 auto; min-height: 40px; }
+.tm-perms { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0 1rem; margin-top: 0.5rem; }
 
 /* OCCUPANCY BAR */
 .occ-bar-wrap {
@@ -1803,10 +1836,10 @@ body::before {
 
 <div class="header">
   <div class="header-brand">
-    <div class="brand-mark">BR</div>
+    <div class="brand-mark">HB</div>
     <div class="brand-text">
-      <h1>BETHEL RESIDENCY</h1>
-      <p>Operations Dashboard</p>
+      <h1>HOUSEBOSS</h1>
+      <p id="brandSub">Operations Dashboard</p>
     </div>
   </div>
   <div class="header-right">
@@ -1824,6 +1857,7 @@ body::before {
   <button class="tab" onclick="switchTab('quickcalc', event)">Profit Calculator</button>
   <button class="tab" onclick="switchTab('intake', event)">Intake</button>
   <button class="tab" onclick="switchTab('reports', event)">Reports</button>
+  <button class="tab" onclick="switchTab('team', event)">Team</button>
   <button class="no-print" onclick="printOverview()" style="margin-left:auto;font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⬇ Save PDF</button>
   <button class="no-print" onclick="saveSnapshot()" style="font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:var(--gold);border:1px solid var(--gold);color:var(--bg);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#d4a012'" onmouseout="this.style.background='var(--gold)'">📸 Save Snapshot</button>
 </div>
@@ -2002,6 +2036,63 @@ body::before {
   </div>
 
 
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- TEAM VIEW: lib/team.js. Organization name, people, roles. -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="view" id="view-team">
+
+    <div class="section-title">Organization</div>
+    <div class="tm-panel">
+      <div class="qc-field">
+        <label for="orgNameInput">Organization name (shows under HouseBoss and in every text)</label>
+        <input type="text" id="orgNameInput" maxlength="80" placeholder="e.g. Bethel Residency" autocomplete="organization">
+      </div>
+      <div class="tm-row">
+        <button class="btn btn-gold tm-btn" id="orgNameSave" type="button">Save name</button>
+        <span class="tm-msg" id="orgNameStatus" aria-live="polite"></span>
+      </div>
+    </div>
+
+    <div class="section-title" id="tmFormTitle">Add a person</div>
+    <div class="tm-panel">
+      <div class="tm-grid">
+        <div class="qc-field"><label for="tmName">Name</label>
+          <input type="text" id="tmName" maxlength="80" autocomplete="off"></div>
+        <div class="qc-field"><label for="tmPhone">Mobile phone</label>
+          <input type="tel" id="tmPhone" placeholder="(555) 201-3344" autocomplete="off"></div>
+        <div class="qc-field"><label for="tmRole">Role</label>
+          <select id="tmRole" class="tm-select"></select></div>
+        <div class="qc-field"><label for="tmReportsTo">Reports to</label>
+          <select id="tmReportsTo" class="tm-select"><option value="">No one</option></select></div>
+      </div>
+      <div class="qc-field">
+        <label>Homes</label>
+        <label class="tm-check"><input type="checkbox" id="tmAllHomes" checked> All homes</label>
+        <div class="tm-homes" id="tmHomes" hidden></div>
+      </div>
+      <div class="tm-row">
+        <button class="btn btn-gold tm-btn" id="tmAdd" type="button">Add person</button>
+        <button class="btn btn-ghost tm-btn" id="tmCancel" type="button" hidden>Cancel</button>
+      </div>
+      <div class="tm-error" id="tmError" aria-live="polite"></div>
+      <div class="tm-note">They'll get a text asking them to reply YES. Until they do, they can't text in.</div>
+    </div>
+
+    <div class="section-title">Team</div>
+    <div id="teamList"></div>
+
+    <div class="section-title">Roles</div>
+    <div id="roleList"></div>
+    <div class="tm-panel">
+      <div class="tm-row">
+        <input type="text" id="roleNewName" class="tm-input" maxlength="60" placeholder="New role, e.g. Maintenance">
+        <button class="btn btn-ghost tm-btn" id="roleAdd" type="button">Add role</button>
+      </div>
+      <div class="tm-msg" id="roleMsg" aria-live="polite"></div>
+    </div>
+
+  </div>
 
   <!-- ═══════════════════════════════════════ -->
   <!-- QUICK CALC VIEW -->
@@ -2754,6 +2845,9 @@ window.addEventListener('pagehide', () => {
 });
 
 let homes = JSON.parse(JSON.stringify(DEFAULT_HOMES));
+// lib/team.js reads the home list for its pickers. `homes` is reassigned on load,
+// so expose a live getter rather than a copy.
+Object.defineProperty(window, 'homes', { get: () => homes, configurable: true });
 let currentHome = 0;
 let editingBed = null;
 
@@ -2779,6 +2873,8 @@ async function initData() {
   // and deliberately not awaited, so a slow or unreachable Google can never hold
   // the rest of the dashboard hostage.
   window.intake.init(session).catch((e) => console.warn('[intake] init failed:', e));
+  // Organization name for the header; also not awaited, same reason.
+  window.team.init(session).catch((e) => console.warn('[team] init failed:', e));
 
   // The indicator was blank for the whole load, so a slow network and a hung
   // load looked identical — to the operator and to anyone debugging. The save
@@ -3659,7 +3755,7 @@ $('pushModal').addEventListener('click', e => { if (e.target === $('pushModal'))
 // ═══════════════════════════════════════════════════════
 function printOverview() {
   const ts = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-  $('printTimestamp').textContent = `Bethel Residency · Overview Report · ${ts}`;
+  $('printTimestamp').textContent = `${window.orgName || 'HouseBoss'} · Overview Report · ${ts}`;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('print-active'));
   $('view-occupancy').classList.add('print-active');
   // Give browser a tick to apply styles before printing
@@ -3883,6 +3979,7 @@ function switchTab(name, event) {
   if (name === 'ops') renderCF();
   if (name === 'quickcalc') renderQuickCalc();
   if (name === 'reports') renderReports();
+  if (name === 'team') window.team.open();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -4087,7 +4184,7 @@ function renderQuickCalcRange(beds, occ, expenses, baseRate) {
 // as printOverview(). Nothing is stored; the operator keeps the file.
 function printQuickCalc() {
   const ts = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-  $('qcPrintTimestamp').textContent = `Bethel Residency · Profit Projection · ${ts}`;
+  $('qcPrintTimestamp').textContent = `${window.orgName || 'HouseBoss'} · Profit Projection · ${ts}`;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('print-active'));
   $('view-quickcalc').classList.add('print-active');
   setTimeout(() => {
