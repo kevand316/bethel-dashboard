@@ -15,6 +15,7 @@ import { deleteMedia, fetchMedia, sendSms, validSignature } from "../_shared/twi
 import { type Draft, parseAnnouncement, runTurn } from "../_shared/ai.ts";
 import { describeRecipients, recentAnnouncementFor, relayReply, resolveAudience, sendAnnouncement } from "../_shared/announce.ts";
 import { notifyReport } from "../_shared/notify.ts";
+import { newToken, sha256 } from "../_shared/google.ts";
 import { applyRosterChange, decideRoster } from "../_shared/roster.ts";
 import {
   balance, chargesFor, localYmd, matchResident, money, monthKey, monthName, recordPayment, type RentAsk,
@@ -256,6 +257,22 @@ async function handle(p: Record<string, string>) {
     if (/^\s*intake\b/i.test(body)) {
       if (!role?.can_request_intake) {
         await sendSms(admin, userId, phone, "Your role can't request intake links. Ask the owner to turn on Request intake links for your role.");
+        return finish("processed", userId);
+      }
+      // Allowed texted intakes (Google connected): a one-time, 24-hour link that saves
+      // straight to the owner's Drive. Only a hash of the token is stored.
+      const { data: conn } = await admin.from("google_connections").select("user_id").eq("user_id", userId).maybeSingle();
+      if (conn) {
+        const token = newToken();
+        const named = body.match(/^\s*intake\s+(?:for\s+)?([A-Za-z][A-Za-z'.-]*(?:\s+[A-Za-z][A-Za-z'.-]*){0,2}?)(?:\s+(?:at|@|in)\s+.*)?\s*$/i);
+        const parts = named ? named[1].trim().split(/\s+/) : [];
+        await admin.from("intake_links").insert({
+          token_hash: await sha256(token), user_id: userId, member_id: member.id, member_name: member.name,
+          prefill: parts.length ? { firstName: parts[0], lastName: parts.slice(1).join(" ") } : {},
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        });
+        await sendSms(admin, userId, phone,
+          `[${org.name}] Intake form (works for 24 hours, one intake): ${Deno.env.get("DASHBOARD_URL") || "https://dashboard.bethelresidency.com"}/intake-link.html#${token}`);
         return finish("processed", userId);
       }
       const { data: prof } = await admin.from("org_profiles").select("intake_url").eq("user_id", userId).maybeSingle();

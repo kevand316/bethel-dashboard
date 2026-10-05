@@ -505,16 +505,32 @@ draft: move-in or move-out, the resident's name, the bed price (move-ins), and t
   "[Org] Intake form: <link>". Without permission: refused. No link set: told to ask the owner.
 - Only the link is ever texted; no intake answers pass through texting or the AI.
 
-**Full version: blocked on Kev (morning list).** A one-time, expiring link that opens the
-intake form without a login and saves straight to the account owner's Google Drive.
-Proposed design that keeps SSNs off our servers:
-- The browser uploads directly to Google.
-- Our server only hands that page a short-lived Drive token (`drive.file` scope), minted
-  from the owner's stored Google refresh token.
+**Full version: approved by Kev 2026-10-05. Status: DONE, live 2026-10-05 (first real use needs Kev to click "Allow texted intakes" once).**
 
-Needs from Kev:
-1. a Google Cloud OAuth **client secret** with offline access (only Kev can create it)
-2. his OK on this design
+How it works:
+1. **One-time setup on the Intake tab:** the owner clicks **Allow texted intakes** and
+   approves Google once (same Google client and `drive.file` scope as the Intake tab, now
+   with offline access). The server keeps that Google refresh token (`google_connections`,
+   server-only). **Turn off** deletes it and revokes it at Google.
+2. **Staff text "intake"** (optionally "intake for Marcus Lee"), and their role must
+   allow "Request intake links".
+   - They get "[Org] Intake form (works for 24 hours, one intake):
+     https://dashboard.bethelresidency.com/intake-link.html#<token>".
+   - The token sits after `#`, so it never reaches any server log.
+   - Only a hash of the token is stored (`intake_links`).
+3. **The link opens the same intake form on the phone**, with no login.
+   - The page asks Edge Function `intake-link` to swap the token for a **short-lived
+     Google Drive token** (1 hour, `drive.file`), minted from the owner's refresh token.
+   - **The page then saves straight to the owner's "Bethel Intake Forms" Drive folder**,
+     using the same files, autosave and conflict checks as the Intake tab.
+   - **SSNs and answers go phone → Google only.** They never touch Supabase, Twilio or
+     the AI.
+   - If the hour runs out mid-form, the page quietly fetches a fresh token while the
+     link is still valid.
+4. **Submit** marks the link used. A used or expired link shows "This link has expired,
+   text 'intake' for a new one."
+5. **Fallbacks:** if texted intakes aren't allowed yet, the pasted intake link (interim)
+   is used if one is set; otherwise staff are told to ask the owner.
 
 ## Step 7 detailed spec: Join codes (status: DONE, live 2026-10-05)
 

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>Intake form · HouseBoss</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  Texted intake link (plans/sms-reports.md, step 6b). No dashboard login: the
+  one-time token after # is swapped (Edge Function intake-link) for a short-lived
+  Google Drive token, and the form saves straight to the owner's Drive with the
+  same code as the Intake tab. Intake answers never go to Supabase, Twilio or AI.
+-->
+<style>
+:root {
+  --bg: #0b1220; --bg2: #121b2e; --bg3: #1a2438; --border: #1e2d45; --gold: #c9a84c;
+  --text: #e8edf5; --text-mid: #e8edf5; --text-dim: #e8edf5; --green: #2ecc71; --red: #e74c3c;
+  --mono: 'IBM Plex Mono', monospace; --sans: 'IBM Plex Sans', sans-serif; --display: 'Bebas Neue', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
+.il-top { position: sticky; top: 0; z-index: 10; background: var(--bg); border-bottom: 1px solid var(--border);
+  padding: calc(env(safe-area-inset-top, 0px) + 0.75rem) 1rem 0.75rem; }
+.il-brand { font-family: var(--display); font-size: 1.2rem; letter-spacing: 3px; }
+.il-org { font-family: var(--mono); font-size: 0.7rem; color: var(--gold); letter-spacing: 0.12em; text-transform: uppercase; }
+.il-status { font-family: var(--mono); font-size: 0.72rem; margin-top: 0.35rem; }
+.il-main { max-width: 860px; margin: 0 auto; padding: 1rem; }
+.il-msg { background: var(--bg2); border: 1px solid var(--border); padding: 1.25rem; margin: 1.5rem 0; line-height: 1.5; }
+.il-msg h1 { font-family: var(--display); font-size: 1.6rem; letter-spacing: 2px; margin-bottom: 0.5rem; }
+.il-progress { height: 6px; background: var(--bg3); margin: 0.5rem 0 1rem; }
+.il-progress div { height: 100%; background: var(--gold); width: 0; transition: width 0.2s; }
+.il-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1.25rem 0 calc(env(safe-area-inset-bottom, 0px) + 2rem); }
+.il-btn { font-family: var(--mono); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 0.85rem 1.25rem; min-height: 48px; border: 1px solid var(--gold); background: var(--gold); color: var(--bg); cursor: pointer; }
+.il-btn.ghost { background: transparent; color: var(--gold); }
+.il-missing { color: #ffcf6e; font-size: 0.9rem; margin-top: 0.75rem; }
+@media (max-width: 480px) { .intake-doc .if-section-body { grid-template-columns: 1fr; } }
+</style>
+<link rel="stylesheet" href="lib/intake.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="lib/supabase.js"></script>
+<script src="lib/drive.js"></script>
+<script src="lib/intake-form.js"></script>
+<script src="lib/intake-autosave.js"></script>
+</head>
+<body>
+<div class="il-top">
+  <div class="il-brand">HOUSEBOSS</div>
+  <div class="il-org" id="ilOrg">Intake form</div>
+  <div class="il-status intake-save-status" id="ilStatus" aria-live="polite"></div>
+</div>
+<div class="il-main">
+  <div class="il-msg" id="ilNotice">Opening the intake form...</div>
+  <div id="ilForm" hidden>
+    <div class="il-progress"><div id="ilProgress"></div></div>
+    <div class="intake-doc" id="ilFields"></div>
+    <div class="il-missing" id="ilMissing" hidden></div>
+    <div class="il-actions">
+      <button class="il-btn" id="ilSubmit" type="button">Submit intake</button>
+      <button class="il-btn ghost" id="ilSubmitAnyway" type="button" hidden>Submit anyway</button>
+    </div>
+  </div>
+</div>
+<script src="lib/intake-link.js"></script>
+</body>
+</html>
