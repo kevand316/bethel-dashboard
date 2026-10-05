@@ -429,6 +429,35 @@ it is a reply to it (Claude decides; a new report is still a report), the reply 
 forwarded to the announcer: "[Org] James replied: got it". It's also added to the
 announcement's replies, and James gets "Passed along to Dana ✓".
 
+## Step 5 detailed spec: Move-ins/outs update the roster (status: DONE, live 2026-10-05)
+
+**What the AI captures**: for Move-ins/outs it also fills a structured `roster` part of the
+draft: move-in or move-out, the resident's name, the bed price (move-ins), and the date.
+
+**Who can change the roster**: the sender's role switch **Approve move-ins/outs**.
+- If the sender has it: on YES the report is filed **and** the roster updates at once.
+  Reply: "Submitted ✓ … Roster updated: Marcus moved into Bed 4 at Oak St ($650)."
+- If not: the report is filed as **Pending approval**. Everyone whose role can approve
+  gets "[Org] James reports a move-in: Marcus, Oak St, $650. Reply APPROVE 4821 to
+  update the roster." The first approver to reply APPROVE 4821 (or REJECT 4821)
+  decides. The sender is told the outcome.
+- On the dashboard, a pending move-in/out report shows **Apply to roster** and
+  **Reject** buttons (Edge Function `roster-apply`, signed-in owner only).
+
+**How the roster changes** (server, `_shared/roster.ts`):
+- Move-in: the first vacant bed in that home (or the bed number if they said one)
+  becomes occupied with the name, the price (or the bed's existing price), and the
+  move-in date. A price of $3,000 or more becomes Recuperative Care, the same rule as
+  the dashboard.
+- Move-out: the occupied bed with that resident's name becomes vacant (name and
+  move-in date cleared; the bed keeps its price). No match, or two matches, means
+  nothing changes and the approver is told why.
+- **Safe with an open dashboard**: the write is a conditional update on `updated_at`
+  (the same check autosave uses), retried on a race. An open dashboard tab that later
+  saves sees the newer version and shows its existing "changed elsewhere, RELOAD"
+  banner instead of overwriting. Tested both ways.
+- The report records what was applied, by whom, and when.
+
 ## Build order
 1. Organization profile + Team page
 2. Inbound texting plus AI conversation, filing reports (Virtual Phone)

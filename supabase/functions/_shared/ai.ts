@@ -16,6 +16,11 @@ export type Draft = {
   title: string;
   summary: string;
   facts: { label: string; value: string }[];
+  // Filled only for move_ins_outs: what the roster change would be.
+  roster: {
+    action: "move_in" | "move_out"; resident_name: string; rate: number | null;
+    date: string | null; bed_number: number | null;
+  } | null;
 };
 
 export type Turn = { reply: string; ready: boolean; cancel: boolean; announcement_reply: boolean; draft: Draft | null };
@@ -48,6 +53,7 @@ Rules:
 - If they say cancel, never mind, or similar: cancel = true and reply that nothing was filed.
 - If the text is not a report (a question, a greeting), say briefly that you can file reports by text (incidents, maintenance, cleanings, move-ins/outs, inventory) and ask what they want to report. draft stays as it was.
 - If photos were sent, say they will be attached.
+- For move_ins_outs also fill roster: action (move_in or move_out), resident_name, rate (monthly bed price as a number, move-ins only, null if not said), date (YYYY-MM-DD, resolve "today" etc.), bed_number (only if they named a bed). For every other bucket roster is null.
 - title: under 80 characters, e.g. "Upstairs toilet leaking". summary: one or two sentences. facts: the key details as label/value pairs.
 - If a recent announcement is shown and the new text is a reply or acknowledgement to it ("got it", "will do", a question about it) rather than a new report, set announcement_reply = true, leave draft as it was, and reply briefly that it was passed along. Otherwise announcement_reply = false.`;
 
@@ -65,7 +71,7 @@ const SCHEMA = {
     draft: nullable({
       type: "object",
       additionalProperties: false,
-      required: ["bucket", "subtype", "urgent", "home_id", "title", "summary", "facts"],
+      required: ["bucket", "subtype", "urgent", "home_id", "title", "summary", "facts", "roster"],
       properties: {
         bucket: { type: "string", enum: [...BUCKETS] },
         subtype: nullable({ type: "string" }),
@@ -73,6 +79,18 @@ const SCHEMA = {
         home_id: nullable({ type: "integer" }),
         title: { type: "string" },
         summary: { type: "string" },
+        roster: nullable({
+          type: "object",
+          additionalProperties: false,
+          required: ["action", "resident_name", "rate", "date", "bed_number"],
+          properties: {
+            action: { type: "string", enum: ["move_in", "move_out"] },
+            resident_name: { type: "string" },
+            rate: nullable({ type: "number" }),
+            date: nullable({ type: "string" }),
+            bed_number: nullable({ type: "integer" }),
+          },
+        }),
         facts: {
           type: "array",
           items: {

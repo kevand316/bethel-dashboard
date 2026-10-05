@@ -156,12 +156,12 @@ attempts, `LOAD FAILED` if it genuinely cannot load.
 ## Known limitations / future work
 
 - **Test accounts in production**: `playwright-a` and `playwright-b` exist in the same Supabase project as real users. They use `.test` domain emails and RLS keeps them isolated, but they should be deleted before launch.
-- **Overwrite window after a page-hide flush**: `flush()` fires keepalive writes and clears
-  `_loadedAt`, so the next in-page save is an unconditional upsert. If another device writes in
-  that gap, its change is overwritten without a banner. Narrow — it needs the tab backgrounded
-  mid-edit *and* a second device writing in the same window — but real. Closing it properly needs
-  a device id or a last-writer column rather than timestamp guessing; see the reverted attempt
-  above for why the obvious fix does not work.
+- ~~**Overwrite window after a page-hide flush**~~ **Closed 2026-10-05** (migration 009,
+  `bethel_data.writer`). Every write records a per-tab device id; keepalives are conditional on
+  the version the edit was based on; a conflicted edit is never flushed, drained or adopted on
+  reload; RELOAD on the banner discards it. Needed once texted move-ins started writing the
+  roster from the server. Proof: `tests/autosave-writer.spec.js` (2 of its 4 tests fail on the
+  previous code).
 - **iOS Safari private browsing**: localStorage is restricted in private mode. The autosave queue may not survive a page reload. Behavior is degraded but not silent — the save-failed banner will appear if Supabase is unreachable.
 - **Session expiry mid-edit**: `onAuthStateChange` detects SIGNED_OUT and redirects to login. Any pending queue entries in localStorage are lost (they were written under the old user_id and won't drain on the next session). Accepted limitation; documented.
 - **No admin panel**: operator creates accounts manually in Supabase dashboard. Fine for ≤100 users.

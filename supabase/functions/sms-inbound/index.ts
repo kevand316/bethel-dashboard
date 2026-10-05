@@ -15,6 +15,7 @@ import { deleteMedia, fetchMedia, sendSms, validSignature } from "../_shared/twi
 import { type Draft, parseAnnouncement, runTurn } from "../_shared/ai.ts";
 import { describeRecipients, recentAnnouncementFor, relayReply, resolveAudience, sendAnnouncement } from "../_shared/announce.ts";
 import { notifyReport } from "../_shared/notify.ts";
+import { applyRosterChange, decideRoster } from "../_shared/roster.ts";
 
 const WEBHOOK_URL = Deno.env.get("SMS_WEBHOOK_URL")!; // the exact URL Twilio calls
 const DRAFT_TTL_MS = 2 * 60 * 60 * 1000;
@@ -181,9 +182,25 @@ async function handle(p: Record<string, string>) {
       await deleteMedia(url);
     }
 
-    const { data: role } = await admin.from("team_roles").select("name, can_announce").eq("id", member.role_id).eq("user_id", userId).maybeSingle();
+    const { data: role } = await admin.from("team_roles").select("name, can_announce, can_approve_roster").eq("id", member.role_id).eq("user_id", userId).maybeSingle();
     const save = (fields: Record<string, unknown>) => admin.from("sms_conversations")
       .update({ ...fields, updated_at: new Date().toISOString() }).eq("id", conv!.id).eq("user_id", userId);
+
+    // ── Roster approvals: "APPROVE 4821" / "REJECT 4821" ───────────────────────
+    const decision = body.trim().match(/^(approve|reject)\s*#?\s*(\d{4})$/i);
+    if (decision) {
+      if (!role?.can_approve_roster) {
+        await sendSms(admin, userId, phone, "Your role can't approve roster changes.");
+        return finish("processed", userId);
+      }
+      const { data: target } = await admin.from("reports").select("id").eq("user_id", userId)
+        .eq("bucket", "move_ins_outs").eq("details->roster->>code", decision[2]).limit(1).maybeSingle();
+      const res = target
+        ? await decideRoster(admin, userId, target.id, decision[1].toLowerCase() === "approve" ? "approve" : "reject", member.name)
+        : { ok: false, message: `No roster change with code ${decision[2]}.` };
+      await sendSms(admin, userId, phone, res.ok ? `Done ✓ ${res.message}` : res.message);
+      return finish("processed", userId);
+    }
 
     // ── Announcements ──────────────────────────────────────────────────────────
     if (conv.draft?.kind === "announcement") {
@@ -255,10 +272,11 @@ async function handle(p: Record<string, string>) {
       const report = await fileReport(conv as Conversation & { draft: Draft }, member, userId);
       await admin.from("sms_conversations").update({ status: "filed", photos: conv.photos, updated_at: new Date().toISOString() })
         .eq("id", conv.id).eq("user_id", userId);
+      const rosterNote = await handleRoster(report, member, role?.can_approve_roster === true, org.name, userId);
       const notified = await notifyReport(admin, userId, report);
       const who = notified.map((n) => n.name);
       await sendSms(admin, userId, phone,
-        `Submitted ✓ ${report.title}` + (who.length ? `. Notified: ${who.join(", ")}.` : ""));
+        `Submitted ✓ ${report.title}` + (who.length ? `. Notified: ${who.join(", ")}.` : "") + rosterNote);
       return finish("processed", userId);
     }
 
@@ -312,6 +330,41 @@ async function handle(p: Record<string, string>) {
   }
 }
 
+// A filed move-in/out either changes the roster now (sender may approve) or waits
+// for someone who can. Returns text to add to the sender's confirmation.
+async function handleRoster(
+  report: { id: string; details: Record<string, unknown>; home_id: number | null; home_name: string | null },
+  member: Member, canApprove: boolean, orgName: string, userId: string,
+): Promise<string> {
+  const draftRoster = (report.details as { roster?: Draft["roster"] }).roster;
+  if (!draftRoster) return "";
+  const change = { ...draftRoster, home_id: report.home_id };
+  if (canApprove) {
+    const res = await applyRosterChange(admin, userId, change);
+    await admin.from("reports").update({ details: { ...report.details, roster: {
+      change, status: res.ok ? "applied" : "failed", result: res.message, decided_by: member.name, decided_at: new Date().toISOString(),
+    } } }).eq("user_id", userId).eq("id", report.id);
+    return res.ok ? ` Roster updated: ${res.message}` : ` Roster NOT changed: ${res.message}`;
+  }
+  const code = String(Math.floor(1000 + Math.random() * 9000));
+  await admin.from("reports").update({ details: { ...report.details, roster: { change, status: "pending", code } } })
+    .eq("user_id", userId).eq("id", report.id);
+  // Text everyone whose role can approve.
+  const { data: roles } = await admin.from("team_roles").select("id").eq("user_id", userId).eq("can_approve_roster", true);
+  const roleIds = (roles || []).map((r) => r.id);
+  const { data: approvers } = roleIds.length
+    ? await admin.from("team_members").select("name, phone").eq("user_id", userId).eq("status", "active").in("role_id", roleIds)
+    : { data: [] };
+  const what = change.action === "move_in"
+    ? `a move-in: ${change.resident_name}, ${report.home_name || "home not set"}${change.rate ? `, $${change.rate}` : ""}`
+    : `a move-out: ${change.resident_name}, ${report.home_name || "home not set"}`;
+  for (const a of approvers || []) {
+    if (a.phone === member.phone) continue;
+    await sendSms(admin, userId, a.phone, `[${orgName}] ${member.name} reports ${what}. Reply APPROVE ${code} to update the roster, or REJECT ${code}.`);
+  }
+  return " Waiting for a manager to approve the roster change.";
+}
+
 async function homesFor(userId: string, member: Member): Promise<{ id: number; name: string }[]> {
   const { data } = await admin.from("bethel_data").select("data").eq("user_id", userId).eq("id", "homes").maybeSingle();
   const all = (Array.isArray(data?.data) ? data!.data : []) as { id: number; name: string }[];
@@ -332,7 +385,7 @@ async function fileReport(conv: Conversation & { draft: Draft }, member: Member,
     home_name: home ? home.name : null,
     title: d.title.slice(0, 200),
     summary: d.summary,
-    details: { facts: d.facts, conversation: conv.history },
+    details: { facts: d.facts, conversation: conv.history, ...(d.bucket === "move_ins_outs" && d.roster ? { roster: d.roster } : {}) },
     sender_member_id: member.id,
     sender_name: member.name,
     sender_phone: member.phone,

@@ -868,6 +868,10 @@ body.rp-detail-open { overflow: hidden; }
 }
 
 /* TEAM TAB (lib/team.js) */
+.rp-roster { border: 1px solid var(--border); padding: 0.75rem; margin: 0.75rem 0; color: var(--text); }
+.rp-roster-pending { border-color: var(--gold); }
+.rp-roster-applied { border-color: var(--green); }
+.rp-roster-failed, .rp-roster-rejected { border-color: #ff8a7a; }
 .an-group { margin-top: 0.5rem; }
 .an-label { font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); }
 .an-group .tm-homes:empty::after { content: 'None yet'; font-size: 0.8rem; color: var(--text); }
@@ -1902,7 +1906,7 @@ body.rp-detail-open { overflow: hidden; }
 
 <div id="conflict-banner">
   CHANGED ELSEWHERE —
-  <button class="conflict-banner-btn primary" onclick="location.reload()">RELOAD</button>
+  <button class="conflict-banner-btn primary" onclick="window.autosave.discardPending(); location.reload()">RELOAD</button>
   <button class="conflict-banner-btn secondary" onmousedown="window.autosave.overrideAndSave()">OVERRIDE AND SAVE ANYWAY</button>
 </div>
 
@@ -3035,6 +3039,20 @@ let homes = JSON.parse(JSON.stringify(DEFAULT_HOMES));
 // lib/team.js reads the home list for its pickers. `homes` is reassigned on load,
 // so expose a live getter rather than a copy.
 Object.defineProperty(window, 'homes', { get: () => homes, configurable: true });
+
+// After the roster changes on the server (a move-in/out applied from Reports), pull
+// the new roster into this tab. Only when this tab has nothing unsaved: if it does,
+// the normal "changed elsewhere" banner handles it and nothing is overwritten.
+window.reloadHomesFromServer = async function () {
+  const { data: { session } } = await window._supabase.auth.getSession();
+  if (!session || window.autosave.getPendingData('homes', session.user.id)) return false;
+  const loaded = await sbGetWithTs('homes');
+  if (loaded.failed || !Array.isArray(loaded.data)) return false;
+  homes = loaded.data;
+  window.autosave.setLoadedAt(loaded.updatedAt);
+  renderAll();
+  return true;
+};
 let currentHome = 0;
 let editingBed = null;
 
@@ -3080,7 +3098,8 @@ async function initData() {
   // Check for pending writes that survived the drain (e.g. network was down).
   // These are MORE RECENT than whatever Supabase has — we must not overwrite
   // them with stale loaded data, or new edits will clobber unsynced changes.
-  const pendingHomes = window.autosave.getPendingData('homes', session.user.id);
+  const pendingEntry = window.autosave.getPendingEntry('homes', session.user.id);
+  const pendingHomes = pendingEntry ? pendingEntry.data : null;
 
   // A transient blip on this read used to end the session: one failure and
   // initData gave up — blank indicator, no data, no retry — and the operator had
@@ -3133,9 +3152,14 @@ async function initData() {
   // the queued data over Supabase data — it contains the user's latest edits.
   // Reset _loadedAt so the retry uses unconditional upsert (since we don't
   // know what updated_at the DB has right now).
-  if (pendingHomes && Array.isArray(pendingHomes) && pendingHomes.length > 0 && pendingHomes[0].beds) {
+  // A conflicted entry is the opposite: the server holds someone else's newer
+  // save, so show that (the banner offers Override) and never adopt the stale copy.
+  // Otherwise write the queued edit on top of the version it was based on, so a
+  // change made elsewhere meanwhile still raises the banner instead of vanishing.
+  if (pendingHomes && Array.isArray(pendingHomes) && pendingHomes.length > 0 && pendingHomes[0].beds
+      && !pendingEntry.conflicted) {
     saved = pendingHomes;
-    window.autosave.setLoadedAt(null);
+    window.autosave.setLoadedAt(pendingEntry.base || null);
   }
 
   // New user: no homes row in Supabase yet — seed one empty starter home.

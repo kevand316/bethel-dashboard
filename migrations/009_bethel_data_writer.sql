@@ -1,0 +1,14 @@
+-- =============================================================================
+-- Migration: 009_bethel_data_writer.sql
+-- Date:      2026-10-05
+-- Plan:      plans/sms-reports.md, step 5 (roster changes must never be overwritten)
+--
+-- Records who made the last write to a bethel_data row: a per-tab device id from
+-- lib/autosave.js, or 'server:roster' for a texted move-in/out. autosave uses it
+-- to tell its own unconfirmed writes (page-hide keepalives) apart from another
+-- device's, which updated_at alone cannot do because the trigger rewrites it.
+-- Closes the "overwrite window after a page-hide flush" in progress.md.
+--
+-- IDEMPOTENT. ROLLBACK: ALTER TABLE public.bethel_data DROP COLUMN IF EXISTS writer;
+-- =============================================================================
+ALTER TABLE public.bethel_data ADD COLUMN IF NOT EXISTS writer text;
