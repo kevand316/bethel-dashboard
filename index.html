@@ -837,6 +837,9 @@ body::before {
 .tm-status-pending { border-color: var(--gold); color: var(--gold); }
 .tm-meta { display: flex; flex-wrap: wrap; gap: 0.35rem 1.25rem; margin-top: 0.75rem; font-size: 0.85rem; color: var(--text); }
 .tm-meta b { font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); font-weight: 600; margin-right: 0.35rem; }
+.tm-invite-msg { font-family: var(--mono); font-size: 0.75rem; color: var(--gold); margin-top: 0.5rem; }
+.tm-invite-msg:empty { display: none; }
+.tm-invite-msg[data-ok="0"] { color: #ff8a7a; }
 .tm-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
 .tm-actions .btn, .tm-role-delete { flex: 0 0 auto; min-height: 40px; }
 .tm-perms { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0 1rem; margin-top: 0.5rem; }

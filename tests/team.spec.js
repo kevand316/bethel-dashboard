@@ -14,6 +14,13 @@
 // @ts-check
 const { test, expect } = require("@playwright/test");
 const { signIn } = require("./fixtures/users.js");
+const { createClient } = require("@supabase/supabase-js");
+
+// Server-side fixture, only to clear the invite log between runs (the dashboard
+// can't delete it, by design): otherwise the 3-invites-a-day limit trips on re-runs.
+const admin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false },
+});
 
 const A = () => [process.env.TEST_USER_A_EMAIL, process.env.TEST_USER_A_PASSWORD];
 const B = () => [process.env.TEST_USER_B_EMAIL, process.env.TEST_USER_B_PASSWORD];
@@ -38,6 +45,7 @@ async function openTeam(page) {
 }
 
 async function signedInClean(page, creds) {
+  await admin.from("sms_messages").delete().like("phone", "+1213555%");
   await page.route(/accounts\.google\.com/, (r) => r.abort());
   await signIn(page, ...creds);
   await expect(page).toHaveURL("/", { timeout: 10000 });
@@ -96,17 +104,35 @@ test.describe("@team team page", () => {
   test("adding a person stores +1 format and shows them as pending", async ({ page }) => {
     await signedInClean(page, A());
     await openTeam(page);
-    await addPerson(page, "Test Person", "(555) 201-3344");
+    await addPerson(page, "Test Person", "(213) 555-0144");
 
     const card = page.locator(".tm-card", { hasText: "Test Person" });
     await expect(card).toBeVisible({ timeout: 10000 });
-    await expect(card).toContainText("(555) 201-3344");
+    await expect(card).toContainText("(213) 555-0144");
     await expect(card).toContainText(/pending/i);
 
     const rows = await dbMembers(page);
     expect(rows).toHaveLength(1);
-    expect(rows[0].phone).toBe("+15552013344");
+    expect(rows[0].phone).toBe("+12135550144");
     expect(rows[0].status).toBe("pending");
+  });
+
+  test("adding a person texts them an invite naming the organization", async ({ page }) => {
+    await signedInClean(page, A());
+    await openTeam(page);
+    await page.fill("#orgNameInput", "Invite Test Org");
+    await page.click("#orgNameSave");
+    await expect(page.locator("#orgNameStatus")).toHaveText(/saved/i, { timeout: 10000 });
+    await addPerson(page, "Invitee", "(213) 555-0146");
+    const card = page.locator(".tm-card", { hasText: "Invitee" });
+    await expect(card.locator(".tm-invite-msg")).toContainText(/invite text sent/i, { timeout: 20000 });
+    const log = await page.evaluate(async () => {
+      const sb = window._supabase;
+      const { data: { session } } = await sb.auth.getSession();
+      const { data } = await sb.from("sms_messages").select("body").eq("user_id", session.user.id).eq("phone", "+12135550146");
+      return data || [];
+    });
+    expect(log.some((m) => /Invite Test Org/.test(m.body) && /Reply YES to join/.test(m.body))).toBe(true);
   });
 
   test("a bad phone number is refused and nothing is stored", async ({ page }) => {
@@ -127,7 +153,7 @@ test.describe("@team team page", () => {
       const { data: roles } = await sb.from("team_roles").select("id").eq("user_id", uid).limit(1);
       const { data: ins } = await sb
         .from("team_members")
-        .insert({ user_id: uid, name: "Sneaky", phone: "+15552019999", role_id: roles[0].id, status: "active" })
+        .insert({ user_id: uid, name: "Sneaky", phone: "+12135550199", role_id: roles[0].id, status: "active" })
         .select()
         .single();
       await sb.from("team_members").update({ status: "active" }).eq("user_id", uid).eq("id", ins.id);
@@ -142,7 +168,7 @@ test.describe("@team team page", () => {
     const pageA = await ctxA.newPage();
     await signedInClean(pageA, A());
     await openTeam(pageA);
-    await addPerson(pageA, "A Secret Person", "(555) 201-7777");
+    await addPerson(pageA, "A Secret Person", "(213) 555-0177");
     await expect(pageA.locator(".tm-card", { hasText: "A Secret Person" })).toBeVisible({ timeout: 10000 });
     const [aMember] = await dbMembers(pageA);
 
@@ -160,7 +186,7 @@ test.describe("@team team page", () => {
       const { data: seen } = await sb.from("team_members").select("id").eq("id", id);
       // Pointing at A's role and A's person from B's account must fail.
       const { error } = await sb.from("team_members").insert({
-        user_id: uid, name: "Hijack", phone: "+15552018888", role_id: roleId, reports_to: id,
+        user_id: uid, name: "Hijack", phone: "+12135550188", role_id: roleId, reports_to: id,
       });
       return { seen: (seen || []).length, insertFailed: !!error };
     }, { id: aMember.id, roleId: aMember.role_id });
@@ -173,7 +199,7 @@ test.describe("@team team page", () => {
   test("removing a person deletes them", async ({ page }) => {
     await signedInClean(page, A());
     await openTeam(page);
-    await addPerson(page, "Leaving Soon", "(555) 201-4455");
+    await addPerson(page, "Leaving Soon", "(213) 555-0145");
     const card = page.locator(".tm-card", { hasText: "Leaving Soon" });
     await expect(card).toBeVisible({ timeout: 10000 });
     await card.locator(".tm-remove").click();
@@ -186,7 +212,7 @@ test.describe("@team team page", () => {
     await page.setViewportSize({ width: 375, height: 800 });
     await signedInClean(page, A());
     await openTeam(page);
-    await addPerson(page, "Phone Width Person", "(555) 201-6677");
+    await addPerson(page, "Phone Width Person", "(213) 555-0167");
     await expect(page.locator(".tm-card", { hasText: "Phone Width Person" })).toBeVisible({ timeout: 10000 });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);

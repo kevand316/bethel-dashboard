@@ -288,6 +288,70 @@ Not in step 1: sending invite texts (step 2), login.html rebrand (with the domai
 
 Done when: all 8 team tests pass, the full suite passes, Kev has seen it, then push.
 
+## Step 2 detailed spec: Inbound texting + AI conversation + filing reports (status: DONE, live 2026-10-05)
+
+Done: migrations 004 + 005 (`sms_blocks`) applied; Edge Functions `sms-inbound` and
+`team-invite` deployed; Twilio number 1-888-BOSS-502 points at `sms-inbound`; Team page
+sends invites + Resend button; `tests/sms.spec.js` (7) + `tests/team.spec.js` (9) green.
+Real texts will flow once toll-free verification is approved; until then Twilio accepts
+the send but carriers don't deliver.
+
+
+**Database (migration 004)**
+- `reports`: id, user_id, bucket (inventory | incidents | projections | maintenance |
+  cleanings | move_ins_outs | announcements), subtype, urgent, home_id, home_name, title,
+  summary, details (jsonb), sender_member_id, sender_name, sender_phone, source
+  (text | dashboard | calculator), created_at. RLS per account.
+- `report_photos`: report_id, storage_path, content_type. RLS per account.
+- Private Storage bucket `report-photos`, paths `{user_id}/...`; a user can read only
+  their own folder.
+- `sms_messages`: audit log of every inbound and outbound text (account, phone, body,
+  photo count, Twilio id, delivery status). Owner can read their own; only the server writes.
+- `sms_conversations`: the in-progress chat per (account, phone): message history and
+  the current draft report. Server-only.
+- `sms_phone_prefs`: for a phone on 2+ accounts, which account it's currently texting.
+  Server-only.
+- `org_profiles.timezone`: captured from the browser when the org name is saved (used
+  for "today", "this month", and dating reports).
+
+**Edge Function `sms-inbound`** (Twilio webhook for 1-888-BOSS-502)
+1. Verify Twilio's signature; reject anything unsigned.
+2. Answer Twilio immediately; do the work in the background, then reply via the Twilio API
+   (the AI can take longer than Twilio's 15-second webhook limit).
+3. Log the inbound text.
+4. Keywords first, no AI: **YES** to a pending invite activates it; **NO** declines;
+   **BLOCK** blocks that account's invites; **LEAVE** drops off the team; **SWITCH**
+   changes account; **HELP** lists what you can text. STOP/START are handled by Twilio.
+5. Find the account from the sender's phone (active memberships only). None means no
+   reply. 2+ accounts with no saved choice gets "Which org? 1) … 2) …".
+6. Conversation: Claude (`claude-opus-5-5`, low effort, structured JSON output) gets
+   the org, sender, role, homes, local date/time, the conversation so far, the current
+   draft, and the new text. It returns the reply to send plus the updated draft. It asks
+   follow-ups until bucket, home and the essentials are known, then ends with a
+   one-line summary and "Reply YES to submit, or tell me what to change."
+7. **YES with a complete draft is handled by code, not the AI:** the report is filed
+   and the reply is "Submitted ✓". Conversation closes. A draft expires after 2 hours
+   of silence.
+8. Photos (MMS): downloaded from Twilio into `report-photos/{user_id}/...`, attached to
+   the draft, then deleted from Twilio.
+9. The AI has no way to choose the account: code fixes it before the AI runs, and the AI
+   only returns text and a draft. It cannot read or write anything itself.
+
+**Edge Function `team-invite`**: the dashboard calls it after adding a person
+(signed-in user's token). It checks the person belongs to the caller's account, and
+texts: "{Name} at {Org} added you to their HouseBoss team. Reply YES to join, NO to
+decline." Team cards get a **Resend invite** button for pending people.
+
+**Testing**: real outbound texts can't reach phones until toll-free verification is
+approved. Phone numbers in the fictional 555-01xx range never get a real send; their
+replies are only logged, which the tests read. `tests/sms.spec.js` sends signed fake
+webhooks to the deployed function and checks:
+- unsigned requests are rejected
+- unknown numbers get no reply
+- YES activates an invite
+- a clear report gets filed in the right bucket
+- an account can't receive another account's texts
+
 ## Build order
 1. Organization profile + Team page
 2. Inbound texting plus AI conversation, filing reports (Virtual Phone)
@@ -312,5 +376,6 @@ Done when: all 8 team tests pass, the full suite passes, Kev has seen it, then p
 - New domain: **houseboss.ai** (decided 2026-10-05). Use it on the toll-free verification form.
   Carriers' reviewers visit the site, so before submitting it needs a basic page naming
   HouseBoss, explaining staff texting, plus a privacy policy and SMS terms page.
-- Twilio account signup.
-- Anthropic API key for the dashboard.
+- Twilio account: done. Number bought: **1-888-BOSS-502** (+1 888 267 7502).
+- Toll-free verification: needs legal business name, address, EIN, contact name/email/phone, and houseboss.ai live (plus privacy policy and SMS terms pages).
+- Anthropic API key: done (saved privately, loaded into Edge Function secrets).
