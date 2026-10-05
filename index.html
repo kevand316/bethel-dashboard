@@ -868,6 +868,14 @@ body.rp-detail-open { overflow: hidden; }
 }
 
 /* TEAM TAB (lib/team.js) */
+.nr-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem;
+  padding: 0.6rem 0; border-top: 1px solid var(--border); font-size: 0.88rem; color: var(--text); }
+.nr-row b { color: var(--gold); font-weight: 600; }
+.nr-row .btn { flex: 0 0 auto; min-height: 40px; }
+.rp-notified-row { display: flex; justify-content: space-between; gap: 1rem; padding: 0.35rem 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; color: var(--text); }
+.rp-ns { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--gold); }
+.rp-ns-failed, .rp-ns-undelivered { color: #ff8a7a; }
+.rp-ns-delivered { color: var(--green); }
 .tm-panel { background: var(--bg2); border: 1px solid var(--border); padding: 1rem; margin-bottom: 1rem; }
 .tm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 1rem; }
 .tm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
@@ -2160,8 +2168,14 @@ body.rp-detail-open { overflow: hidden; }
         <label for="orgNameInput">Organization name (shows under HouseBoss and in every text)</label>
         <input type="text" id="orgNameInput" maxlength="80" placeholder="e.g. Bethel Residency" autocomplete="organization">
       </div>
+      <div class="tm-grid">
+        <div class="qc-field"><label for="orgReminderHour">Daily report reminder at</label>
+          <select id="orgReminderHour" class="tm-select"><option value="0">12:00 am</option><option value="1">1:00 am</option><option value="2">2:00 am</option><option value="3">3:00 am</option><option value="4">4:00 am</option><option value="5">5:00 am</option><option value="6">6:00 am</option><option value="7">7:00 am</option><option value="8">8:00 am</option><option value="9">9:00 am</option><option value="10">10:00 am</option><option value="11">11:00 am</option><option value="12">12:00 pm</option><option value="13">1:00 pm</option><option value="14">2:00 pm</option><option value="15">3:00 pm</option><option value="16">4:00 pm</option><option value="17">5:00 pm</option><option value="18">6:00 pm</option><option value="19">7:00 pm</option><option value="20">8:00 pm</option><option value="21">9:00 pm</option><option value="22">10:00 pm</option><option value="23">11:00 pm</option></select></div>
+        <div class="qc-field"><label for="orgEscalationHour">Tell their supervisor next morning at</label>
+          <select id="orgEscalationHour" class="tm-select"><option value="0">12:00 am</option><option value="1">1:00 am</option><option value="2">2:00 am</option><option value="3">3:00 am</option><option value="4">4:00 am</option><option value="5">5:00 am</option><option value="6">6:00 am</option><option value="7">7:00 am</option><option value="8">8:00 am</option><option value="9">9:00 am</option><option value="10">10:00 am</option><option value="11">11:00 am</option><option value="12">12:00 pm</option><option value="13">1:00 pm</option><option value="14">2:00 pm</option><option value="15">3:00 pm</option><option value="16">4:00 pm</option><option value="17">5:00 pm</option><option value="18">6:00 pm</option><option value="19">7:00 pm</option><option value="20">8:00 pm</option><option value="21">9:00 pm</option><option value="22">10:00 pm</option><option value="23">11:00 pm</option></select></div>
+      </div>
       <div class="tm-row">
-        <button class="btn btn-gold tm-btn" id="orgNameSave" type="button">Save name</button>
+        <button class="btn btn-gold tm-btn" id="orgNameSave" type="button">Save</button>
         <span class="tm-msg" id="orgNameStatus" aria-live="polite"></span>
       </div>
     </div>
@@ -2193,6 +2207,21 @@ body.rp-detail-open { overflow: hidden; }
 
     <div class="section-title">Team</div>
     <div id="teamList"></div>
+
+    <div class="section-title">Notifications</div>
+    <div class="tm-panel">
+      <div class="tm-note" style="margin-top:0">Every report goes to the sender's supervisor; urgent ones go all the way up the chain. Add people who should also hear about certain reports.</div>
+      <div class="tm-grid" style="margin-top:0.75rem">
+        <div class="qc-field"><label for="nrBucket">Reports</label><select id="nrBucket" class="tm-select"></select></div>
+        <div class="qc-field"><label for="nrHome">At</label><select id="nrHome" class="tm-select"></select></div>
+        <div class="qc-field"><label for="nrMember">Text</label><select id="nrMember" class="tm-select"></select></div>
+      </div>
+      <div class="tm-row">
+        <button class="btn btn-ghost tm-btn" id="nrAdd" type="button">Add rule</button>
+        <span class="tm-msg" id="nrMsg" aria-live="polite"></span>
+      </div>
+      <div id="nrList"></div>
+    </div>
 
     <div class="section-title">Roles</div>
     <div id="roleList"></div>

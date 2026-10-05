@@ -375,7 +375,7 @@ potential home's address. Unrelated to the Overview page's Property Projections 
   that address. If one with that address already exists: **Replace** or **Keep both**.
   "Saved ✓" shows only after Supabase confirms.
 
-## Step 4 detailed spec: Notifications, emergencies, daily reminders (status: in progress)
+## Step 4 detailed spec: Notifications, emergencies, daily reminders (status: DONE, live 2026-10-05)
 
 - **Who gets notified when a report is filed** (by text or on the dashboard):
   - the sender's "reports to" person, plus everyone matching a **notification rule**
