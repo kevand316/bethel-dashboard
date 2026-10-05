@@ -1,5 +1,7 @@
 # Toll-free verification for 1-888-BOSS-502 (+1 888 267 7502)
 
+**SUBMITTED 2026-10-05**: verification HHf0f90f83973e1863fd2da25eb81ad07b, status PENDING_REVIEW. Submitted as Matthew 2540 LLC dba Bethel Residency, website https://bethelresidency.com (SMS terms and privacy pages updated for the staff line). The draft answers below are what went in, adjusted to bethelresidency.com.
+
 Until this is approved, carriers block texts *from* the number: replies, invites,
 notifications and reminders are accepted by Twilio but never reach phones. Texts *to*
 the number already work. Submit in the Twilio Console (Phone Numbers → Regulatory →
