@@ -8,7 +8,7 @@
 // the dashboard is behind the auth gate.
 //
 // These tests will pass once index.html has:
-//   - a "Profit Calculator" tab button between Projections and Reports
+//   - a "Profit Calculator" tab button between Operations and Intake
 //   - #view-quickcalc with inputs #qc-beds, #qc-bedrooms, #qc-occ, #qc-rate,
 //     the five expense inputs (#qc-exp-rent, -utilities, -supplies, -staff,
 //     -operations), #qc-low-rate, #qc-high-rate

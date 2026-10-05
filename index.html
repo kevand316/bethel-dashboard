@@ -1572,7 +1572,7 @@ body::before {
   .kpi-label { font-size: 0.75rem; letter-spacing: 0.1em; }
   .expense-cat { font-size: 0.75rem; }
   /* Wide tables — allow horizontal scroll rather than squish */
-  #view-projections .expense-table { min-width: 560px; }
+  #projSection .expense-table { min-width: 560px; }
   .compare-table { min-width: 480px; }
   /* Quick Calc — 2-col results, same as the cashflow strip */
   .qc-results { grid-template-columns: repeat(2, 1fr); }
@@ -1821,7 +1821,6 @@ body::before {
 <div class="tabs">
   <button class="tab active" onclick="switchTab('occupancy', event)">Overview</button>
   <button class="tab" data-tab="ops" onclick="switchTab('ops', event)">Operations</button>
-  <button class="tab" onclick="switchTab('projections', event)">Projections</button>
   <button class="tab" onclick="switchTab('quickcalc', event)">Profit Calculator</button>
   <button class="tab" onclick="switchTab('intake', event)">Intake</button>
   <button class="tab" onclick="switchTab('reports', event)">Reports</button>
@@ -1838,6 +1837,28 @@ body::before {
 
     <div class="print-timestamp" id="printTimestamp"></div>
     <div class="kpi-row" id="kpiRow"></div>
+
+    <div class="section-title">Property Projections</div>
+
+    <div id="projSection">
+      <div style="background:var(--bg2);border:1px solid var(--border);overflow-x:auto;">
+        <table class="expense-table" style="width:100%">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem">Home</td>
+              <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Beds</td>
+              <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Occ %</td>
+              <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Revenue</td>
+              <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Expenses</td>
+              <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Cashflow</td>
+              <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Annual</td>
+            </tr>
+          </thead>
+          <tbody id="projTable"></tbody>
+          <tfoot id="projTotals"></tfoot>
+        </table>
+      </div>
+    </div>
 
     <div class="section-title">Property Overview</div>
 
@@ -1981,33 +2002,6 @@ body::before {
   </div>
 
 
-
-  <!-- ═══════════════════════════════════════ -->
-  <!-- PROJECTIONS VIEW -->
-  <!-- ═══════════════════════════════════════ -->
-  <div class="view" id="view-projections">
-
-    <div class="section-title">Home-by-Home Breakdown</div>
-
-    <div style="background:var(--bg2);border:1px solid var(--border);overflow-x:auto;">
-      <table class="expense-table" style="width:100%">
-        <thead>
-          <tr style="border-bottom:1px solid var(--border)">
-            <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem">Home</td>
-            <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Beds</td>
-            <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Occ %</td>
-            <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Revenue</td>
-            <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Expenses</td>
-            <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Cashflow</td>
-            <td style="color:var(--text-dim);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.75rem 1.25rem;text-align:right">Annual</td>
-          </tr>
-        </thead>
-        <tbody id="projTable"></tbody>
-        <tfoot id="projTotals"></tfoot>
-      </table>
-    </div>
-
-  </div>
 
   <!-- ═══════════════════════════════════════ -->
   <!-- QUICK CALC VIEW -->
@@ -3490,7 +3484,7 @@ function updateClientName(hi, bi, val) {
   persistData();
   renderKPIs();
   renderHomes();
-  if ($('view-projections').classList.contains('active')) renderProjections();
+  renderProjections();
 }
 
 function queueClientRate(hi, bi, val) {
@@ -3887,7 +3881,6 @@ function switchTab(name, event) {
   event.target.classList.add('active');
   $('view-' + name).classList.add('active');
   if (name === 'ops') renderCF();
-  if (name === 'projections') renderProjections();
   if (name === 'quickcalc') renderQuickCalc();
   if (name === 'reports') renderReports();
 }
@@ -4153,7 +4146,7 @@ function renderProjections() {
         ${homes.reduce((s,h)=>s+homeOccupied(h),0)}/${homes.reduce((s,h)=>s+h.beds.length,0)}
       </td>
       <td style="text-align:right;color:var(--blue)">
-        ${Math.round(homes.reduce((s,h)=>s+homeOccupied(h),0)/homes.reduce((s,h)=>s+h.beds.length,0)*100)}%
+        ${Math.round(homes.reduce((s,h)=>s+homeOccupied(h),0)/(homes.reduce((s,h)=>s+h.beds.length,0)||1)*100)}%
       </td>
       <td style="text-align:right;color:var(--gold);font-weight:600">${fmt(totalRev)}</td>
       <td style="text-align:right;color:var(--red);font-weight:600">${fmt(totalExp)}</td>
