@@ -350,7 +350,7 @@
   text-transform: uppercase;
   color: var(--doc-muted);
 }
-.intake-doc .if-req { color: var(--doc-gold); margin-left: 2px; }
+.intake-doc .if-req { color: #7a5c0c; margin-left: 2px; } /* darker gold: readable on the white form (6.2:1) */
 .intake-doc .if-hint { font-size: 0.72rem; color: var(--doc-muted); font-style: italic; }
 
 .intake-doc input,

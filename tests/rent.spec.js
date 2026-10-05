@@ -237,12 +237,12 @@ test.describe("@rent rent tracker", () => {
       expect(c.rent_payments.map((p) => Number(p.amount))).toEqual([700]);
     });
 
-    test("'Joe at 134 Manfield paid rent' picks the right Joe and the open Rent tab updates", async ({ request, page }) => {
+    test("'Joe at 12 Maple paid rent' picks the right Joe and the open Rent tab updates", async ({ request, page }) => {
       await setRoster([
         ...HOMES(),
-        { id: 2, name: "134 W Manfield St.", address: "", startupCost: 0, catOrder: [], expenses: [],
+        { id: 2, name: "12 Maple Ave.", address: "", startupCost: 0, catOrder: [], expenses: [],
           beds: [{ id: 1, status: "occupied", name: "Joe Rivera", rate: 650, moveIn: "" }] },
-        { id: 3, name: "775 Libby Dr.", address: "", startupCost: 0, catOrder: [], expenses: [],
+        { id: 3, name: "48 Cedar Ln.", address: "", startupCost: 0, catOrder: [], expenses: [],
           beds: [{ id: 1, status: "occupied", name: "Joe Park", rate: 700, moveIn: "" }] },
       ]);
       await page.route(/accounts\.google\.com/, (r) => r.abort());
@@ -253,8 +253,8 @@ test.describe("@rent rent tracker", () => {
       await page.waitForFunction(() => window.rentLive === true, null, { timeout: 15000 });
       await expect(row(page, "Joe Rivera").locator(".rt-status")).toHaveText(/unpaid/i, { timeout: 10000 });
 
-      let r = await text(request, P.manager, `Joe at 134 Manfield paid his ${MONTH_NAME} rent`);
-      expect(r).toMatch(/Joe Rivera, 134 W Manfield St\./);
+      let r = await text(request, P.manager, `Joe at 12 Maple paid his ${MONTH_NAME} rent`);
+      expect(r).toMatch(/Joe Rivera, 12 Maple Ave\./);
       expect(r).toMatch(/\$650 paid in full/);
       r = await text(request, P.manager, "YES");
       expect(r).toMatch(/Recorded ✓/);
