@@ -516,6 +516,29 @@ Needs from Kev:
 1. a Google Cloud OAuth **client secret** with offline access (only Kev can create it)
 2. his OK on this design
 
+## Step 7 detailed spec: Join codes (status: DONE, live 2026-10-05)
+
+(Multi-account handling, meaning "Which org?" and SWITCH, already shipped in step 2.)
+
+- **Team tab → Join code panel:**
+  - **Turn on** creates a code from the org name plus 4 digits, e.g. `BETHEL-4821`.
+  - Shows "Staff text JOIN BETHEL-4821 Their Name to 1-888-BOSS-502".
+  - **New code** replaces it (the old one stops working); **Turn off** disables joining.
+- **By text:** "JOIN BETHEL-4821 Maria Lopez" creates a **join request** (status `requested`)
+  on that account only. The reply is "Thanks Maria, your request to join Bethel Residency
+  was sent."
+  - **No name given:** "Text JOIN BETHEL-4821 followed by your name."
+  - **Wrong or disabled code:** "That join code isn't valid."
+  - **Already on the team, or blocked:** told so, or ignored if blocked.
+  - **Rate limit:** at most 5 JOIN attempts per phone per day, so codes can't be guessed.
+- **Team tab → Join requests:** each request shows name and phone, with a role picker,
+  **Approve** and **Decline**.
+  - **Approve** makes them active right away (they asked and the owner agreed, so both
+    sides consented) and texts "You're on Bethel Residency's HouseBoss team…".
+  - **Decline** removes the request quietly.
+- Approve runs on the server (Edge Function `join-decide`), since the dashboard can never
+  set anyone active by itself.
+
 ## Build order
 1. Organization profile + Team page
 2. Inbound texting plus AI conversation, filing reports (Virtual Phone)

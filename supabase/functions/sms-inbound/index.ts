@@ -116,6 +116,50 @@ async function handle(p: Record<string, string>) {
       return finish("processed", m.user_id);
     }
 
+    // ── JOIN <code> <name>: ask to join a team; the owner approves on the dashboard ──
+    const join = body.match(/^\s*join\s+([A-Za-z0-9-]+)\s*(.*)$/i);
+    if (join) {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { count } = await admin.from("sms_messages").select("id", { count: "exact", head: true })
+        .eq("phone", phone).eq("direction", "in").ilike("body", "join%").gte("created_at", since);
+      if ((count ?? 0) > 5) return finish("ignored"); // stop code guessing
+      const { data: target } = await admin.from("org_profiles").select("user_id, org_name, join_code, join_enabled")
+        .ilike("join_code", join[1]).eq("join_enabled", true).maybeSingle();
+      if (!target || target.join_code.toUpperCase() !== join[1].toUpperCase()) {
+        await sendSms(admin, null, phone, "That join code isn't valid. Check it with your manager.");
+        return finish("processed");
+      }
+      const { data: blocked } = await admin.from("sms_blocks").select("phone").eq("phone", phone).eq("user_id", target.user_id).maybeSingle();
+      if (blocked) return finish("ignored", target.user_id);
+      const name = join[2].trim().replace(/\s+/g, " ").slice(0, 80);
+      if (!name) {
+        await sendSms(admin, target.user_id, phone, `Text JOIN ${target.join_code} followed by your name, e.g. JOIN ${target.join_code} Maria Lopez.`);
+        return finish("processed", target.user_id);
+      }
+      const existing = memberships.find((m) => m.user_id === target.user_id);
+      if (existing) {
+        await sendSms(admin, target.user_id, phone, existing.status === "active"
+          ? `You're already on ${target.org_name}'s team.`
+          : existing.status === "requested" ? `Your request to join ${target.org_name} is waiting for approval.`
+          : existing.status === "pending" ? `${target.org_name} already invited you. Reply YES to join.`
+          : `Ask ${target.org_name} to add you again.`);
+        return finish("processed", target.user_id);
+      }
+      // New requests start with the account's least-privileged role; the owner picks on approval.
+      const { data: roles } = await admin.from("team_roles").select("id, name, sort_order").eq("user_id", target.user_id)
+        .order("sort_order", { ascending: false }).limit(1);
+      if (!roles?.length) {
+        await sendSms(admin, target.user_id, phone, `${target.org_name} isn't ready for join requests yet.`);
+        return finish("processed", target.user_id);
+      }
+      const { data: row, error } = await admin.from("team_members")
+        .insert({ user_id: target.user_id, name, phone, role_id: roles[0].id, all_homes: true }).select("id").single();
+      if (error) throw new Error(`join request failed: ${error.message}`);
+      await admin.from("team_members").update({ status: "requested" }).eq("id", row.id).eq("user_id", target.user_id);
+      await sendSms(admin, target.user_id, phone, `Thanks ${name.split(" ")[0]}, your request to join ${target.org_name} was sent. You'll get a text when it's approved.`);
+      return finish("processed", target.user_id);
+    }
+
     // Only people who said YES can text in. Everyone else gets silence.
     if (!active.length) return finish("ignored");
 

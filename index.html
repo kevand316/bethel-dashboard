@@ -2300,6 +2300,19 @@ body.rp-detail-open { overflow: hidden; }
       <div class="tm-note">They'll get a text asking them to reply YES. Until they do, they can't text in.</div>
     </div>
 
+    <div class="section-title">Join by text</div>
+    <div class="tm-panel">
+      <div class="tm-note" style="margin-top:0" id="jcState"></div>
+      <div class="tm-row" style="margin-top:0.75rem">
+        <button class="btn btn-gold tm-btn" id="jcOn" type="button">Turn on join code</button>
+        <button class="btn btn-ghost tm-btn" id="jcNew" type="button" hidden>New code</button>
+        <button class="btn btn-red tm-btn" id="jcOff" type="button" hidden>Turn off</button>
+        <span class="tm-msg" id="jcMsg" aria-live="polite"></span>
+      </div>
+      <div class="an-label" style="margin-top:1rem">Join requests</div>
+      <div id="jrList"></div>
+    </div>
+
     <div class="section-title">Team</div>
     <div id="teamList"></div>
 
