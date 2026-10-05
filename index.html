@@ -17,6 +17,7 @@
 <script src="lib/team.js"></script>
 <script src="lib/reports.js"></script>
 <script src="lib/rent.js"></script>
+<script src="lib/admin.js"></script>
 <style>
 :root {
   --bg: #0a0e14;
@@ -867,6 +868,15 @@ body.rp-detail-open { overflow: hidden; }
   body.printing-report #rpPrint .tm-actions, body.printing-report #rpPrint .rp-close { display: none !important; }
   .rp-print-head { font-family: var(--mono); font-size: 0.75rem; margin-bottom: 1rem; }
 }
+
+/* ADMIN TAB (lib/admin.js) */
+.ad-scroll { overflow-x: auto; border: 1px solid var(--border); background: var(--bg2); }
+.ad-table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 0.82rem; }
+.ad-table th { text-align: left; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--gold); padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.ad-table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); color: var(--text); white-space: nowrap; }
+.ad-idle td { opacity: 0.75; }
+.ad-cost { font-family: var(--mono); color: var(--gold); }
 
 /* RENT TAB (lib/rent.js) */
 .rt-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.5rem 0 1rem; }
@@ -1976,6 +1986,7 @@ body.rp-detail-open { overflow: hidden; }
   <button class="tab" onclick="switchTab('rlog', event)">Reports</button>
   <button class="tab" onclick="switchTab('reports', event)">Snapshots</button>
   <button class="tab" onclick="switchTab('team', event)">Team</button>
+  <button class="tab" id="adminTab" onclick="switchTab('admin', event)" hidden>Admin</button>
   <button class="no-print" onclick="printOverview()" style="margin-left:auto;font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⬇ Save PDF</button>
   <button class="no-print" onclick="saveSnapshot()" style="font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:var(--gold);border:1px solid var(--gold);color:var(--bg);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#d4a012'" onmouseout="this.style.background='var(--gold)'">📸 Save Snapshot</button>
 </div>
@@ -2154,6 +2165,15 @@ body.rp-detail-open { overflow: hidden; }
   </div>
 
 
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- ADMIN VIEW: lib/admin.js. Platform admins only (server-enforced). -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="view" id="view-admin">
+    <div class="section-title">All accounts</div>
+    <div class="rt-totals" id="adTotals"></div>
+    <div id="adBody"></div>
+  </div>
 
   <!-- ═══════════════════════════════════════ -->
   <!-- RENT VIEW: lib/rent.js. Monthly paid/owed checklist. -->
@@ -3162,6 +3182,7 @@ async function initData() {
   window.team.init(session).catch((e) => console.warn('[team] init failed:', e));
   window.reports.init();
   window.rent.init();
+  window.platformAdmin.init().catch((e) => console.warn('[admin] init failed:', e));
 
   // The indicator was blank for the whole load, so a slow network and a hung
   // load looked identical — to the operator and to anyone debugging. The save
@@ -4275,6 +4296,7 @@ function switchTab(name, event) {
   if (name === 'team') window.team.open();
   if (name === 'rlog') window.reports.open();
   if (name === 'rent') window.rent.open();
+  if (name === 'admin') window.platformAdmin.open();
 }
 
 // ═══════════════════════════════════════════════════════

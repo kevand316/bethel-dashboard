@@ -539,6 +539,23 @@ Needs from Kev:
 - Approve runs on the server (Edge Function `join-decide`), since the dashboard can never
   set anyone active by itself.
 
+## Step 8 detailed spec: Platform admin view (status: DONE, live 2026-10-05)
+
+- **Who:** only platform admins: the `platform_admins` table, server-only, seeded with Kev's
+  account (info@bethelresidency.com). Everyone else never sees the tab, and the server
+  refuses them.
+- **New "Admin" tab**, shown only to admins: one row per account.
+  - **Account details:** email, org name, sign-up date, last sign-in.
+  - **Team:** active and pending members.
+  - **This month:** reports, texts in, texts out, and photos.
+  - **Estimated texting + AI cost this month:** texts × $0.011, photos × $0.025, AI turns
+    × $0.02, labeled as an estimate. Real bills are in Twilio and Anthropic.
+  - **Last activity** (latest text).
+  - Accounts with no team or texting show as idle.
+- **Totals:** texts, estimated cost, active accounts.
+- **Data:** Edge Function `platform-admin` checks the caller is an admin, then counts with
+  the service role. Read-only: it changes nothing.
+
 ## Build order
 1. Organization profile + Team page
 2. Inbound texting plus AI conversation, filing reports (Virtual Phone)
