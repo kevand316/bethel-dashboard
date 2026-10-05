@@ -39,20 +39,25 @@ export async function validSignature(
   return diff === 0;
 }
 
+export type SendResult = { ok: boolean; sid: string | null; status: string; error?: string };
+
+// Twilio posts delivery updates (queued → sent → delivered / failed) here.
+const STATUS_URL = () => `${Deno.env.get("SUPABASE_URL")}/functions/v1/sms-status`;
+
 export async function sendSms(
   admin: SupabaseClient,
   userId: string | null,
   to: string,
   body: string,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<SendResult> {
   if (isTestPhone(to)) {
     await admin.from("sms_messages").insert({ user_id: userId, direction: "out", phone: to, body, status: "test" });
-    return { ok: true };
+    return { ok: true, sid: null, status: "test" };
   }
   const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${SID()}/Messages.json`, {
     method: "POST",
     headers: { Authorization: basicAuth(), "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ To: to, From: FROM(), Body: body }),
+    body: new URLSearchParams({ To: to, From: FROM(), Body: body, StatusCallback: STATUS_URL() }),
   });
   const json = await res.json().catch(() => ({}));
   const error = res.ok ? null : (json.message || `HTTP ${res.status}`);
@@ -65,7 +70,8 @@ export async function sendSms(
     status: json.status ?? (res.ok ? "sent" : "failed"),
     error,
   });
-  return error ? { ok: false, error } : { ok: true };
+  const status = json.status ?? (res.ok ? "sent" : "failed");
+  return error ? { ok: false, sid: json.sid ?? null, status, error } : { ok: true, sid: json.sid ?? null, status };
 }
 
 export async function fetchMedia(url: string): Promise<{ bytes: Uint8Array; type: string }> {

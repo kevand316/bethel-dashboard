@@ -375,6 +375,34 @@ potential home's address. Unrelated to the Overview page's Property Projections 
   that address. If one with that address already exists: **Replace** or **Keep both**.
   "Saved ✓" shows only after Supabase confirms.
 
+## Step 4 detailed spec: Notifications, emergencies, daily reminders (status: in progress)
+
+- **Who gets notified when a report is filed** (by text or on the dashboard):
+  - the sender's "reports to" person, plus everyone matching a **notification rule**
+    for that bucket and home
+  - **urgent** reports go to the sender's whole chain of command (supervisor, their
+    supervisor, and so on) plus the rules
+  - only active team members; never the sender; each person once
+- **Message:** "[Org] New maintenance report from James (Oak St): Upstairs toilet
+  leaking." Urgent: "[Org] URGENT incident from James (Oak St): …".
+- **Recorded on the report:** a `notifications` row per person (who, phone, Twilio id,
+  status). Twilio delivery callbacks (Edge Function `sms-status`) update the status:
+  queued, sent, delivered or failed. The report detail lists "Notified: Dana (delivered)".
+- **Notification rules** on the Team tab, in a new "Notifications" section: pick a bucket
+  (or any), a home (or any), and a person, then Add. Each rule is listed with Remove.
+- **Daily report reminders:**
+  - a new role switch, **Must send a daily report** (on by default for House Manager)
+  - org settings: reminder time (default 9pm) and escalation time (default 8am),
+    local to the org's timezone
+  - at reminder time, anyone with that switch who has filed no Cleanings report today
+    gets "Reminder: today's daily report hasn't come in yet. Text it here."
+  - at escalation time the next morning, if still nothing for yesterday, their
+    supervisor gets "James didn't send yesterday's daily report (Oak St)."
+  - each reminder goes out at most once per person per day (`reminder_log`)
+  - runs via `pg_cron` every 15 minutes, calling Edge Function `daily-reminders` with a
+    shared secret
+- Emergencies keep the "call 911" first reply from step 2.
+
 ## Build order
 1. Organization profile + Team page
 2. Inbound texting plus AI conversation, filing reports (Virtual Phone)

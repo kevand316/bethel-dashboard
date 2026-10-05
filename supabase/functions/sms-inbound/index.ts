@@ -13,6 +13,7 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { deleteMedia, fetchMedia, sendSms, validSignature } from "../_shared/twilio.ts";
 import { type Draft, runTurn } from "../_shared/ai.ts";
+import { notifyReport } from "../_shared/notify.ts";
 
 const WEBHOOK_URL = Deno.env.get("SMS_WEBHOOK_URL")!; // the exact URL Twilio calls
 const DRAFT_TTL_MS = 2 * 60 * 60 * 1000;
@@ -180,7 +181,10 @@ async function handle(p: Record<string, string>) {
       const report = await fileReport(conv, member, userId);
       await admin.from("sms_conversations").update({ status: "filed", photos: conv.photos, updated_at: new Date().toISOString() })
         .eq("id", conv.id).eq("user_id", userId);
-      await sendSms(admin, userId, phone, `Submitted ✓ ${report.title}`);
+      const notified = await notifyReport(admin, userId, report);
+      const who = notified.map((n) => n.name);
+      await sendSms(admin, userId, phone,
+        `Submitted ✓ ${report.title}` + (who.length ? `. Notified: ${who.join(", ")}.` : ""));
       return finish("processed", userId);
     }
 
