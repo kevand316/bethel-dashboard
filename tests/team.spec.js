@@ -2,7 +2,7 @@
 //
 // Step 1 of plans/sms-reports.md: Organization profile + Team page.
 // Written before the feature. Covers:
-//   - organization name saves, and shows under HOUSEBOSS in the header after reload
+//   - organization name saves, and shows under HOUSEBOSS.AI in the header after reload
 //   - default roles exist for a new account
 //   - adding a person stores the phone as +1XXXXXXXXXX and shows them as Pending
 //   - a bad phone number is refused and nothing is stored
@@ -76,9 +76,9 @@ test.describe("@team team page", () => {
     if (new URL(page.url() || "about:blank", "http://x").pathname === "/") await wipeTeam(page).catch(() => {});
   });
 
-  test("organization name saves and shows under HOUSEBOSS after reload", async ({ page }) => {
+  test("organization name saves and shows under HOUSEBOSS.AI after reload", async ({ page }) => {
     await signedInClean(page, A());
-    await expect(page.locator(".brand-text h1")).toHaveText("HOUSEBOSS");
+    await expect(page.locator(".brand-text h1")).toHaveText("HOUSEBOSS.AI");
     await openTeam(page);
 
     const org = `Playwright Org ${Date.now() % 100000}`;

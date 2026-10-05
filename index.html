@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HouseBoss</title>
+<title>HouseBoss.AI</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -1559,7 +1559,7 @@ body.rp-detail-open { overflow: hidden; }
   <div class="header-brand">
     <div class="brand-mark">HB</div>
     <div class="brand-text">
-      <h1>HOUSEBOSS</h1>
+      <h1>HOUSEBOSS.AI</h1>
       <p id="brandSub">Operations Dashboard</p>
     </div>
   </div>
@@ -1872,7 +1872,7 @@ body.rp-detail-open { overflow: hidden; }
     <div class="tm-panel">
       <div class="qc-field">
         <label for="orgNameInput">Organization name (shows under HouseBoss and in every text)</label>
-        <input type="text" id="orgNameInput" maxlength="80" placeholder="e.g. Bethel Residency" autocomplete="organization">
+        <input type="text" id="orgNameInput" maxlength="80" placeholder="e.g. Sunrise Homes" autocomplete="organization">
       </div>
       <div class="tm-grid">
         <div class="qc-field"><label for="orgReminderHour">Daily report reminder at</label>
@@ -2189,7 +2189,7 @@ body.rp-detail-open { overflow: hidden; }
           Intake forms hold Social Security numbers, dates of birth, Medi-Cal IDs,
           medical history and criminal background. None of that is ever stored on
           this dashboard — every answer is saved straight into <strong>your own
-          Google Drive</strong>, in a folder called “Bethel Intake Forms”, and
+          Google Drive</strong>, in a folder called “HouseBoss Intake Forms”, and
           nowhere else.
         </p>
         <p>
@@ -3673,7 +3673,7 @@ $('pushModal').addEventListener('click', e => { if (e.target === $('pushModal'))
 // ═══════════════════════════════════════════════════════
 function printOverview() {
   const ts = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-  $('printTimestamp').textContent = `${window.orgName || 'HouseBoss'} · Overview Report · ${ts}`;
+  $('printTimestamp').textContent = `${window.orgName || 'HouseBoss.AI'} · Overview Report · ${ts}`;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('print-active'));
   $('view-occupancy').classList.add('print-active');
   // Give browser a tick to apply styles before printing
@@ -4111,7 +4111,7 @@ function renderQuickCalcRange(beds, occ, expenses, baseRate) {
 // as printOverview(). Nothing is stored; the operator keeps the file.
 function printQuickCalc() {
   const ts = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-  $('qcPrintTimestamp').textContent = `${window.orgName || 'HouseBoss'} · Profit Projection · ${ts}`;
+  $('qcPrintTimestamp').textContent = `${window.orgName || 'HouseBoss.AI'} · Profit Projection · ${ts}`;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('print-active'));
   $('view-quickcalc').classList.add('print-active');
   setTimeout(() => {

@@ -573,8 +573,31 @@ test.describe("@smoke intake tab", () => {
       };
     });
     expect(layout.folderCount).toBe(1);
-    expect(layout.folderName).toBe("Bethel Intake Forms");
+    expect(layout.folderName).toBe("HouseBoss Intake Forms");
     expect(layout.allInFolder).toBe(true);
+  });
+
+  // ── Test 13b: the pre-rebrand folder is renamed, not abandoned ────────────
+  // Before HouseBoss.AI the folder was "Bethel Intake Forms". Creating a new
+  // folder would hide every existing intake from the list.
+  //
+  // Fails if: a second folder is created, or old intakes stop being listed.
+  test("renames the old Bethel Intake Forms folder and keeps its intakes", async ({ page }) => {
+    await openDashboard(page);
+    await page.evaluate(() => {
+      const put = (f) => window.__drive.files.set(f.id, {
+        parents: [], appProperties: {}, trashed: false, content: "", version: "1",
+        headRevisionId: "rev-old-" + f.id, modifiedTime: new Date().toISOString(), ...f,
+      });
+      put({ id: "legacy-folder", name: "Bethel Intake Forms", mimeType: "application/vnd.google-apps.folder" });
+      put({ id: "old-intake", name: "Doe, Jane.json", mimeType: "application/json", parents: ["legacy-folder"],
+        appProperties: { clientName: "Jane Doe" }, content: JSON.stringify({ firstName: "Jane", lastName: "Doe" }) });
+    });
+    await connectDrive(page);
+    await expect(page.locator("#intake-list-body")).toContainText("Jane Doe", { timeout: 10000 });
+    const folders = await page.evaluate(() => [...window.__drive.files.values()]
+      .filter((f) => f.mimeType === "application/vnd.google-apps.folder").map((f) => [f.id, f.name]));
+    expect(folders).toEqual([["legacy-folder", "HouseBoss Intake Forms"]]);
   });
 
   // ── Test 14: the Drive file is named for the client, and stays that way ───
