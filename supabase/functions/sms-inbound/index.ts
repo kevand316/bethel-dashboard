@@ -253,7 +253,7 @@ async function handle(p: Record<string, string>) {
       return finish("processed", userId);
     }
 
-    // ── Intake link: only a link is ever texted, never intake answers ───────────
+    // ── Intake by text: a one-time link to the dashboard's own intake form ──────
     if (/^\s*intake\b/i.test(body)) {
       if (!role?.can_request_intake) {
         await sendSms(admin, userId, phone, "Your role can't request intake links. Ask the owner to turn on Request intake links for your role.");
@@ -275,10 +275,8 @@ async function handle(p: Record<string, string>) {
           `[${org.name}] Intake form (works for 24 hours, one intake): ${Deno.env.get("DASHBOARD_URL") || "https://houseboss.ai"}/intake-link.html#${token}`);
         return finish("processed", userId);
       }
-      const { data: prof } = await admin.from("org_profiles").select("intake_url").eq("user_id", userId).maybeSingle();
-      await sendSms(admin, userId, phone, prof?.intake_url
-        ? `[${org.name}] Intake form: ${prof.intake_url}`
-        : "Intake by text isn't set up yet. Ask the owner to add the intake form link on the Team tab.");
+      await sendSms(admin, userId, phone,
+        "Texted intakes aren't turned on yet. The owner can turn them on in the Intake tab at houseboss.ai.");
       return finish("processed", userId);
     }
 

@@ -181,7 +181,7 @@ test.describe("@sms texting server", () => {
   });
 });
 
-test.describe("@sms intake link by text", () => {
+test.describe("@sms intake by text", () => {
   test.beforeAll(async () => {
     A = await userId(process.env.TEST_USER_A_EMAIL);
     B = await userId(process.env.TEST_USER_B_EMAIL);
@@ -198,10 +198,9 @@ test.describe("@sms intake link by text", () => {
   });
   test.afterAll(async () => { await wipe(); });
 
-  test("texting 'intake' returns the link only to allowed roles, and says so when none is set", async ({ request }) => {
-    expect((await text(request, PHONE.aTester, "intake")).last).toMatch(/isn't set up yet/);
-    await admin.from("org_profiles").update({ intake_url: "https://intake.example.org/form" }).eq("user_id", A);
-    expect((await text(request, PHONE.aTester, "Intake for Marcus at Oak St")).last).toBe("[Alpha Homes] Intake form: https://intake.example.org/form");
+  test("texting 'intake' without texted intakes turned on says how to turn them on; other roles are refused", async ({ request }) => {
+    expect((await text(request, PHONE.aTester, "intake")).last)
+      .toBe("Texted intakes aren't turned on yet. The owner can turn them on in the Intake tab at houseboss.ai.");
     expect((await text(request, PHONE.invited, "intake")).last).toMatch(/can't request intake links/);
   });
 });

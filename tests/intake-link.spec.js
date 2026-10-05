@@ -142,16 +142,18 @@ test.describe("@intakelink texted intake links", () => {
     await expect(page.locator("#ilNotice")).toContainText("This link has expired", { timeout: 15000 });
   });
 
-  test("Team tab shows texted intakes as off until Google is allowed", async ({ page }) => {
+  test("Intake tab shows texted intakes as off until Google is allowed", async ({ page }) => {
+    await page.addInitScript(installFakeDrive);
     await page.route(/accounts\.google\.com/, (r) => r.abort());
     await signIn(page, process.env.TEST_USER_A_EMAIL, process.env.TEST_USER_A_PASSWORD);
     await expect(page).toHaveURL("/", { timeout: 10000 });
-    await page.getByRole("button", { name: "Team", exact: true }).click();
+    await page.getByRole("button", { name: "Intake", exact: true }).click();
+    await page.locator("#intake-connect-btn").click();
     await expect(page.locator("#tiState")).toContainText("Off", { timeout: 15000 });
     await expect(page.locator("#tiOn")).toBeVisible();
     await admin.from("google_connections").insert({ user_id: A, refresh_token: "1//bogus", email: "owner@example.org" });
-    await page.reload();
     await page.getByRole("button", { name: "Team", exact: true }).click();
+    await page.getByRole("button", { name: "Intake", exact: true }).click();
     await expect(page.locator("#tiState")).toContainText("owner@example.org", { timeout: 15000 });
     await expect(page.locator("#tiOff")).toBeVisible();
   });

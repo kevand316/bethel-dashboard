@@ -572,6 +572,24 @@ How it works:
 - **Data:** Edge Function `platform-admin` checks the caller is an admin, then counts with
   the service role. Read-only: it changes nothing.
 
+## Revisions requested by Kev, 2026-10-05 (after go-live; status: DONE, live)
+
+1. **Admin tab removed.** The platform admin view (step 8) comes out entirely: tab, page
+   code, tests and the `platform-admin` Edge Function. The `platform_admins` table stays
+   (migrations are append-only) but nothing reads it.
+2. **Snapshots tab and feature removed entirely** (Kev: Reports + Profit Calculator
+   projections cover it). No snapshot button anywhere. Existing saved snapshots were
+   copied into Reports → Projections by migration 015 (subtype `snapshot`) so nothing is
+   lost; they still open there. The old data row is left untouched.
+3. **Rent tab: collapsible homes.** Each home's header toggles its rows (▾/▸), plus
+   Collapse all / Expand all. The choice is remembered on this device.
+4. **Intake by text simplified.**
+   - The pasted "intake form link" field and its fallback are removed.
+   - The texted link *is* the dashboard's own Intake form, opened on the phone.
+   - **Allow texted intakes** moves from the Team tab to the Intake tab.
+   - If it isn't turned on, a texted "intake" gets "Texted intakes aren't turned on yet.
+     The owner can turn them on in the Intake tab at houseboss.ai."
+
 ## Build order
 1. Organization profile + Team page
 2. Inbound texting plus AI conversation, filing reports (Virtual Phone)

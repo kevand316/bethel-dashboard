@@ -178,6 +178,24 @@ test.describe("@rent rent tracker", () => {
     await expect(page.locator(".rt-row")).toHaveCount(3, { timeout: 10000 });
   });
 
+  test("each home collapses and expands, and the choice is remembered", async ({ page }) => {
+    await openRent(page);
+    await expect(page.locator(".rt-row:visible")).toHaveCount(2, { timeout: 10000 });
+    const head = page.locator(".rt-home-head", { hasText: "Test House" });
+    await expect(head).toContainText("2 unpaid");
+    await head.click();
+    await expect(page.locator(".rt-row:visible")).toHaveCount(0);
+    await expect(head).toHaveAttribute("aria-expanded", "false");
+    await page.reload();
+    await page.getByRole("button", { name: "Rent", exact: true }).click();
+    await expect(page.locator(".rt-home-head", { hasText: "Test House" })).toHaveAttribute("aria-expanded", "false", { timeout: 10000 });
+    await page.click("#rtExpandAll");
+    await expect(page.locator(".rt-row:visible")).toHaveCount(2);
+    await page.click("#rtCollapseAll");
+    await expect(page.locator(".rt-row:visible")).toHaveCount(0);
+    await page.click("#rtExpandAll");
+  });
+
   test("@isolation another account sees none of this", async ({ page }) => {
     await admin.from("rent_charges").insert({ user_id: A, month: THIS, home_id: 1, resident_name: "Secret Tenant", due: 1 });
     await page.route(/accounts\.google\.com/, (r) => r.abort());
@@ -216,6 +234,31 @@ test.describe("@rent rent tracker", () => {
       expect(r).toMatch(/Recorded ✓/);
       const c = (await charges()).find((x) => x.resident_name === "Grant Smith");
       expect(c.rent_payments.map((p) => Number(p.amount))).toEqual([700]);
+    });
+
+    test("'Joe at 134 Manfield paid rent' picks the right Joe and the open Rent tab updates", async ({ request, page }) => {
+      await setRoster([
+        ...HOMES(),
+        { id: 2, name: "134 W Manfield St.", address: "", startupCost: 0, catOrder: [], expenses: [],
+          beds: [{ id: 1, status: "occupied", name: "Joe Rivera", rate: 650, moveIn: "" }] },
+        { id: 3, name: "775 Libby Dr.", address: "", startupCost: 0, catOrder: [], expenses: [],
+          beds: [{ id: 1, status: "occupied", name: "Joe Park", rate: 700, moveIn: "" }] },
+      ]);
+      await page.route(/accounts\.google\.com/, (r) => r.abort());
+      await signIn(page, process.env.TEST_USER_A_EMAIL, process.env.TEST_USER_A_PASSWORD);
+      await expect(page).toHaveURL("/", { timeout: 10000 });
+      await page.waitForFunction(() => window.isDataLoaded && window.isDataLoaded(), null, { timeout: 15000 });
+      await page.getByRole("button", { name: "Rent", exact: true }).click();
+      await page.waitForFunction(() => window.rentLive === true, null, { timeout: 15000 });
+      await expect(row(page, "Joe Rivera").locator(".rt-status")).toHaveText(/unpaid/i, { timeout: 10000 });
+
+      let r = await text(request, P.manager, `Joe at 134 Manfield paid his ${MONTH_NAME} rent`);
+      expect(r).toMatch(/Joe Rivera, 134 W Manfield St\./);
+      expect(r).toMatch(/\$650 paid in full/);
+      r = await text(request, P.manager, "YES");
+      expect(r).toMatch(/Recorded ✓/);
+      await expect(row(page, "Joe Rivera").locator(".rt-status")).toHaveText(/^paid$/i, { timeout: 15000 });
+      await expect(row(page, "Joe Park").locator(".rt-status")).toHaveText(/unpaid/i);
     });
 
     test("a partial payment reports the remaining balance", async ({ request }) => {

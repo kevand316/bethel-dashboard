@@ -17,7 +17,7 @@
 <script src="lib/team.js"></script>
 <script src="lib/reports.js"></script>
 <script src="lib/rent.js"></script>
-<script src="lib/admin.js"></script>
+<script src="lib/text-intake.js"></script>
 <style>
 :root {
   --bg: #0a0e14;
@@ -869,15 +869,6 @@ body.rp-detail-open { overflow: hidden; }
   .rp-print-head { font-family: var(--mono); font-size: 0.75rem; margin-bottom: 1rem; }
 }
 
-/* ADMIN TAB (lib/admin.js) */
-.ad-scroll { overflow-x: auto; border: 1px solid var(--border); background: var(--bg2); }
-.ad-table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 0.82rem; }
-.ad-table th { text-align: left; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--gold); padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
-.ad-table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); color: var(--text); white-space: nowrap; }
-.ad-idle td { opacity: 0.75; }
-.ad-cost { font-family: var(--mono); color: var(--gold); }
-
 /* RENT TAB (lib/rent.js) */
 .rt-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.5rem 0 1rem; }
 .rt-nav { flex: 0 0 auto; min-width: 44px; min-height: 44px; }
@@ -890,7 +881,12 @@ body.rp-detail-open { overflow: hidden; }
 .rt-ok { color: var(--green) !important; }
 .rt-bad { color: #ff8a7a !important; }
 .rt-home { margin-bottom: 1.25rem; }
-.rt-home-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; border-bottom: 1px solid var(--gold); padding-bottom: 0.35rem; margin-bottom: 0.5rem; }
+.rt-home-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;
+  font: inherit; color: inherit; text-align: left; background: transparent; border: none; border-bottom: 1px solid var(--gold);
+  padding: 0.5rem 0 0.35rem; margin-bottom: 0.5rem; min-height: 44px; cursor: pointer; }
+.rt-home-head:hover .rt-home-name, .rt-home-head:focus-visible .rt-home-name { color: var(--gold); }
+.rt-chev { display: inline-block; width: 1.1em; color: var(--gold); }
+.rt-collapsed .rt-home-head { margin-bottom: 0; }
 .rt-home-name { font-family: var(--display); font-size: 1.15rem; letter-spacing: 2px; color: var(--text); }
 .rt-home-tot { font-family: var(--mono); font-size: 0.75rem; color: var(--gold); }
 .rt-row { background: var(--bg2); border: 1px solid var(--border); border-left: 4px solid #ff8a7a; padding: 0.75rem 1rem; margin-bottom: 0.5rem; }
@@ -918,6 +914,19 @@ body.rp-detail-open { overflow: hidden; }
 .rt-hist-row:hover { color: var(--gold); }
 
 /* TEAM TAB (lib/team.js) */
+.tm-role .tm-role-delete { font-size: 0.65rem; padding: 0.35rem 0.75rem; min-height: 36px; }
+.tm-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 1rem; }
+@media (max-width: 600px) { .tm-form-grid { grid-template-columns: 1fr; } }
+.tm-form-grid .tm-select, .tm-form-grid input { min-height: 44px; }
+.tm-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.tm-chip { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.05em; color: var(--text); background: var(--bg3);
+  border: 1px solid var(--border); padding: 0.55rem 0.9rem; min-height: 44px; cursor: pointer; transition: all 0.15s; }
+.tm-chip:hover { border-color: var(--gold); }
+.tm-chip[aria-pressed="true"] { border-color: var(--gold); color: var(--bg); background: var(--gold); font-weight: 600; }
+.tm-chip[aria-pressed="true"]::before { content: '✓ '; }
+.tm-form-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-top: 0.25rem; }
+.tm-foot-note { margin-top: 0; flex: 1 1 260px; }
+.ti-panel { margin-top: 1.5rem; }
 .rp-roster { border: 1px solid var(--border); padding: 0.75rem; margin: 0.75rem 0; color: var(--text); }
 .rp-roster-pending { border-color: var(--gold); }
 .rp-roster-applied { border-color: var(--green); }
@@ -1327,7 +1336,6 @@ body.rp-detail-open { overflow: hidden; }
   .expense-cat { font-size: 0.75rem; }
   /* Wide tables — allow horizontal scroll rather than squish */
   #projSection .expense-table { min-width: 560px; }
-  .compare-table { min-width: 480px; }
   /* Quick Calc — 2-col results, same as the cashflow strip */
   .qc-results { grid-template-columns: repeat(2, 1fr); }
   .qc-cell:nth-child(3n) { border-right: 1px solid var(--border); }
@@ -1409,33 +1417,6 @@ body.rp-detail-open { overflow: hidden; }
   margin-bottom: 0.75rem;
   border-bottom: 1px solid #1e2d45;
 }
-
-/* ── REPORTS TAB ── */
-.reports-toolbar { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-.snapshot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-.snapshot-card {
-  background: #111620; border: 1px solid #1e2d45; padding: 1.25rem;
-  cursor: pointer; transition: border-color 0.2s; position: relative;
-}
-.snapshot-card:hover { border-color: #f0b429; }
-.snapshot-card.selected { border-color: #f0b429; background: rgba(240,180,41,0.05); }
-.snapshot-card .snap-date { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 3px; color: #e8edf5; margin-bottom: 0.2rem; }
-.snapshot-card .snap-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; color: #f0b429; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 0.85rem; }
-.snapshot-card .snap-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-.snap-stat label { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; color: #e8edf5; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2px; }
-.snap-stat span { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; font-weight: 600; color: #f0b429; }
-.snap-delete { position: absolute; top: 0.6rem; right: 0.6rem; background: none; border: none; color: #e8edf5; cursor: pointer; font-size: 0.8rem; padding: 0.2rem 0.4rem; transition: color 0.15s; }
-.snap-delete:hover { color: #e74c3c; }
-.compare-panel { background: #111620; border: 1px solid #1e2d45; overflow-x: auto; margin-top: 1.5rem; }
-.compare-header { background: #1a2030; padding: 0.85rem 1.25rem; border-bottom: 1px solid #1e2d45; display: flex; align-items: center; justify-content: space-between; }
-.compare-table { width: 100%; border-collapse: collapse; }
-.compare-table th, .compare-table td { padding: 0.7rem 1.25rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; border-bottom: 1px solid rgba(30,45,69,0.5); text-align: right; }
-.compare-table th:first-child, .compare-table td:first-child { text-align: left; color: #e8edf5; }
-.compare-table thead th { font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: #e8edf5; font-weight: 400; }
-.delta-pos { color: #2ecc71; }
-.delta-neg { color: #e74c3c; }
-.delta-zero { color: #e8edf5; }
-.no-snaps-msg { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: #e8edf5; text-align: center; padding: 3rem; }
 
 /* SAVE STATUS INDICATOR */
 #save-status {
@@ -1579,11 +1560,9 @@ body.rp-detail-open { overflow: hidden; }
   <button class="tab" onclick="switchTab('quickcalc', event)">Profit Calculator</button>
   <button class="tab" onclick="switchTab('intake', event)">Intake</button>
   <button class="tab" onclick="switchTab('rlog', event)">Reports</button>
-  <button class="tab" onclick="switchTab('reports', event)">Snapshots</button>
   <button class="tab" onclick="switchTab('team', event)">Team</button>
-  <button class="tab" id="adminTab" onclick="switchTab('admin', event)" hidden>Admin</button>
   <button class="no-print" onclick="printOverview()" style="margin-left:auto;font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⬇ Save PDF</button>
-  <button class="no-print" onclick="saveSnapshot()" style="font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:var(--gold);border:1px solid var(--gold);color:var(--bg);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#d4a012'" onmouseout="this.style.background='var(--gold)'">📸 Save Snapshot</button>
+
 </div>
 
 <div class="main">
@@ -1762,15 +1741,6 @@ body.rp-detail-open { overflow: hidden; }
 
 
   <!-- ═══════════════════════════════════════ -->
-  <!-- ADMIN VIEW: lib/admin.js. Platform admins only (server-enforced). -->
-  <!-- ═══════════════════════════════════════ -->
-  <div class="view" id="view-admin">
-    <div class="section-title">All accounts</div>
-    <div class="rt-totals" id="adTotals"></div>
-    <div id="adBody"></div>
-  </div>
-
-  <!-- ═══════════════════════════════════════ -->
   <!-- RENT VIEW: lib/rent.js. Monthly paid/owed checklist. -->
   <!-- ═══════════════════════════════════════ -->
   <div class="view" id="view-rent">
@@ -1782,6 +1752,8 @@ body.rp-detail-open { overflow: hidden; }
       <input type="month" id="rtMonth" class="tm-select rt-month" aria-label="Pick a month">
       <button class="btn btn-ghost tm-btn" id="rtToday" type="button">This month</button>
       <button class="btn btn-ghost tm-btn" id="rtHistoryBtn" type="button">History</button>
+      <button class="btn btn-ghost tm-btn" id="rtCollapseAll" type="button">Collapse all</button>
+      <button class="btn btn-ghost tm-btn" id="rtExpandAll" type="button">Expand all</button>
     </div>
     <div class="tm-panel rt-history" id="rtHistory" hidden></div>
     <div class="rt-totals" id="rtTotals"></div>
@@ -1880,19 +1852,6 @@ body.rp-detail-open { overflow: hidden; }
         <div class="qc-field"><label for="orgEscalationHour">Tell their supervisor next morning at</label>
           <select id="orgEscalationHour" class="tm-select"><option value="0">12:00 am</option><option value="1">1:00 am</option><option value="2">2:00 am</option><option value="3">3:00 am</option><option value="4">4:00 am</option><option value="5">5:00 am</option><option value="6">6:00 am</option><option value="7">7:00 am</option><option value="8">8:00 am</option><option value="9">9:00 am</option><option value="10">10:00 am</option><option value="11">11:00 am</option><option value="12">12:00 pm</option><option value="13">1:00 pm</option><option value="14">2:00 pm</option><option value="15">3:00 pm</option><option value="16">4:00 pm</option><option value="17">5:00 pm</option><option value="18">6:00 pm</option><option value="19">7:00 pm</option><option value="20">8:00 pm</option><option value="21">9:00 pm</option><option value="22">10:00 pm</option><option value="23">11:00 pm</option></select></div>
       </div>
-      <div class="qc-field">
-        <label for="orgIntakeUrl">Intake form link (texted to staff who text "intake")</label>
-        <input type="url" id="orgIntakeUrl" maxlength="500" placeholder="https://..." autocomplete="off">
-      </div>
-      <div class="qc-field">
-        <label>Texted intakes (one-time link that saves to your Google Drive)</label>
-        <div class="tm-note" style="margin-top:0" id="tiState"></div>
-        <div class="tm-row" style="margin-top:0.5rem">
-          <button class="btn btn-ghost tm-btn" id="tiOn" type="button">Allow texted intakes</button>
-          <button class="btn btn-red tm-btn" id="tiOff" type="button" hidden>Turn off</button>
-          <span class="tm-msg" id="tiMsg" aria-live="polite"></span>
-        </div>
-      </div>
       <div class="tm-row">
         <button class="btn btn-gold tm-btn" id="orgNameSave" type="button">Save</button>
         <span class="tm-msg" id="orgNameStatus" aria-live="polite"></span>
@@ -1901,9 +1860,9 @@ body.rp-detail-open { overflow: hidden; }
 
     <div class="section-title" id="tmFormTitle">Add a person</div>
     <div class="tm-panel">
-      <div class="tm-grid">
+      <div class="tm-form-grid">
         <div class="qc-field"><label for="tmName">Name</label>
-          <input type="text" id="tmName" maxlength="80" autocomplete="off"></div>
+          <input type="text" id="tmName" maxlength="80" autocomplete="off" placeholder="Full name"></div>
         <div class="qc-field"><label for="tmPhone">Mobile phone</label>
           <input type="tel" id="tmPhone" placeholder="(555) 201-3344" autocomplete="off"></div>
         <div class="qc-field"><label for="tmRole">Role</label>
@@ -1912,16 +1871,15 @@ body.rp-detail-open { overflow: hidden; }
           <select id="tmReportsTo" class="tm-select"><option value="">No one</option></select></div>
       </div>
       <div class="qc-field">
-        <label>Homes</label>
-        <label class="tm-check"><input type="checkbox" id="tmAllHomes" checked> All homes</label>
-        <div class="tm-homes" id="tmHomes" hidden></div>
-      </div>
-      <div class="tm-row">
-        <button class="btn btn-gold tm-btn" id="tmAdd" type="button">Add person</button>
-        <button class="btn btn-ghost tm-btn" id="tmCancel" type="button" hidden>Cancel</button>
+        <label id="tmHomesLabel">Homes they cover</label>
+        <div class="tm-chips" id="tmHomes" role="group" aria-labelledby="tmHomesLabel"></div>
       </div>
       <div class="tm-error" id="tmError" aria-live="polite"></div>
-      <div class="tm-note">They'll get a text asking them to reply YES. Until they do, they can't text in.</div>
+      <div class="tm-form-foot">
+        <button class="btn btn-gold tm-btn" id="tmAdd" type="button">Add person</button>
+        <button class="btn btn-ghost tm-btn" id="tmCancel" type="button" hidden>Cancel</button>
+        <span class="tm-note tm-foot-note">They get one text asking them to reply YES. Until they do, they can't text in.</span>
+      </div>
     </div>
 
     <div class="section-title">Join by text</div>
@@ -2246,6 +2204,18 @@ body.rp-detail-open { overflow: hidden; }
 
       <div id="intake-list-body"></div>
 
+      <!-- Texted intakes (lib/text-intake.js): staff text "intake" and get a
+           one-time link to this same form on their phone. -->
+      <div class="tm-panel ti-panel">
+        <div class="an-label">Intake by text</div>
+        <div class="tm-note" id="tiState"></div>
+        <div class="tm-row" style="margin-top:0.5rem">
+          <button class="btn btn-ghost tm-btn" id="tiOn" type="button">Allow texted intakes</button>
+          <button class="btn btn-red tm-btn" id="tiOff" type="button" hidden>Turn off</button>
+          <span class="tm-msg" id="tiMsg" aria-live="polite"></span>
+        </div>
+      </div>
+
     </div>
 
     <!-- ── 3. FORM ───────────────────────────────────────────────────────── -->
@@ -2281,34 +2251,6 @@ body.rp-detail-open { overflow: hidden; }
       <!-- The form is rendered from lib/intake-form.js, not written by hand. -->
       <div class="intake-doc" id="intake-form-fields"></div>
 
-    </div>
-
-  </div>
-
-  <!-- ═══════════════════════════════════════ -->
-  <!-- REPORTS VIEW -->
-  <!-- ═══════════════════════════════════════ -->
-  <div class="view" id="view-reports">
-
-    <div class="reports-toolbar">
-      <div style="flex:1">
-        <div style="font-family:var(--display);font-size:1.1rem;letter-spacing:3px;color:var(--text)">SAVED SNAPSHOTS</div>
-        <div style="font-family:var(--mono);font-size:0.62rem;color:var(--text-dim);margin-top:2px">Click any two snapshots to compare · newest first</div>
-      </div>
-      <button onclick="saveSnapshot()" style="font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.55rem 1.25rem;background:var(--gold);border:1px solid var(--gold);color:var(--bg);cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#d4a012'" onmouseout="this.style.background='var(--gold)'">📸 Save New Snapshot</button>
-      <button onclick="clearAllSnapshots()" style="font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.55rem 1.25rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Clear All</button>
-    </div>
-
-    <div class="snapshot-grid" id="snapshotGrid"></div>
-
-    <div class="compare-panel" id="comparePanel" style="display:none">
-      <div class="compare-header">
-        <div style="font-family:var(--mono);font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold)">Comparison</div>
-        <div style="font-family:var(--mono);font-size:0.65rem;color:var(--text-dim)" id="compareLabel">Select two snapshots</div>
-      </div>
-      <div style="overflow-x:auto">
-        <table class="compare-table" id="compareTable"></table>
-      </div>
     </div>
 
   </div>
@@ -2786,7 +2728,7 @@ async function initData() {
   window.team.init(session).catch((e) => console.warn('[team] init failed:', e));
   window.reports.init();
   window.rent.init();
-  window.platformAdmin.init().catch((e) => console.warn('[admin] init failed:', e));
+  window.textIntake.init();
 
   // The indicator was blank for the whole load, so a slow network and a hung
   // load looked identical — to the operator and to anyone debugging. The save
@@ -3686,204 +3628,6 @@ function printOverview() {
   }, 150);
 }
 
-// ═══════════════════════════════════════════════════════
-// SNAPSHOTS / REPORTS
-// ═══════════════════════════════════════════════════════
-let selectedSnaps = [];
-let cachedSnaps = null; // in-memory cache so toggleSelectSnap doesn't refetch
-
-async function getSnapshots() {
-  const data = await sbGet('snapshots');
-  if (data === SB_LOAD_FAILED) return SB_LOAD_FAILED;
-  cachedSnaps = Array.isArray(data) ? data : [];
-  return cachedSnaps;
-}
-async function saveSnapshots(snaps) {
-  cachedSnaps = snaps;
-  await sbSet('snapshots', snaps);
-}
-
-async function saveSnapshot() {
-  const label = prompt('Label this snapshot (e.g. "January 2026"):');
-  if (!label) return;
-  const snaps = await getSnapshots();
-  // If load failed, bail — saving now would wipe existing snapshots
-  if (snaps === SB_LOAD_FAILED) { alert('Could not reach Supabase — snapshot not saved. Check connection and try again.'); return; }
-  const totalBeds = homes.reduce((s, h) => s + h.beds.length, 0);
-  const totalOcc  = homes.reduce((s, h) => s + homeOccupied(h), 0);
-  const totalRev  = homes.reduce((s, h) => s + homeRevenue(h), 0);
-  const totalExp  = homes.reduce((s, h) => s + homeExpenses(h), 0);
-  const totalCF   = totalRev - totalExp;
-  const totalClients = homes.reduce((s, h) => s + h.beds.filter(b => b.status !== 'vacant').length, 0);
-  const totalRecup   = homes.reduce((s, h) => s + h.beds.filter(b => b.status === 'recup').length, 0);
-  const totalVacant  = totalBeds - totalOcc;
-  const snap = {
-    id: Date.now(), label, date: new Date().toISOString(),
-    data: {
-      revenue: totalRev, expenses: totalExp, cashflow: totalCF,
-      annual: totalCF * 12,
-      margin: totalRev > 0 ? Math.round((totalCF / totalRev) * 100) : 0,
-      beds: totalBeds, clients: totalClients, recup: totalRecup,
-      vacant: totalVacant, occPct: Math.round((totalOcc / totalBeds) * 100),
-      homeBreakdown: homes.map(h => ({
-        name: h.name, revenue: homeRevenue(h), expenses: homeExpenses(h),
-        cashflow: homeCashflow(h), beds: h.beds.length,
-        occ: homeOccupied(h), occPct: homeOccPct(h)
-      }))
-    }
-  };
-  snaps.unshift(snap);
-  await saveSnapshots(snaps);
-  selectedSnaps = [];
-  if ($('view-reports').classList.contains('active')) renderReports();
-  alert(`Snapshot "${label}" saved!`);
-}
-
-async function deleteSnapshot(id) {
-  const snaps = await getSnapshots();
-  // If load failed, bail — saving now would wipe existing snapshots
-  if (snaps === SB_LOAD_FAILED) { alert('Could not reach Supabase — try again.'); return; }
-  await saveSnapshots(snaps.filter(s => s.id !== id));
-  selectedSnaps = selectedSnaps.filter(s => s.id !== id);
-  renderReports();
-}
-
-async function clearAllSnapshots() {
-  if (!confirm('Delete all saved snapshots? This cannot be undone.')) return;
-  await saveSnapshots([]);
-  selectedSnaps = [];
-  renderReports();
-}
-
-async function toggleSelectSnap(id) {
-  if (!cachedSnaps) return;
-  const snap = cachedSnaps.find(s => s.id === id);
-  if (!snap) return;
-  const idx = selectedSnaps.findIndex(s => s.id === id);
-  if (idx >= 0) {
-    selectedSnaps.splice(idx, 1);
-  } else {
-    if (selectedSnaps.length >= 2) selectedSnaps.shift();
-    selectedSnaps.push(snap);
-  }
-  renderReports();
-}
-
-function delta(a, b, isMoney, reverse = false) {
-  const diff = b - a;
-  const pct = a !== 0 ? Math.round((diff / Math.abs(a)) * 100) : 0;
-  const good = reverse ? diff < 0 : diff > 0;
-  const cls = diff === 0 ? 'delta-zero' : good ? 'delta-pos' : 'delta-neg';
-  const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '—';
-  const val = isMoney ? fmt(Math.abs(diff)) : Math.abs(diff);
-  if (diff === 0) return `<span class="delta-zero">—</span>`;
-  return `<span class="${cls}">${arrow} ${val} (${Math.abs(pct)}%)</span>`;
-}
-
-async function renderReports() {
-  const snaps = await getSnapshots();
-  const grid = $('snapshotGrid');
-
-  if (snaps === SB_LOAD_FAILED) {
-    grid.innerHTML = `<div class="no-snaps-msg" style="grid-column:1/-1;color:var(--red)">Could not load snapshots — check connection and reload.</div>`;
-    return;
-  }
-
-  if (!snaps.length) {
-    grid.innerHTML = `<div class="no-snaps-msg" style="grid-column:1/-1">No snapshots yet — save one from the Overview tab using the 📸 button above.</div>`;
-    $('comparePanel').style.display = 'none';
-    return;
-  }
-
-  grid.innerHTML = snaps.map(s => {
-    const isSelected = selectedSnaps.some(x => x.id === s.id);
-    const d = s.data;
-    const snapDate = new Date(s.date).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-    return `
-      <div class="snapshot-card ${isSelected ? 'selected' : ''}" onclick="toggleSelectSnap(${s.id})">
-        <button class="snap-delete no-print" onclick="event.stopPropagation();deleteSnapshot(${s.id})">✕</button>
-        <div class="snap-date">${esc(s.label)}</div>
-        <div class="snap-label">${snapDate}</div>
-        <div class="snap-stats">
-          <div class="snap-stat"><label>Revenue</label><span>${fmt(d.revenue)}</span></div>
-          <div class="snap-stat"><label>Cashflow</label><span style="color:${d.cashflow>=0?'var(--green)':'var(--red)'}">${fmt(d.cashflow)}</span></div>
-          <div class="snap-stat"><label>Clients</label><span>${d.clients}</span></div>
-          <div class="snap-stat"><label>Occupancy</label><span>${d.occPct}%</span></div>
-        </div>
-        ${isSelected ? '<div style="margin-top:0.75rem;font-family:var(--mono);font-size:0.6rem;color:var(--gold);letter-spacing:0.1em">✓ SELECTED FOR COMPARISON</div>' : ''}
-      </div>`;
-  }).join('');
-
-  // Compare panel
-  if (selectedSnaps.length === 2) {
-    const [older, newer] = selectedSnaps[0].date < selectedSnaps[1].date
-      ? [selectedSnaps[0], selectedSnaps[1]]
-      : [selectedSnaps[1], selectedSnaps[0]];
-    const a = older.data, b = newer.data;
-
-    $('compareLabel').textContent = `${older.label}  →  ${newer.label}`;
-    $('comparePanel').style.display = 'block';
-
-    const rows = [
-      ['Portfolio Revenue',  fmt(a.revenue),  fmt(b.revenue),  delta(a.revenue,  b.revenue,  true)],
-      ['Total Expenses',     fmt(a.expenses), fmt(b.expenses), delta(a.expenses, b.expenses, true, true)],
-      ['Net Cashflow',       fmt(a.cashflow), fmt(b.cashflow), delta(a.cashflow, b.cashflow, true)],
-      ['Annual Cashflow',    fmt(a.annual),   fmt(b.annual),   delta(a.annual,   b.annual,   true)],
-      ['Profit Margin',      a.margin+'%',    b.margin+'%',    delta(a.margin,   b.margin,   false)],
-      ['Total Beds',         a.beds,          b.beds,          delta(a.beds,     b.beds,     false)],
-      ['Total Clients',      a.clients,       b.clients,       delta(a.clients,  b.clients,  false)],
-      ['Recuperative Clients', a.recup,       b.recup,         delta(a.recup,    b.recup,    false)],
-      ['Open Beds',          a.vacant,        b.vacant,        delta(a.vacant,   b.vacant,   false, true)],
-      ['Occupancy Rate',     a.occPct+'%',    b.occPct+'%',    delta(a.occPct,   b.occPct,   false)],
-    ];
-
-    // Home breakdown rows
-    const homeRows = (a.homeBreakdown || []).map((ah, i) => {
-      const bh = (b.homeBreakdown || [])[i];
-      if (!bh) return '';
-      return `
-        <tr style="background:rgba(255,255,255,0.015)">
-          <td style="color:var(--gold);font-size:0.7rem">${esc(ah.name)}</td>
-          <td>${fmt(ah.revenue)}</td><td>${fmt(bh.revenue)}</td>
-          <td>${delta(ah.revenue, bh.revenue, true)}</td>
-        </tr>
-        <tr>
-          <td style="padding-left:2rem;color:var(--text-dim);font-size:0.68rem">↳ Cashflow</td>
-          <td>${fmt(ah.cashflow)}</td><td>${fmt(bh.cashflow)}</td>
-          <td>${delta(ah.cashflow, bh.cashflow, true)}</td>
-        </tr>
-        <tr>
-          <td style="padding-left:2rem;color:var(--text-dim);font-size:0.68rem">↳ Occupancy</td>
-          <td>${ah.occPct}%</td><td>${bh.occPct}%</td>
-          <td>${delta(ah.occPct, bh.occPct, false)}</td>
-        </tr>`;
-    }).join('');
-
-    $('compareTable').innerHTML = `
-      <thead>
-        <tr>
-          <th>Metric</th>
-          <th>${esc(older.label)}</th>
-          <th>${esc(newer.label)}</th>
-          <th>Change</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows.map(([label, av, bv, dv]) => `
-          <tr>
-            <td>${label}</td>
-            <td style="color:var(--text-mid)">${av}</td>
-            <td style="color:var(--text)">${bv}</td>
-            <td>${dv}</td>
-          </tr>`).join('')}
-        <tr><td colspan="4" style="padding-top:1rem;font-size:0.6rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim)">Home Breakdown</td></tr>
-        ${homeRows}
-      </tbody>`;
-  } else {
-    $('comparePanel').style.display = 'none';
-  }
-}
-
 function switchTab(name, event) {
   // Walking away from a half-typed intake must not strand it in memory. Drive is
   // the only place it is allowed to live, so push it there on the way out — the
@@ -3896,11 +3640,10 @@ function switchTab(name, event) {
   $('view-' + name).classList.add('active');
   if (name === 'ops') renderCF();
   if (name === 'quickcalc') renderQuickCalc();
-  if (name === 'reports') renderReports();
   if (name === 'team') window.team.open();
   if (name === 'rlog') window.reports.open();
   if (name === 'rent') window.rent.open();
-  if (name === 'admin') window.platformAdmin.open();
+  if (name === 'intake') window.textIntake.render();
 }
 
 // ═══════════════════════════════════════════════════════

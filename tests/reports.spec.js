@@ -48,12 +48,20 @@ test.describe("@reports reports tab", () => {
     await admin.from("reports").delete().in("user_id", [A, B]);
   });
 
-  test("Reports and Snapshots are separate tabs", async ({ page }) => {
+  test("there is no Snapshots tab or snapshot button; carried-over snapshots still open in Reports", async ({ page }) => {
+    await admin.from("reports").insert({
+      user_id: A, bucket: "projections", subtype: "snapshot", source: "dashboard", title: "Old snapshot", summary: "",
+      urgent: false, details: { snapshot: { revenue: 1000, expenses: 400, cashflow: 600, annual: 7200, margin: 60,
+        beds: 4, clients: 3, vacant: 1, recup: 0, occPct: 75, homeBreakdown: [{ name: "Oak", revenue: 1000, expenses: 400, cashflow: 600, beds: 4, occ: 3 }] } },
+    });
     await signedIn(page, process.env.TEST_USER_A_EMAIL, process.env.TEST_USER_A_PASSWORD);
+    await expect(page.getByRole("button", { name: "Snapshots", exact: true })).toHaveCount(0);
+    await expect(page.locator("#snapBtn")).toHaveCount(0);
     await openReports(page);
-    await page.getByRole("button", { name: "Snapshots", exact: true }).click();
-    await expect(page.locator("#view-reports")).toBeVisible();
-    await expect(page.locator("#view-rlog")).toBeHidden();
+    await page.click('.rp-chip[data-bucket="projections"]');
+    await page.locator(".rp-card", { hasText: "Old snapshot" }).click();
+    await expect(page.locator("#rpDetail")).toContainText("Monthly cashflow");
+    await expect(page.locator("#rpDetail")).toContainText("$600");
   });
 
   test("bucket chips count and filter reports", async ({ page }) => {
