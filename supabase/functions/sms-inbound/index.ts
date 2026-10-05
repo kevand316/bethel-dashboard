@@ -188,7 +188,7 @@ async function handle(p: Record<string, string>) {
       await deleteMedia(url);
     }
 
-    const { data: role } = await admin.from("team_roles").select("name, can_announce, can_approve_roster, can_log_rent").eq("id", member.role_id).eq("user_id", userId).maybeSingle();
+    const { data: role } = await admin.from("team_roles").select("name, can_announce, can_approve_roster, can_log_rent, can_request_intake").eq("id", member.role_id).eq("user_id", userId).maybeSingle();
     const save = (fields: Record<string, unknown>) => admin.from("sms_conversations")
       .update({ ...fields, updated_at: new Date().toISOString() }).eq("id", conv!.id).eq("user_id", userId);
 
@@ -205,6 +205,19 @@ async function handle(p: Record<string, string>) {
         ? await decideRoster(admin, userId, target.id, decision[1].toLowerCase() === "approve" ? "approve" : "reject", member.name)
         : { ok: false, message: `No roster change with code ${decision[2]}.` };
       await sendSms(admin, userId, phone, res.ok ? `Done ✓ ${res.message}` : res.message);
+      return finish("processed", userId);
+    }
+
+    // ── Intake link: only a link is ever texted, never intake answers ───────────
+    if (/^\s*intake\b/i.test(body)) {
+      if (!role?.can_request_intake) {
+        await sendSms(admin, userId, phone, "Your role can't request intake links. Ask the owner to turn on Request intake links for your role.");
+        return finish("processed", userId);
+      }
+      const { data: prof } = await admin.from("org_profiles").select("intake_url").eq("user_id", userId).maybeSingle();
+      await sendSms(admin, userId, phone, prof?.intake_url
+        ? `[${org.name}] Intake form: ${prof.intake_url}`
+        : "Intake by text isn't set up yet. Ask the owner to add the intake form link on the Team tab.");
       return finish("processed", userId);
     }
 

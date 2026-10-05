@@ -497,6 +497,25 @@ draft: move-in or move-out, the resident's name, the bed price (move-ins), and t
 - The AI only extracts (payment or question, name, amount, month, home). Matching,
   amounts and recording are code.
 
+## Step 6b detailed spec: Intake link by text (status: interim version DONE, live 2026-10-05; full version blocked on Kev)
+
+**Interim, building now:**
+- Team tab → Organization: an **Intake form link** field (https only).
+- A text starting with "intake" from a role with "Request intake links" gets
+  "[Org] Intake form: <link>". Without permission: refused. No link set: told to ask the owner.
+- Only the link is ever texted; no intake answers pass through texting or the AI.
+
+**Full version: blocked on Kev (morning list).** A one-time, expiring link that opens the
+intake form without a login and saves straight to the account owner's Google Drive.
+Proposed design that keeps SSNs off our servers:
+- The browser uploads directly to Google.
+- Our server only hands that page a short-lived Drive token (`drive.file` scope), minted
+  from the owner's stored Google refresh token.
+
+Needs from Kev:
+1. a Google Cloud OAuth **client secret** with offline access (only Kev can create it)
+2. his OK on this design
+
 ## Build order
 1. Organization profile + Team page
 2. Inbound texting plus AI conversation, filing reports (Virtual Phone)

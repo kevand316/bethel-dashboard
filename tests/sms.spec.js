@@ -180,3 +180,28 @@ test.describe("@sms texting server", () => {
     expect(error ? [] : conv).toHaveLength(0);
   });
 });
+
+test.describe("@sms intake link by text", () => {
+  test.beforeAll(async () => {
+    A = await userId(process.env.TEST_USER_A_EMAIL);
+    B = await userId(process.env.TEST_USER_B_EMAIL);
+  });
+  test.beforeEach(async () => {
+    await wipe();
+    await admin.from("org_profiles").insert({ user_id: A, org_name: "Alpha Homes" });
+    const yes = (await admin.from("team_roles").insert({ user_id: A, name: "Intake Staff", can_request_intake: true }).select("id").single()).data.id;
+    const no = (await admin.from("team_roles").insert({ user_id: A, name: "Cleaner", can_request_intake: false }).select("id").single()).data.id;
+    for (const [name, phone, role] of [["Ina Intake", PHONE.aTester, yes], ["Cal Cleaner", PHONE.invited, no]]) {
+      const { data } = await admin.from("team_members").insert({ user_id: A, name, phone, role_id: role, all_homes: true }).select("id").single();
+      await admin.from("team_members").update({ status: "active" }).eq("id", data.id);
+    }
+  });
+  test.afterAll(async () => { await wipe(); });
+
+  test("texting 'intake' returns the link only to allowed roles, and says so when none is set", async ({ request }) => {
+    expect((await text(request, PHONE.aTester, "intake")).last).toMatch(/isn't set up yet/);
+    await admin.from("org_profiles").update({ intake_url: "https://intake.example.org/form" }).eq("user_id", A);
+    expect((await text(request, PHONE.aTester, "Intake for Marcus at Oak St")).last).toBe("[Alpha Homes] Intake form: https://intake.example.org/form");
+    expect((await text(request, PHONE.invited, "intake")).last).toMatch(/can't request intake links/);
+  });
+});
