@@ -272,7 +272,7 @@ async function handle(p: Record<string, string>) {
           expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         });
         await sendSms(admin, userId, phone,
-          `[${org.name}] Intake form (works for 24 hours, one intake): ${Deno.env.get("DASHBOARD_URL") || "https://dashboard.bethelresidency.com"}/intake-link.html#${token}`);
+          `[${org.name}] Intake form (works for 24 hours, one intake): ${Deno.env.get("DASHBOARD_URL") || "https://houseboss.ai"}/intake-link.html#${token}`);
         return finish("processed", userId);
       }
       const { data: prof } = await admin.from("org_profiles").select("intake_url").eq("user_id", userId).maybeSingle();
