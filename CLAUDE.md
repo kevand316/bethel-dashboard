@@ -24,7 +24,7 @@ This is a single-file vanilla HTML/CSS/JS dashboard backed by Supabase. It start
 - `migrations/` — SQL files for Supabase schema changes. Numbered. Never edit a migration after it's run in production — write a new one.
 - `tests/` — Playwright E2E tests. See `.claude/rules/testing.md` for required test patterns.
 
-The dashboard is hosted on GitHub Pages at dashboard.bethelresidency.com (CNAME). Supabase project URL and anon key are public (safe to commit). The Supabase service_role key is NOT public — it must never appear in client code or commits.
+The dashboard is hosted on GitHub Pages at houseboss.ai (CNAME; moved from dashboard.bethelresidency.com on 2026-10-05, which now forwards via the kevand316/dashboard-redirect repo). Supabase Edge Functions live in supabase/functions; plans/sms-reports.md is the texting/reports/rent plan. Supabase project URL and anon key are public (safe to commit). The Supabase service_role key is NOT public — it must never appear in client code or commits.
 
 ## Standards
 
