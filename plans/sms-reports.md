@@ -403,6 +403,32 @@ potential home's address. Unrelated to the Overview page's Property Projections 
     shared secret
 - Emergencies keep the "call 911" first reply from step 2.
 
+## Step 4b detailed spec: Announcements relay (status: DONE, live 2026-10-05)
+
+**By text** (sender's role must allow "Send announcements"):
+- A text starting with *announce*, *announcement*, *broadcast*, or *tell everyone / all /
+  the team* starts an announcement. Anyone without permission is told so; nothing is sent.
+- Claude extracts the message, **word for word** as written, and the audience: everyone,
+  roles, homes, or named people. Code turns that into actual people (active members of
+  the same account, never the sender).
+- Confirmation first: "Send to 6 people (5 House Managers, 1 Operations Manager):
+  'Inspection Friday 10am'? Reply YES." Nothing goes out without YES.
+- Each recipient gets "[Org] From Dana: Inspection Friday 10am".
+- The sender gets "Sent to 6 ✓".
+
+**From the dashboard**: a **Send announcement** button on the Reports tab.
+- Type the message and pick the audience: everyone, roles, homes, or people.
+- It shows the count, then asks "Send to N people?" before sending.
+- Uses the Edge Function `announce`, signed in as the caller.
+
+**Logged**: every announcement is a report in the **Announcements** bucket. It shows the
+message, the recipients with delivery status, and all replies.
+
+**Replies are relayed**: when a recipient texts within 24 hours of an announcement and
+it is a reply to it (Claude decides; a new report is still a report), the reply is
+forwarded to the announcer: "[Org] James replied: got it". It's also added to the
+announcement's replies, and James gets "Passed along to Dana ✓".
+
 ## Build order
 1. Organization profile + Team page
 2. Inbound texting plus AI conversation, filing reports (Virtual Phone)

@@ -12,7 +12,8 @@
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { deleteMedia, fetchMedia, sendSms, validSignature } from "../_shared/twilio.ts";
-import { type Draft, runTurn } from "../_shared/ai.ts";
+import { type Draft, parseAnnouncement, runTurn } from "../_shared/ai.ts";
+import { describeRecipients, recentAnnouncementFor, relayReply, resolveAudience, sendAnnouncement } from "../_shared/announce.ts";
 import { notifyReport } from "../_shared/notify.ts";
 
 const WEBHOOK_URL = Deno.env.get("SMS_WEBHOOK_URL")!; // the exact URL Twilio calls
@@ -31,13 +32,17 @@ type Member = {
 type Conversation = {
   id: string; user_id: string; phone: string; member_id: string;
   history: { from: "staff" | "assistant"; text: string }[];
-  draft: (Draft & { ready?: boolean }) | null;
+  // A report draft, or a pending announcement waiting for YES.
+  draft: (Draft & { ready?: boolean; kind?: undefined }) |
+    { kind: "announcement"; message: string; recipient_ids: string[]; ready: true } | null;
   photos: { path: string; type: string }[];
   status: string; updated_at: string;
 };
 
 const word = (s: string) => s.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-const YES = new Set(["YES", "Y", "YEP", "YEAH", "CONFIRM", "OK", "OKAY", "SUBMIT"]);
+const YES = new Set(["YES", "Y", "YEP", "YEAH", "CONFIRM", "OK", "OKAY", "SUBMIT", "SEND"]);
+const NO = new Set(["NO", "N", "CANCEL", "NEVERMIND", "STOPIT", "DONTSEND"]);
+const ANNOUNCE_RE = /^\s*(announce(ment)?|broadcast|tell (everyone|everybody|all|the team)|send (this )?to (everyone|everybody|all))\b/i;
 
 const HELP_TEXT =
   "HouseBoss: text what happened in your own words and I'll file it. Examples: " +
@@ -176,9 +181,78 @@ async function handle(p: Record<string, string>) {
       await deleteMedia(url);
     }
 
+    const { data: role } = await admin.from("team_roles").select("name, can_announce").eq("id", member.role_id).eq("user_id", userId).maybeSingle();
+    const save = (fields: Record<string, unknown>) => admin.from("sms_conversations")
+      .update({ ...fields, updated_at: new Date().toISOString() }).eq("id", conv!.id).eq("user_id", userId);
+
+    // ── Announcements ──────────────────────────────────────────────────────────
+    if (conv.draft?.kind === "announcement") {
+      const pendingAnn = conv.draft;
+      if (YES.has(kw)) {
+        const recipients = (await resolveAudience(admin, userId,
+          { everyone: false, roles: [], homes: [], people: [], member_ids: pendingAnn.recipient_ids }, member.id));
+        await sendAnnouncement(admin, userId, {
+          message: pendingAnn.message, fromName: member.name, senderMemberId: member.id, senderPhone: member.phone,
+          recipients, source: "text",
+        });
+        await save({ status: "filed" });
+        await sendSms(admin, userId, phone, `Sent to ${recipients.length} ✓`);
+        return finish("processed", userId);
+      }
+      if (NO.has(kw)) {
+        await save({ status: "cancelled" });
+        await sendSms(admin, userId, phone, "Not sent.");
+        return finish("processed", userId);
+      }
+      // Anything else: drop the pending announcement and treat this text normally.
+      await save({ status: "cancelled" });
+      const { data: fresh } = await admin.from("sms_conversations")
+        .insert({ user_id: userId, phone, member_id: member.id }).select("*").single();
+      conv = fresh as Conversation;
+      note = "(Announcement not sent.) ";
+    }
+
+    if (ANNOUNCE_RE.test(body)) {
+      if (!role?.can_announce) {
+        await sendSms(admin, userId, phone, "Your role can't send announcements. Ask the owner to turn it on in the Team tab.");
+        return finish("processed", userId);
+      }
+      const [{ data: roleRows }, { data: people }] = await Promise.all([
+        admin.from("team_roles").select("name").eq("user_id", userId),
+        admin.from("team_members").select("name").eq("user_id", userId).eq("status", "active"),
+      ]);
+      const allHomes = await homesFor(userId, { ...member, all_homes: true });
+      let parsed;
+      try {
+        parsed = await parseAnnouncement(body, {
+          roles: (roleRows || []).map((r) => r.name), homes: allHomes, people: (people || []).map((p) => p.name),
+        });
+      } catch (e) {
+        console.error("[sms-inbound] announcement parse failed:", e);
+        await sendSms(admin, userId, phone, "Sorry, I couldn't process that just now. Please try again in a minute.");
+        return finish("failed", userId, String(e));
+      }
+      const recipients = await resolveAudience(admin, userId,
+        { everyone: parsed.everyone, roles: parsed.roles, homes: parsed.home_ids, people: parsed.people }, member.id);
+      if (!parsed.message.trim() || !recipients.length) {
+        await sendSms(admin, userId, phone, !parsed.message.trim()
+          ? "What should the announcement say?"
+          : "No one on the team matched that. Try e.g. \"announce to all house managers: ...\"");
+        return finish("processed", userId);
+      }
+      if (conv.draft && !conv.draft.kind) note = "(Your unfinished report was set aside.) ";
+      await save({
+        draft: { kind: "announcement", message: parsed.message, recipient_ids: recipients.map((r) => r.id), ready: true },
+        history: [...conv.history, { from: "staff", text: body }],
+      });
+      await sendSms(admin, userId, phone,
+        `${note}Send to ${describeRecipients(recipients)}: "${parsed.message}"? Reply YES to send or NO to cancel.`);
+      return finish("processed", userId);
+    }
+
     // YES to a finished draft: file it.
-    if (conv.draft?.ready && YES.has(kw)) {
-      const report = await fileReport(conv, member, userId);
+    if (conv.draft?.ready && !conv.draft.kind && YES.has(kw)) {
+      const report = await fileReport(conv as Conversation & { draft: Draft }, member, userId);
       await admin.from("sms_conversations").update({ status: "filed", photos: conv.photos, updated_at: new Date().toISOString() })
         .eq("id", conv.id).eq("user_id", userId);
       const notified = await notifyReport(admin, userId, report);
@@ -189,7 +263,7 @@ async function handle(p: Record<string, string>) {
     }
 
     const homes = await homesFor(userId, member);
-    const { data: role } = await admin.from("team_roles").select("name").eq("id", member.role_id).eq("user_id", userId).maybeSingle();
+    const ann = await recentAnnouncementFor(admin, userId, member.id);
     const localTime = new Date().toLocaleString("en-US", {
       timeZone: org.timezone, weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
     });
@@ -198,12 +272,21 @@ async function handle(p: Record<string, string>) {
     try {
       turn = await runTurn({
         orgName: org.name, localTime, sender: { name: member.name, role: role?.name || "" }, homes,
-        history: conv.history, draft: conv.draft, newText: body, photoCount: mediaCount,
+        history: conv.history, draft: conv.draft?.kind ? null : conv.draft, newText: body, photoCount: mediaCount,
+        recentAnnouncement: ann ? { from: ann.sender_name || "the office", message: ann.summary, at: ann.created_at } : null,
       });
     } catch (e) {
       console.error("[sms-inbound] AI failed:", e);
       await sendSms(admin, userId, phone, "Sorry, I couldn't process that just now. Please try again in a minute.");
       return finish("failed", userId, String(e));
+    }
+
+    // A reply to an announcement goes back to whoever sent it.
+    if (turn.announcement_reply && ann) {
+      await relayReply(admin, userId, ann, { name: member.name }, body);
+      await save({ history: [...conv.history, { from: "staff", text: body }] });
+      await sendSms(admin, userId, phone, `Passed along to ${ann.sender_name || "the office"} ✓`);
+      return finish("processed", userId);
     }
 
     let reply = note + turn.reply;
@@ -215,7 +298,7 @@ async function handle(p: Record<string, string>) {
       { from: "assistant" as const, text: reply }];
     await admin.from("sms_conversations").update({
       history,
-      draft: turn.draft ? { ...turn.draft, ready: turn.ready } : conv.draft,
+      draft: turn.draft ? { ...turn.draft, ready: turn.ready } : (conv.draft?.kind ? null : conv.draft),
       photos: conv.photos,
       status: turn.cancel ? "cancelled" : "open",
       updated_at: new Date().toISOString(),
@@ -236,8 +319,8 @@ async function homesFor(userId: string, member: Member): Promise<{ id: number; n
   return member.all_homes ? list : list.filter((h) => member.home_ids.includes(h.id));
 }
 
-async function fileReport(conv: Conversation, member: Member, userId: string) {
-  const d = conv.draft!;
+async function fileReport(conv: Conversation & { draft: Draft }, member: Member, userId: string) {
+  const d = conv.draft;
   const homes = await homesFor(userId, { ...member, all_homes: true });
   const home = homes.find((h) => h.id === d.home_id);
   const { data: report, error } = await admin.from("reports").insert({

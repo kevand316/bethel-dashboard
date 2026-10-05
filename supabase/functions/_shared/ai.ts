@@ -18,7 +18,7 @@ export type Draft = {
   facts: { label: string; value: string }[];
 };
 
-export type Turn = { reply: string; ready: boolean; cancel: boolean; draft: Draft | null };
+export type Turn = { reply: string; ready: boolean; cancel: boolean; announcement_reply: boolean; draft: Draft | null };
 
 const SYSTEM = `You are the HouseBoss texting assistant. Staff at a housing organization text you in plain language to file reports. Understand what happened, ask short follow-up questions only until you have what is needed, then confirm.
 
@@ -48,16 +48,18 @@ Rules:
 - If they say cancel, never mind, or similar: cancel = true and reply that nothing was filed.
 - If the text is not a report (a question, a greeting), say briefly that you can file reports by text (incidents, maintenance, cleanings, move-ins/outs, inventory) and ask what they want to report. draft stays as it was.
 - If photos were sent, say they will be attached.
-- title: under 80 characters, e.g. "Upstairs toilet leaking". summary: one or two sentences. facts: the key details as label/value pairs.`;
+- title: under 80 characters, e.g. "Upstairs toilet leaking". summary: one or two sentences. facts: the key details as label/value pairs.
+- If a recent announcement is shown and the new text is a reply or acknowledgement to it ("got it", "will do", a question about it) rather than a new report, set announcement_reply = true, leave draft as it was, and reply briefly that it was passed along. Otherwise announcement_reply = false.`;
 
 const nullable = (schema: Record<string, unknown>) => ({ anyOf: [schema, { type: "null" }] });
 
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["reply", "ready", "cancel", "draft"],
+  required: ["reply", "ready", "cancel", "announcement_reply", "draft"],
   properties: {
     reply: { type: "string" },
+    announcement_reply: { type: "boolean" },
     ready: { type: "boolean" },
     cancel: { type: "boolean" },
     draft: nullable({
@@ -94,6 +96,7 @@ export type TurnContext = {
   draft: Draft | null;
   newText: string;
   photoCount: number;
+  recentAnnouncement?: { from: string; message: string; at: string } | null;
 };
 
 const client = () => new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
@@ -106,6 +109,8 @@ export async function runTurn(ctx: TurnContext): Promise<Turn> {
     `Sender's homes (id: name): ${ctx.homes.map((h) => `${h.id}: ${h.name}`).join("; ") || "none listed"}`,
     `Conversation so far:\n${ctx.history.map((m) => `${m.from}: ${m.text}`).join("\n") || "(none)"}`,
     `Current draft: ${ctx.draft ? JSON.stringify(ctx.draft) : "none"}`,
+    `Recent announcement received: ${ctx.recentAnnouncement
+      ? `from ${ctx.recentAnnouncement.from} at ${ctx.recentAnnouncement.at}: "${ctx.recentAnnouncement.message}"` : "none"}`,
     `New text from ${ctx.sender.name}: ${ctx.newText || "(no text)"}${ctx.photoCount ? ` [sent ${ctx.photoCount} photo(s)]` : ""}`,
   ].join("\n\n");
 
@@ -125,7 +130,60 @@ export async function runTurn(ctx: TurnContext): Promise<Turn> {
   const text = res.content.find((b: { type: string }) => b.type === "text")?.text;
   if (!text) throw new Error(`no text in response (stop_reason ${res.stop_reason})`);
   const turn = JSON.parse(text) as Turn;
+  if (!ctx.recentAnnouncement) turn.announcement_reply = false;
   // A draft can only be complete with a bucket the code knows and a title.
   if (turn.draft && (!BUCKETS.includes(turn.draft.bucket) || !turn.draft.title?.trim())) turn.ready = false;
   return turn;
+}
+
+// ── Announcements ─────────────────────────────────────────────────────────────
+export type ParsedAnnouncement = {
+  message: string;
+  everyone: boolean;
+  roles: string[];
+  home_ids: number[];
+  people: string[];
+};
+
+const ANNOUNCE_SYSTEM = `Extract an announcement a manager wants texted to their team.
+Return the message to send WORD FOR WORD as they wrote it (only drop the instruction part, e.g. "announce to all house managers:"). Do not rephrase, fix, or add anything.
+Audience: everyone = true if they said everyone/all/the team/all staff with no narrower group. Otherwise list role names exactly as given in the role list, home ids from the home list, and people's names from the people list. If no audience is named, everyone = true.`;
+
+const ANNOUNCE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["message", "everyone", "roles", "home_ids", "people"],
+  properties: {
+    message: { type: "string" },
+    everyone: { type: "boolean" },
+    roles: { type: "array", items: { type: "string" } },
+    home_ids: { type: "array", items: { type: "integer" } },
+    people: { type: "array", items: { type: "string" } },
+  },
+};
+
+export async function parseAnnouncement(text: string, ctx: {
+  roles: string[]; homes: { id: number; name: string }[]; people: string[];
+}): Promise<ParsedAnnouncement> {
+  const prompt = [
+    `Roles: ${ctx.roles.join("; ") || "none"}`,
+    `Homes (id: name): ${ctx.homes.map((h) => `${h.id}: ${h.name}`).join("; ") || "none"}`,
+    `People: ${ctx.people.join("; ") || "none"}`,
+    `Text: ${text}`,
+  ].join("\n");
+  // deno-lint-ignore no-explicit-any
+  const res: any = await client().beta.messages.create({
+    model: "claude-opus-5-5",
+    max_tokens: 2000,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    output_config: { effort: "low", format: { type: "json_schema", schema: ANNOUNCE_SCHEMA } },
+    system: ANNOUNCE_SYSTEM,
+    messages: [{ role: "user", content: prompt }],
+    // deno-lint-ignore no-explicit-any
+  } as any);
+  if (res.stop_reason === "refusal") throw new Error("model refused");
+  const out = res.content.find((b: { type: string }) => b.type === "text")?.text;
+  if (!out) throw new Error(`no text in response (stop_reason ${res.stop_reason})`);
+  return JSON.parse(out) as ParsedAnnouncement;
 }

@@ -868,6 +868,9 @@ body.rp-detail-open { overflow: hidden; }
 }
 
 /* TEAM TAB (lib/team.js) */
+.an-group { margin-top: 0.5rem; }
+.an-label { font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); }
+.an-group .tm-homes:empty::after { content: 'None yet'; font-size: 0.8rem; color: var(--text); }
 .nr-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem;
   padding: 0.6rem 0; border-top: 1px solid var(--border); font-size: 0.88rem; color: var(--text); }
 .nr-row b { color: var(--gold); font-weight: 600; }
@@ -2114,7 +2117,31 @@ body.rp-detail-open { overflow: hidden; }
 
     <div class="rp-toolbar">
       <div class="section-title rp-heading">Reports</div>
+      <button class="btn btn-ghost tm-btn" id="anBtn" type="button">📣 Send announcement</button>
       <button class="btn btn-gold tm-btn" id="rpNewBtn" type="button">＋ New report</button>
+    </div>
+
+    <div class="tm-panel" id="anPanel" hidden>
+      <div class="tm-note" style="margin-top:0">Texts your team from 1-888-BOSS-502. You can also text the number: "Announce to all house managers: ..."</div>
+      <div class="qc-field" style="margin-top:0.75rem"><label for="anMessage">Message</label>
+        <textarea id="anMessage" class="tm-input rp-textarea" maxlength="1000"></textarea></div>
+      <div class="qc-field"><label>Send to</label>
+        <label class="tm-check"><input type="checkbox" id="anEveryone"> Everyone on the team</label>
+        <div class="an-group"><div class="an-label">Roles</div><div class="tm-homes" id="anRoles"></div></div>
+        <div class="an-group"><div class="an-label">Homes</div><div class="tm-homes" id="anHomes"></div></div>
+        <div class="an-group"><div class="an-label">People</div><div class="tm-homes" id="anPeople"></div></div>
+      </div>
+      <div class="tm-msg" id="anPreview" aria-live="polite"></div>
+      <div class="tm-row" style="margin-top:0.5rem">
+        <button class="btn btn-gold tm-btn" id="anSend" type="button">Send</button>
+        <button class="btn btn-ghost tm-btn" id="anCancel" type="button">Cancel</button>
+      </div>
+      <div class="tm-row rp-dup" id="anConfirm" hidden>
+        <span class="tm-msg" id="anConfirmText"></span>
+        <button class="btn btn-gold tm-btn" id="anConfirmYes" type="button">Yes, send</button>
+        <button class="btn btn-ghost tm-btn" id="anConfirmNo" type="button">Not yet</button>
+      </div>
+      <div class="tm-msg" id="anStatus" aria-live="polite"></div>
     </div>
 
     <div class="tm-panel" id="rpNewForm" hidden>
@@ -2126,7 +2153,6 @@ body.rp-detail-open { overflow: hidden; }
             <option value="cleanings">Cleanings</option>
             <option value="move_ins_outs">Move-ins/outs</option>
             <option value="inventory">Inventory</option>
-            <option value="announcements">Announcements</option>
           </select></div>
         <div class="qc-field"><label for="rpNewHome">Home</label>
           <select id="rpNewHome" class="tm-select"></select></div>
