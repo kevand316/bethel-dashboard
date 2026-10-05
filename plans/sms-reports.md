@@ -352,6 +352,26 @@ webhooks to the deployed function and checks:
 - a clear report gets filed in the right bucket
 - an account can't receive another account's texts
 
+## Step 3 detailed spec: Reports tab + Profit Calculator saves (status: in progress)
+
+- The old "Reports" tab (saved snapshots) is renamed **Snapshots**. The new **Reports**
+  tab sits before it.
+- **Bucket chips** across the top, with counts: All, Incidents, Maintenance, Cleanings,
+  Move-ins/outs, Inventory, Projections, Announcements. Urgent incidents are marked.
+- **Filters:** home, person, from-date and to-date.
+- **Report cards,** newest first: title, bucket, urgent flag, home, who sent it, local
+  date/time, summary, photo count.
+- **Opening a card shows:**
+  - all details, the full text conversation, and photos (private, short-lived links)
+  - **Edit** (title, summary, bucket, home), **Delete** (asks first), and **Print / PDF**
+  - for projections, the saved numbers and **Load into Profit Calculator**
+- **New report** button for entries typed on the dashboard (bucket, home, title, details).
+- **Live:** a texted report appears without refreshing (Supabase Realtime on `reports`).
+- **Profit Calculator → Save to Reports:** asks for the potential home's address
+  (required), then saves every input and result as a Projections report titled with
+  that address. If one with that address already exists: **Replace** or **Keep both**.
+  "Saved ✓" shows only after Supabase confirms.
+
 ## Build order
 1. Organization profile + Team page
 2. Inbound texting plus AI conversation, filing reports (Virtual Phone)

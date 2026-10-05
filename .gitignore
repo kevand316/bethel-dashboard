@@ -25,3 +25,4 @@ Thumbs.db
 
 # Local migration tracking (not for git)
 .applied_migrations
+supabase/.temp/
