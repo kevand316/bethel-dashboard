@@ -101,6 +101,15 @@ test.describe("@team team page", () => {
     ]);
   });
 
+  test("a new account's Owner and Operations Manager are texted about every report, House Manager is not", async ({ page }) => {
+    await signedInClean(page, A());
+    await openTeam(page);
+    const box = (role) => page.locator("#roleList tr", { hasText: role }).locator('input[data-perm="notify_all_reports"]');
+    await expect(box("Owner")).toBeChecked();
+    await expect(box("Operations Manager")).toBeChecked();
+    await expect(box("House Manager")).not.toBeChecked();
+  });
+
   test("adding a person stores +1 format and shows them as pending", async ({ page }) => {
     await signedInClean(page, A());
     await openTeam(page);

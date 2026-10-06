@@ -119,6 +119,24 @@ test.describe("@notify notifications and reminders", () => {
     expect(await notifiedPhones(c.report.id)).toEqual([P.boss]);
   });
 
+  test("roles marked 'every report' hear about every report; never the sender, never a pending person", async () => {
+    const { data: owner } = await admin.from("team_roles")
+      .insert({ user_id: A, name: "Owner", notify_all_reports: true }).select("id").single();
+    const { data: k } = await admin.from("team_members")
+      .insert({ user_id: A, name: "Kev Owner", phone: "+13105550116", role_id: owner.id, all_homes: true }).select("id").single();
+    await admin.from("team_members").update({ status: "active" }).eq("id", k.id);
+    await admin.from("team_members").insert({ user_id: A, name: "Olive Pending", phone: "+13105550117", role_id: owner.id, all_homes: true });
+
+    // A house manager with no supervisor still reaches the owner.
+    await admin.from("team_members").update({ reports_to: null }).eq("id", ids.worker);
+    const r = await fileAsA({ bucket: "maintenance", title: "Sink clogged" });
+    expect(await notifiedPhones(r.report.id)).toEqual(["+13105550116"]);
+
+    // The owner's own report doesn't text the owner.
+    const own = await fileAsA({ bucket: "inventory", title: "Towels", sender_member_id: k.id, sender_name: "Kev Owner", sender_phone: "+13105550116" });
+    expect(await notifiedPhones(own.report.id)).toEqual([]);
+  });
+
   test("a report is never notified twice", async () => {
     const { report } = await fileAsA({ bucket: "inventory", title: "Towels" });
     const c = await signedInClient(process.env.TEST_USER_A_EMAIL, process.env.TEST_USER_A_PASSWORD);
