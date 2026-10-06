@@ -17,6 +17,7 @@
 <script src="lib/team.js"></script>
 <script src="lib/reports.js"></script>
 <script src="lib/rent.js"></script>
+<script src="lib/ai-edit.js"></script>
 <script src="lib/text-intake.js"></script>
 <style>
 :root {
@@ -894,6 +895,20 @@ body.rp-detail-open { overflow: hidden; }
 .rt-home-head:hover .rt-home-name, .rt-home-head:focus-visible .rt-home-name { color: var(--gold); }
 .rt-chev { display: inline-block; width: 1.1em; color: var(--gold); }
 .rt-collapsed .rt-home-head { margin-bottom: 0; }
+
+/* Edit with AI tab (lib/ai-edit.js) */
+.ai-log { display: flex; flex-direction: column; gap: 0.5rem; max-height: 55vh; overflow-y: auto; margin-bottom: 0.75rem; }
+.ai-msg { max-width: 85%; padding: 0.6rem 0.85rem; border: 1px solid var(--border); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+.ai-user { align-self: flex-end; background: var(--bg3, var(--bg2)); border-color: var(--gold-dim, var(--border)); }
+.ai-assistant { align-self: flex-start; background: var(--bg2); }
+.ai-preview { background: var(--bg2); border: 1px solid var(--gold); padding: 0.75rem 0.9rem; margin-bottom: 0.75rem; }
+.ai-preview-title { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.5rem; }
+.ai-lines { margin: 0 0 0.75rem 1.1rem; padding: 0; line-height: 1.6; overflow-wrap: anywhere; }
+.ai-done { font-family: var(--mono); font-size: 0.8rem; color: var(--green); }
+.ai-compose { display: flex; gap: 0.5rem; align-items: flex-end; }
+.ai-compose textarea { flex: 1; min-width: 0; min-height: 64px; resize: vertical; font: inherit; color: var(--text); background: var(--bg2);
+  border: 1px solid var(--border); padding: 0.6rem 0.75rem; }
+.ai-compose textarea:focus { outline: none; border-color: var(--gold); }
 .rt-home-name { font-family: var(--display); font-size: 1.15rem; letter-spacing: 2px; color: var(--text); }
 .rt-home-tot { font-family: var(--mono); font-size: 0.75rem; color: var(--gold); }
 .rt-row { background: var(--bg2); border: 1px solid var(--border); border-left: 3px solid #ff8a7a; padding: 0.6rem 0.9rem;
@@ -1610,6 +1625,7 @@ body.rp-detail-open { overflow: hidden; }
   <button class="tab" onclick="switchTab('intake', event)">Intake</button>
   <button class="tab" onclick="switchTab('rlog', event)">Reports</button>
   <button class="tab" onclick="switchTab('team', event)">Team</button>
+  <button class="tab" onclick="switchTab('ai', event)">Edit with AI</button>
   <button class="no-print" onclick="printOverview()" style="margin-left:auto;font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⬇ Save PDF</button>
 
 </div>
@@ -1808,6 +1824,19 @@ body.rp-detail-open { overflow: hidden; }
     <div id="rtBody"></div>
     <div class="tm-note">Staff can text it in too: "Grant paid his rent", "Marcus paid 300", "Who owes rent?"</div>
 
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- EDIT WITH AI VIEW: lib/ai-edit.js. Typed requests become previewed changes. -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="view" id="view-ai">
+    <div class="ai-log" id="aiLog" aria-live="polite"></div>
+    <div class="ai-preview" id="aiPreview" hidden></div>
+    <div class="ai-compose">
+      <textarea id="aiInput" placeholder="e.g. Add water $90 and trash $40 to 12 Maple" aria-label="What would you like to change?"></textarea>
+      <button class="btn btn-gold tm-btn" id="aiSend" type="button">Send</button>
+    </div>
+    <div class="tm-note">Changes expenses, beds, residents, rates and homes. Rent payments stay on the Rent tab.</div>
   </div>
 
   <!-- ═══════════════════════════════════════ -->
@@ -2456,6 +2485,16 @@ let homes = JSON.parse(JSON.stringify(DEFAULT_HOMES));
 Object.defineProperty(window, 'homes', { get: () => homes, configurable: true });
 // True once the real roster has loaded (never the built-in placeholder homes).
 window.isDataLoaded = () => dataLoaded;
+// Edit with AI (lib/ai-edit.js) replaces the roster through here, so its changes
+// save exactly like a typed edit: persistData() → autosave (conditional write,
+// conflict banner, retry, offline queue). Refused until the real roster is in.
+window.setHomes = (next) => {
+  if (!dataLoaded) throw new Error('roster not loaded');
+  homes = next;
+  if (currentHome >= homes.length) currentHome = 0;
+  persistData();
+  renderAll();
+};
 
 // After the roster changes on the server (a move-in/out applied from Reports), pull
 // the new roster into this tab. Only when this tab has nothing unsaved: if it does,
@@ -2499,6 +2538,7 @@ async function initData() {
   window.team.init(session).catch((e) => console.warn('[team] init failed:', e));
   window.reports.init();
   window.rent.init();
+  window.aiEdit.init();
   window.textIntake.init();
 
   // The indicator was blank for the whole load, so a slow network and a hung
@@ -3417,6 +3457,7 @@ function switchTab(name, event) {
   if (name === 'team') window.team.open();
   if (name === 'rlog') window.reports.open();
   if (name === 'rent') window.rent.open();
+  if (name === 'ai') window.aiEdit.open();
   if (name === 'intake') window.textIntake.render();
 }
 
