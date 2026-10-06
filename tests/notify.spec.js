@@ -97,14 +97,14 @@ test.describe("@notify notifications and reminders", () => {
     expect(res.error).toBeNull();
     expect(await notifiedPhones(report.id)).toEqual([P.boss]);
     const { data: log } = await admin.from("sms_messages").select("body").eq("phone", P.boss);
-    expect(log[0].body).toBe("[Alpha Homes] New maintenance report from James Worker (Oak St): Sink clogged");
+    expect(log[0].body).toBe(`[Alpha Homes] New maintenance report #${report.ticket_no} from James Worker (Oak St): Sink clogged`);
   });
 
   test("an urgent report texts the whole chain of command", async () => {
     const { report } = await fileAsA({ bucket: "incidents", subtype: "emergency", urgent: true, title: "Ambulance called" });
     expect(await notifiedPhones(report.id)).toEqual([P.boss, P.bigBoss].sort());
     const { data: log } = await admin.from("sms_messages").select("body").eq("phone", P.bigBoss);
-    expect(log[0].body).toMatch(/^\[Alpha Homes\] URGENT incident from James Worker: Ambulance called$/);
+    expect(log[0].body).toBe(`[Alpha Homes] URGENT incident #${report.ticket_no} from James Worker: Ambulance called`);
   });
 
   test("notification rules add people by bucket; pending people and the sender never get one", async () => {
