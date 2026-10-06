@@ -1,5 +1,5 @@
 // tests/ai-edit.spec.js
-// Edit with AI tab (plans/edit-with-ai.md). The ai-edit function's answer is mocked
+// Edit with AI bar, top of every tab (plans/edit-with-ai.md). The ai-edit function's answer is mocked
 // in most tests, so they pin down exactly what the dashboard does with a proposal;
 // assertions are on the row stored in Supabase, not on what the page says. One live
 // test sends a real request through the deployed function.
@@ -42,8 +42,7 @@ async function openAi(page) {
   await signIn(page, process.env.TEST_USER_A_EMAIL, process.env.TEST_USER_A_PASSWORD);
   await expect(page).toHaveURL("/", { timeout: 10000 });
   await page.waitForFunction(() => window.homes?.[0]?.name === "12 Maple Ave.", null, { timeout: 15000 });
-  await page.getByRole("button", { name: "Edit with AI", exact: true }).click();
-  await expect(page.locator("#view-ai")).toBeVisible();
+  await expect(page.locator("#aiInput")).toBeVisible();
 }
 async function ask(page, text) {
   await page.fill("#aiInput", text);
@@ -158,6 +157,26 @@ test.describe("@ai edit with AI", () => {
     const h = (await stored())[0];
     expect(h.beds[1].name).toBe("Typed Meanwhile");
     expect(h.expenses.map((e) => e.name)).toEqual(["Rent", "Water"]);
+  });
+
+  test("the box is on every tab, keeps its conversation across tabs, and Clear folds it", async ({ page }) => {
+    await mockAi(page, { reply: "Adding water.", changes: [C({ type: "add_expense", home_id: 1, expense_name: "Water", category: "Utilities", amount: 90 })] });
+    await openAi(page);
+    await expect(page.locator("#aiThread")).toBeHidden(); // one line until used
+    for (const tab of ["Operations", "Rent", "Profit Calculator", "Intake", "Reports", "Team", "Overview"]) {
+      await page.getByRole("button", { name: tab, exact: true }).click();
+      await expect(page.locator("#aiInput")).toBeVisible();
+    }
+    await expect(page.getByRole("button", { name: "Edit with AI", exact: true })).toHaveCount(0); // no longer a tab
+    await ask(page, "add water 90");
+    await expect(page.locator("#aiApply")).toBeVisible();
+    await page.getByRole("button", { name: "Operations", exact: true }).click();
+    await expect(page.locator("#aiPreview")).toContainText("add expense Water");
+    await page.click("#aiApply");
+    await savedOk(page);
+    await page.click("#aiClear");
+    await expect(page.locator("#aiThread")).toBeHidden();
+    expect((await stored())[0].expenses.map((e) => e.name)).toEqual(["Rent", "Water"]); // Clear doesn't undo
   });
 
   test("the ai-edit function refuses a caller who isn't signed in", async ({ request }) => {
