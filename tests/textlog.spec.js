@@ -74,7 +74,8 @@ test.describe("@textlog text log", () => {
     await signedIn(page, process.env.TEST_USER_A_EMAIL, process.env.TEST_USER_A_PASSWORD);
     await openTextLog(page);
 
-    const maria = page.locator(".tl-thread", { hasText: "Maria Lopez" });
+    // Test account A also holds texts from sms.spec.js, so find threads by who they're with.
+    const maria = page.locator(".tl-thread").filter({ has: page.locator(".tl-who", { hasText: "Maria Lopez" }) });
     await expect(maria).toBeVisible({ timeout: 10000 });
     await expect(maria.locator(".rp-msg")).toHaveText([
       /toilet leaking/, /Is water spreading/, /YES/, /Filed/,
@@ -82,7 +83,7 @@ test.describe("@textlog text log", () => {
     await expect(maria.locator(".rp-msg-out").first()).toContainText("Not delivered");
     await expect(maria.locator(".rp-msg-out").last()).toContainText("Delivered");
     // A number with no name still shows, as a phone number.
-    await expect(page.locator(".tl-thread", { hasText: "(213) 555-0151" })).toBeVisible();
+    await expect(page.locator(".tl-who", { hasText: "(213) 555-0151" })).toBeVisible();
   });
 
   test("a new text shows up without refreshing", async ({ page }) => {
@@ -107,7 +108,7 @@ test.describe("@textlog text log", () => {
     await log(A, [{ direction: "in", body: "x".repeat(300), status: "processed" }]);
     await signedIn(page, process.env.TEST_USER_A_EMAIL, process.env.TEST_USER_A_PASSWORD);
     await openTextLog(page);
-    await expect(page.locator(".tl-thread")).toHaveCount(1, { timeout: 10000 });
+    await expect(page.locator(".rp-msg", { hasText: "xxxxxxxx" })).toBeVisible({ timeout: 10000 });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
   });

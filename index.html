@@ -16,6 +16,7 @@
 <script src="lib/intake.js"></script>
 <script src="lib/team.js"></script>
 <script src="lib/reports.js"></script>
+<script src="lib/text-log.js"></script>
 <script src="lib/rent.js"></script>
 <script src="lib/ai-edit.js"></script>
 <script src="lib/text-intake.js"></script>
@@ -171,6 +172,17 @@ body::before {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.text-number {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.text-number:hover { text-decoration: underline; }
 
 .logout-btn {
   background: none;
@@ -816,7 +828,9 @@ body::before {
 .btn-red:hover { background: rgba(231,76,60,0.1); }
 
 /* REPORTS TAB (lib/reports.js) */
-.rp-toolbar { display: flex; align-items: center; gap: 0.5rem; }
+.tm-number { font-size: 0.9rem; color: var(--text); margin: 0.25rem 0 1rem; line-height: 1.5; }
+.tm-number a { font-family: var(--mono); color: var(--gold); text-decoration: none; white-space: nowrap; }
+.rp-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 .rp-toolbar .tm-btn { padding: 0.55rem 0.9rem; }
 .rp-heading { flex: 1 1 200px; }
 .rp-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.5rem 0 1rem; }
@@ -864,6 +878,13 @@ body::before {
 .rp-photos img { width: 100%; aspect-ratio: 1; object-fit: cover; border: 1px solid var(--border); }
 .rp-actions { margin-top: 1rem; }
 body.rp-detail-open { overflow: hidden; }
+.tl-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
+#tlList { max-height: 70vh; overflow-y: auto; }
+.tl-thread { border-top: 1px solid var(--border); padding: 0.75rem 0; }
+.tl-who { font-family: var(--display); font-size: 1.1rem; letter-spacing: 1.5px; color: var(--text); margin-bottom: 0.5rem; }
+.tl-who span { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0; color: var(--gold); margin-left: 0.4rem; }
+.tl-stamp { font-family: var(--mono); font-size: 0.68rem; color: var(--gold); margin-top: 0.3rem; }
+.tl-bad { color: #ff8a7a; }
 .qc-save-row { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
 #rpPrint { display: none; }
 @media print {
@@ -1382,8 +1403,8 @@ body.rp-detail-open { overflow: hidden; }
 
 @media (max-width: 768px) {
   /* Header — reduce padding, hide decorative elements */
-  .header { padding: 0.75rem 1rem; }
-  .header-right { gap: 0.5rem; }
+  .header { padding: 0.75rem 1rem; flex-wrap: wrap; gap: 0.5rem; }
+  .header-right { gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; min-width: 0; }
   .date-display { display: none; }
   .live-badge { display: none; }
   /* Tab bar — horizontal scroll instead of overflow/wrap */
@@ -1623,6 +1644,7 @@ body.rp-detail-open { overflow: hidden; }
     <div id="save-status"></div>
     <div class="date-display" id="dateDisplay"></div>
     <div class="session-email" id="session-email"></div>
+    <a class="text-number" href="sms:+18882677502" title="Staff text reports to this number">Text 1-888-267-7502</a>
     <button class="logout-btn" data-action="logout" onclick="logout()">Sign Out</button>
   </div>
 </div>
@@ -1857,12 +1879,21 @@ body.rp-detail-open { overflow: hidden; }
 
     <div class="rp-toolbar">
       <div class="section-title rp-heading">Reports</div>
+      <button class="btn btn-ghost tm-btn" id="tlBtn" type="button">💬 Texts</button>
       <button class="btn btn-ghost tm-btn" id="anBtn" type="button">📣 Announce</button>
       <button class="btn btn-gold tm-btn" id="rpNewBtn" type="button">＋ New</button>
     </div>
 
+    <div class="tm-panel" id="tlPanel" hidden>
+      <div class="tl-head">
+        <div class="tm-note" style="margin:0">Every text to and from 1-888-267-7502, newest conversation first. Updates on its own.</div>
+        <button class="btn btn-ghost tm-btn" id="tlClose" type="button">Close</button>
+      </div>
+      <div id="tlList"></div>
+    </div>
+
     <div class="tm-panel" id="anPanel" hidden>
-      <div class="tm-note" style="margin-top:0">Texts your team from 1-888-BOSS-502. You can also text the number: "Announce to all house managers: ..."</div>
+      <div class="tm-note" style="margin-top:0">Texts your team from 1-888-267-7502. You can also text the number: "Announce to all house managers: ..."</div>
       <div class="qc-field" style="margin-top:0.75rem"><label for="anMessage">Message</label>
         <textarea id="anMessage" class="tm-input rp-textarea" maxlength="1000"></textarea></div>
       <div class="qc-field"><label>Send to</label>
@@ -1935,6 +1966,7 @@ body.rp-detail-open { overflow: hidden; }
       <div class="section-title tm-head-title">Team</div>
       <button class="btn btn-gold tm-btn" id="tmOpenForm" type="button">＋ Add person</button>
     </div>
+    <div class="tm-number">Your team texts <a href="sms:+18882677502">1-888-267-7502</a> to file reports (photos welcome), log rent and get announcements.</div>
 
     <div class="tm-panel" id="tmFormPanel" hidden>
       <div class="tm-form-title" id="tmFormTitle">Add a person</div>
@@ -2548,6 +2580,7 @@ async function initData() {
   // Organization name for the header; also not awaited, same reason.
   window.team.init(session).catch((e) => console.warn('[team] init failed:', e));
   window.reports.init();
+  window.textLog.init();
   window.rent.init();
   window.aiEdit.init();
   window.textIntake.init();

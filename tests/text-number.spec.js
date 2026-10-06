@@ -1,6 +1,6 @@
 // tests/text-number.spec.js
 //
-// The number staff text (1-888-BOSS-502) is always on screen: in the header,
+// The number staff text (1-888-267-7502) is always on screen: in the header,
 // between the signed-in email and Sign Out, and at the top of the Team tab.
 
 // @ts-check
@@ -22,15 +22,14 @@ test.describe("@textnumber texting number", () => {
     expect(at("text-number")).toBeGreaterThan(at("session-email"));
     expect(at("text-number")).toBeLessThan(at("logout-btn"));
     const link = page.locator(".header-right .text-number");
-    await expect(link).toContainText("1-888-BOSS-502");
+    await expect(link).toContainText("1-888-267-7502");
     await expect(link).toHaveAttribute("href", "sms:+18882677502");
   });
 
   test("Team tab shows the number", async ({ page }) => {
     await signedIn(page);
     await page.getByRole("button", { name: "Team", exact: true }).click();
-    await expect(page.locator("#view-team")).toContainText("1-888-BOSS-502");
-    await expect(page.locator("#view-team")).toContainText("888-267-7502");
+    await expect(page.locator("#view-team")).toContainText("1-888-267-7502");
   });
 
   test("header fits a 375px phone with the number in it", async ({ page }) => {
