@@ -17,7 +17,7 @@ const BUCKET_LABEL: Record<string, string> = {
 
 type Member = { id: string; name: string; phone: string; status: string; reports_to: string | null; role_id: string };
 type Report = {
-  id: string; bucket: string; urgent: boolean; home_id: number | null; home_name: string | null;
+  id: string; ticket_no: number; bucket: string; urgent: boolean; home_id: number | null; home_name: string | null;
   title: string; sender_member_id: string | null; sender_name: string | null; sender_phone: string | null;
 };
 
@@ -53,7 +53,7 @@ export async function notifyReport(admin: SupabaseClient, userId: string, report
   const orgName = org?.org_name || "HouseBoss";
   const from = report.sender_name ? ` from ${report.sender_name}` : "";
   const where = report.home_name ? ` (${report.home_name})` : "";
-  const what = BUCKET_LABEL[report.bucket] || "report";
+  const what = (BUCKET_LABEL[report.bucket] || "report") + (report.ticket_no ? ` #${report.ticket_no}` : "");
   const body = report.urgent
     ? `[${orgName}] URGENT ${what}${from}${where}: ${report.title}`
     : `[${orgName}] New ${what}${from}${where}: ${report.title}`;

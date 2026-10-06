@@ -854,6 +854,12 @@ body::before {
 .rp-title { font-family: var(--display); font-size: 1.15rem; letter-spacing: 1.5px; color: var(--text); overflow-wrap: anywhere; flex: 1 1 auto; }
 .rp-summary { font-size: 0.9rem; color: var(--text); margin-top: 0.25rem; overflow-wrap: anywhere; }
 .rp-meta { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; margin-top: 0.5rem; font-family: var(--mono); font-size: 0.72rem; color: var(--gold); }
+.rp-no { font-family: var(--mono); font-size: 0.8rem; color: var(--gold); }
+.rp-status-open { color: #ffb86b; border-color: #ffb86b; }
+.rp-status-resolved { color: var(--green); border-color: var(--green); }
+.rp-updates { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem; }
+.rp-update { font-size: 0.85rem; color: var(--text); border-left: 2px solid var(--border); padding-left: 0.6rem; overflow-wrap: anywhere; }
+.rp-ticket-actions { flex-wrap: wrap; margin-top: 0.5rem; }
 .rp-textarea { width: 100%; min-height: 90px; resize: vertical; font-family: var(--sans); }
 .rp-detail { position: fixed; inset: 0; z-index: 3000; background: rgba(5,8,14,0.8); display: flex; align-items: flex-start;
   justify-content: center; padding: calc(env(safe-area-inset-top, 0px) + 1rem) 1rem 1rem; overflow-y: auto; }
@@ -1943,6 +1949,11 @@ body.rp-detail-open { overflow: hidden; }
     <div class="rp-chips" id="rpChips"></div>
 
     <div class="rp-filters">
+      <select id="rpStatus" class="tm-select" aria-label="Ticket status">
+        <option value="">Open and resolved</option>
+        <option value="open">Open tickets</option>
+        <option value="resolved">Resolved tickets</option>
+      </select>
       <select id="rpHome" class="tm-select" aria-label="Home"></select>
       <select id="rpPerson" class="tm-select" aria-label="Person"></select>
       <span class="rp-dates">

@@ -15,6 +15,7 @@ import { deleteMedia, fetchMedia, sendSms, validSignature } from "../_shared/twi
 import { type Draft, parseAnnouncement, runTurn } from "../_shared/ai.ts";
 import { describeRecipients, recentAnnouncementFor, relayReply, resolveAudience, sendAnnouncement } from "../_shared/announce.ts";
 import { notifyReport } from "../_shared/notify.ts";
+import { parseTicketText, updateTicket } from "../_shared/tickets.ts";
 import { newToken, sha256 } from "../_shared/google.ts";
 import { applyRosterChange, decideRoster } from "../_shared/roster.ts";
 import {
@@ -54,7 +55,8 @@ const ANNOUNCE_RE = /^\s*(announce(ment)?|broadcast|tell (everyone|everybody|all
 const HELP_TEXT =
   "HouseBoss: text what happened in your own words and I'll file it. Examples: " +
   "\"toilet leaking upstairs at Oak St\", \"daily report: kitchen and bathrooms cleaned 8am\", " +
-  "\"new move-in Marcus, $650 bed\". Reply SWITCH to change organization, LEAVE to leave a team.";
+  "\"new move-in Marcus, $650 bed\". Update a ticket: \"#14 resolved new hinge\" or \"#14 still pending\". " +
+  "Reply SWITCH to change organization, LEAVE to leave a team.";
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
@@ -232,7 +234,7 @@ async function handle(p: Record<string, string>) {
       await deleteMedia(url);
     }
 
-    const { data: role } = await admin.from("team_roles").select("name, can_announce, can_approve_roster, can_log_rent, can_request_intake").eq("id", member.role_id).eq("user_id", userId).maybeSingle();
+    const { data: role } = await admin.from("team_roles").select("name, can_file_reports, can_announce, can_approve_roster, can_log_rent, can_request_intake").eq("id", member.role_id).eq("user_id", userId).maybeSingle();
     const save = (fields: Record<string, unknown>) => admin.from("sms_conversations")
       .update({ ...fields, updated_at: new Date().toISOString() }).eq("id", conv!.id).eq("user_id", userId);
 
@@ -249,6 +251,19 @@ async function handle(p: Record<string, string>) {
         ? await decideRoster(admin, userId, target.id, decision[1].toLowerCase() === "approve" ? "approve" : "reject", member.name)
         : { ok: false, message: `No roster change with code ${decision[2]}.` };
       await sendSms(admin, userId, phone, res.ok ? `Done ✓ ${res.message}` : res.message);
+      return finish("processed", userId);
+    }
+
+    // ── Tickets: "#14 resolved new hinge" / "ticket 14 still pending ..." ─────────
+    const ticket = parseTicketText(body);
+    if (ticket) {
+      if (role && role.can_file_reports === false) {
+        await sendSms(admin, userId, phone, "Your role can't update tickets.");
+        return finish("processed", userId);
+      }
+      const res = await updateTicket(admin, userId, { no: ticket.no }, ticket.action, ticket.note,
+        { name: member.name, memberId: member.id, phone, viaText: true });
+      await sendSms(admin, userId, phone, res.message);
       return finish("processed", userId);
     }
 
@@ -374,7 +389,7 @@ async function handle(p: Record<string, string>) {
       const notified = await notifyReport(admin, userId, report);
       const who = notified.map((n) => n.name);
       await sendSms(admin, userId, phone,
-        `Submitted ✓ ${report.title}` + (who.length ? `. Notified: ${who.join(", ")}.` : "") + rosterNote);
+        `Submitted ✓ #${report.ticket_no} ${report.title}` + (who.length ? `. Notified: ${who.join(", ")}.` : "") + rosterNote);
       return finish("processed", userId);
     }
 
