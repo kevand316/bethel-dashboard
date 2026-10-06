@@ -207,3 +207,78 @@ test.describe("@tickets tickets", () => {
     expect(overflow).toBeLessThanOrEqual(0);
   });
 });
+
+// Describing a ticket instead of giving its number: the AI matches it against the
+// account's open tickets and code asks to confirm. These call the real AI.
+test.describe("@tickets tickets by description", () => {
+  test.describe.configure({ timeout: 240000 });
+  test.beforeAll(async () => {
+    A = await userId(process.env.TEST_USER_A_EMAIL);
+    B = await userId(process.env.TEST_USER_B_EMAIL);
+  });
+  test.beforeEach(async () => { await wipe(); await seed(); });
+  test.afterAll(async () => { await wipe(); });
+
+  test("'the front door at Oak St is fixed' asks to confirm the right ticket, then YES resolves it", async ({ request }) => {
+    const door = await file(A, { bucket: "maintenance", title: "Front door off hinges", home_name: "Oak St" });
+    const sink = await file(A, { bucket: "maintenance", title: "Kitchen sink clogged", home_name: "Elm St" });
+    const ask = await text(request, P.fixer, "the front door at Oak St is fixed now, put a new hinge on it");
+    expect(ask).toContain(`#${door.ticket_no}`);
+    expect(ask).toMatch(/reply yes/i);
+    expect(ask).not.toContain(`#${sink.ticket_no}`);
+    expect((await fresh(door.id)).status).toBe("open"); // nothing changes before YES
+
+    expect(await text(request, P.fixer, "yes")).toBe(`Ticket #${door.ticket_no} marked resolved ✓`);
+    const after = await fresh(door.id);
+    expect(after.status).toBe("resolved");
+    expect(after.updates[0].note).toMatch(/hinge/i);
+    expect((await fresh(sink.id)).status).toBe("open");
+  });
+
+  test("'still waiting on the plumber for the sink' logs still pending after YES", async ({ request }) => {
+    const sink = await file(A, { bucket: "maintenance", title: "Kitchen sink clogged", home_name: "Elm St" });
+    await file(A, { bucket: "maintenance", title: "Front door off hinges", home_name: "Oak St" });
+    const ask = await text(request, P.fixer, "still waiting on the plumber for the sink");
+    expect(ask).toContain(`#${sink.ticket_no}`);
+    expect(ask).toMatch(/pending/i);
+    expect(await text(request, P.fixer, "YES")).toBe(`Noted on ticket #${sink.ticket_no}: still pending ✓`);
+    const after = await fresh(sink.id);
+    expect(after.status).toBe("open");
+    expect(after.updates).toEqual([expect.objectContaining({ action: "pending" })]);
+  });
+
+  test("when two tickets could match it asks which, and the number picked is resolved", async ({ request }) => {
+    const a = await file(A, { bucket: "maintenance", title: "Bathroom door won't lock", home_name: "Oak St" });
+    const b = await file(A, { bucket: "maintenance", title: "Bedroom door won't lock", home_name: "Elm St" });
+    const ask = await text(request, P.fixer, "the door lock is fixed");
+    expect(ask).toMatch(/which/i);
+    expect(ask).toContain(`#${a.ticket_no}`);
+    expect(ask).toContain(`#${b.ticket_no}`);
+    const pick = ask.indexOf(`#${b.ticket_no}`) < ask.indexOf(`#${a.ticket_no}`) ? "1" : "2";
+    expect(await text(request, P.fixer, pick)).toBe(`Ticket #${b.ticket_no} marked resolved ✓`);
+    expect((await fresh(b.id)).status).toBe("resolved");
+    expect((await fresh(a.id)).status).toBe("open");
+  });
+
+  test("nothing matching says so and lists the open tickets; nothing changes", async ({ request }) => {
+    const sink = await file(A, { bucket: "maintenance", title: "Kitchen sink clogged", home_name: "Elm St" });
+    const reply = await text(request, P.fixer, "the roof leak is fixed");
+    expect(reply).toMatch(/couldn't find|no open ticket/i);
+    expect(reply).toContain(`#${sink.ticket_no}`);
+    expect((await fresh(sink.id)).status).toBe("open");
+  });
+
+  test("a new problem is still filed as a new report, not taken as closing a ticket", async ({ request }) => {
+    const door = await file(A, { bucket: "maintenance", title: "Front door off hinges", home_name: "Oak St" });
+    const reply = await text(request, P.fixer, "the back door at Oak St is broken, won't close");
+    expect(reply).not.toMatch(/mark #|marked resolved/i);
+    expect((await fresh(door.id)).status).toBe("open");
+  });
+
+  test("@isolation another account's tickets are never offered", async ({ request }) => {
+    await file(A, { bucket: "maintenance", title: "Front door off hinges", home_name: "Oak St" });
+    const reply = await text(request, P.other, "the front door at Oak St is fixed");
+    expect(reply).not.toMatch(/front door/i);
+    expect(reply).toMatch(/couldn't find|no open ticket/i);
+  });
+});
