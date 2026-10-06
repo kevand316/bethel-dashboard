@@ -24,17 +24,25 @@ export type Draft = {
 };
 
 export type Turn = {
-  intent: "rent" | "report" | "other";
+  intent: "rent" | "report" | "ticket" | "other";
   reply: string; ready: boolean; cancel: boolean; announcement_reply: boolean; draft: Draft | null;
   // Rent payments and "who owes" questions are extracted here and handled by code.
   rent: { kind: "payment" | "question"; resident_name: string | null; amount: number | null; month: string | null; home_id: number | null } | null;
+  // An update to an existing open ticket, matched by description; code confirms with the sender.
+  ticket: { ticket_nos: number[]; action: "resolved" | "pending"; note: string } | null;
 };
 
 const SYSTEM = `You are the HouseBoss texting assistant. Staff at a housing organization text you in plain language for one of two jobs:
 (A) RENT: a resident paid rent ("Grant paid his rent", "Marcus paid 300", "Grant paid his October rent"), or a question about who owes rent ("who owes rent?", "who hasn't paid at Oak St?").
 (B) REPORTS: anything else that happened (incidents, maintenance, cleaning, move-ins/outs, inventory).
+(C) TICKET UPDATE: news about a problem that was ALREADY reported and is in the open tickets list: it's been fixed/handled/taken care of ("the front door at Oak St is fixed", "plumber came, sink works"), or it's still waiting ("still waiting on parts for the dryer").
 
-Set intent first: "rent" for (A), "report" for (B), "other" for greetings or anything else.
+Set intent first: "rent" for (A), "report" for (B), "ticket" for (C), "other" for greetings or anything else.
+For (C) TICKET UPDATE: fill the ticket field and do nothing else; leave draft exactly as it was (or null), ready = false, reply = "". Code confirms with the sender.
+- action = "resolved" if it's fixed/done/handled, "pending" if it's still waiting or in progress. note = what they said was done or what it's waiting on, in a few words ("" if nothing).
+- ticket_nos = the open tickets it could be about, best match first: one number when it clearly fits one ticket; two or three when several fit about equally (e.g. two door tickets and they didn't say which home); [] when none of the open tickets fit. Only numbers from the open tickets list.
+- Something newly broken or a new problem is a REPORT (B), even if a similar ticket is open. Only completion or status news about an existing problem is (C).
+If intent is not "ticket", ticket = null.
 For (A) RENT: fill the rent field and do nothing else. kind = payment or question. resident_name as written (null for questions). amount = the number paid, or null if they didn't say (means paid in full). month = YYYY-MM only if they named a month (e.g. "October rent" in 2026 = 2026-10), else null. home_id only if they named a home. Leave draft exactly as it was (or null), ready = false, reply = "". Code does the rest.
 A move-in or move-out is a report, not rent, even if a price is mentioned.
 
@@ -76,11 +84,21 @@ const nullable = (schema: Record<string, unknown>) => ({ anyOf: [schema, { type:
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["intent", "rent", "reply", "ready", "cancel", "announcement_reply", "draft"],
+  required: ["intent", "rent", "ticket", "reply", "ready", "cancel", "announcement_reply", "draft"],
   properties: {
     // Decided first: the JSON is generated in this order, so the model commits to
     // what kind of text this is before filling anything else.
-    intent: { type: "string", enum: ["rent", "report", "other"] },
+    intent: { type: "string", enum: ["rent", "report", "ticket", "other"] },
+    ticket: nullable({
+      type: "object",
+      additionalProperties: false,
+      required: ["ticket_nos", "action", "note"],
+      properties: {
+        ticket_nos: { type: "array", items: { type: "integer" } },
+        action: { type: "string", enum: ["resolved", "pending"] },
+        note: { type: "string" },
+      },
+    }),
     rent: nullable({
       type: "object",
       additionalProperties: false,
@@ -144,6 +162,7 @@ export type TurnContext = {
   newText: string;
   photoCount: number;
   recentAnnouncement?: { from: string; message: string; at: string } | null;
+  openTickets?: { no: number; title: string; home: string | null; summary: string; by: string | null; at: string }[];
 };
 
 const client = () => new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
@@ -158,6 +177,8 @@ export async function runTurn(ctx: TurnContext): Promise<Turn> {
     `Current draft: ${ctx.draft ? JSON.stringify(ctx.draft) : "none"}`,
     `Recent announcement received: ${ctx.recentAnnouncement
       ? `from ${ctx.recentAnnouncement.from} at ${ctx.recentAnnouncement.at}: "${ctx.recentAnnouncement.message}"` : "none"}`,
+    `Open tickets (#number · home · title · summary · reported by · when):\n${(ctx.openTickets || []).map((t) =>
+      `#${t.no} · ${t.home || "no home"} · ${t.title} · ${t.summary.slice(0, 160)} · ${t.by || "dashboard"} · ${t.at.slice(0, 10)}`).join("\n") || "(none)"}`,
     `New text from ${ctx.sender.name}: ${ctx.newText || "(no text)"}${ctx.photoCount ? ` [sent ${ctx.photoCount} photo(s)]` : ""}`,
   ].join("\n\n");
 
@@ -191,6 +212,12 @@ export async function runTurn(ctx: TurnContext): Promise<Turn> {
   }
   if (!ctx.recentAnnouncement) turn.announcement_reply = false;
   if (turn.intent !== "rent") turn.rent = null;
+  if (turn.intent !== "ticket") turn.ticket = null;
+  // Only tickets that were actually offered, and at most three.
+  if (turn.ticket) {
+    const offered = new Set((ctx.openTickets || []).map((t) => t.no));
+    turn.ticket.ticket_nos = [...new Set(turn.ticket.ticket_nos)].filter((n) => offered.has(n)).slice(0, 3);
+  }
   // A draft can only be complete with a bucket the code knows and a title.
   if (turn.draft && (!BUCKETS.includes(turn.draft.bucket) || !turn.draft.title?.trim())) turn.ready = false;
   return turn;

@@ -15,7 +15,7 @@ import { deleteMedia, fetchMedia, sendSms, validSignature } from "../_shared/twi
 import { type Draft, parseAnnouncement, runTurn } from "../_shared/ai.ts";
 import { describeRecipients, recentAnnouncementFor, relayReply, resolveAudience, sendAnnouncement } from "../_shared/announce.ts";
 import { notifyReport } from "../_shared/notify.ts";
-import { parseTicketText, updateTicket } from "../_shared/tickets.ts";
+import { parseTicketText, type TicketAction, updateTicket } from "../_shared/tickets.ts";
 import { newToken, sha256 } from "../_shared/google.ts";
 import { applyRosterChange, decideRoster } from "../_shared/roster.ts";
 import {
@@ -42,7 +42,9 @@ type Conversation = {
   // A report draft, or a pending announcement waiting for YES.
   draft: (Draft & { ready?: boolean; kind?: undefined }) |
     { kind: "announcement"; message: string; recipient_ids: string[]; ready: true } |
-    { kind: "rent"; charge_id: string; amount: number; month: string; resident: string; ready: true } | null;
+    { kind: "rent"; charge_id: string; amount: number; month: string; resident: string; ready: true } |
+    // A ticket update matched by description: one ticket to confirm, or several to pick from.
+    { kind: "ticket"; options: number[]; action: TicketAction; note: string; ready: true } | null;
   photos: { path: string; type: string }[];
   status: string; updated_at: string;
 };
@@ -294,6 +296,32 @@ async function handle(p: Record<string, string>) {
       return finish("processed", userId);
     }
 
+    // ── A ticket update waiting for YES, or for a pick from a short list ─────────
+    if (conv.draft?.kind === "ticket") {
+      const d = conv.draft;
+      const pick = d.options.length > 1 && /^\d+$/.test(kw) ? d.options[Number(kw) - 1] : undefined;
+      const chosen = d.options.length === 1 && YES.has(kw) ? d.options[0] : pick;
+      if (chosen) {
+        const res = await updateTicket(admin, userId, { no: chosen }, d.action, d.note,
+          { name: member.name, memberId: member.id, phone, viaText: true });
+        await save({ status: "filed" });
+        await sendSms(admin, userId, phone, res.message);
+        return finish("processed", userId);
+      }
+      if (NO.has(kw)) {
+        await save({ status: "cancelled" });
+        await sendSms(admin, userId, phone, "OK, no ticket was changed.");
+        return finish("processed", userId);
+      }
+      // Anything else: drop the question and treat this text normally.
+      await save({ status: "cancelled" });
+      const { data: prior } = await admin.from("sms_conversations").select("*")
+        .eq("user_id", userId).eq("phone", phone).eq("status", "open")
+        .order("updated_at", { ascending: false }).limit(1).maybeSingle();
+      conv = (prior as Conversation | null) ??
+        (await admin.from("sms_conversations").insert({ user_id: userId, phone, member_id: member.id }).select("*").single()).data as Conversation;
+    }
+
     // ── Rent: a payment waiting for YES ─────────────────────────────────────────
     const rentCtx = () => ({ userId, phone, member, org, canLog: role?.can_log_rent === true, save, finish });
     if (conv.draft?.kind === "rent") {
@@ -399,9 +427,17 @@ async function handle(p: Record<string, string>) {
       timeZone: org.timezone, weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
     });
 
+    const { data: openRows } = await admin.from("reports")
+      .select("ticket_no, title, home_name, summary, sender_name, created_at")
+      .eq("user_id", userId).eq("status", "open").order("created_at", { ascending: false }).limit(60);
+    const openTickets = (openRows || []).map((t) => ({
+      no: t.ticket_no, title: t.title, home: t.home_name, summary: t.summary || "", by: t.sender_name, at: t.created_at,
+    }));
+
     let turn;
     try {
       turn = await runTurn({
+        openTickets,
         orgName: org.name, localTime, sender: { name: member.name, role: role?.name || "" }, homes,
         history: conv.history, draft: conv.draft?.kind ? null : conv.draft, newText: body, photoCount: mediaCount,
         recentAnnouncement: ann ? { from: ann.sender_name || "the office", message: ann.summary, at: ann.created_at } : null,
@@ -413,6 +449,39 @@ async function handle(p: Record<string, string>) {
     }
 
     if (turn.rent) return handleRent(turn.rent, { ...rentCtx(), conv });
+
+    // A ticket described instead of numbered: confirm before changing anything.
+    if (turn.ticket) {
+      const t = turn.ticket;
+      if (role && role.can_file_reports === false) {
+        await sendSms(admin, userId, phone, "Your role can't update tickets.");
+        return finish("processed", userId);
+      }
+      const label = (no: number) => {
+        const x = openTickets.find((o) => o.no === no)!;
+        return `#${no} ${x.title}${x.home ? ` (${x.home})` : ""}`;
+      };
+      let ask: string;
+      if (!t.ticket_nos.length) {
+        const list = openTickets.slice(0, 5).map((o) => label(o.no)).join("; ");
+        ask = "I couldn't find an open ticket matching that." +
+          (list ? ` Open tickets: ${list}. Text the number, e.g. "#${openTickets[0].no} resolved".` : " There are no open tickets right now.");
+        await sendSms(admin, userId, phone, ask);
+        return finish("processed", userId);
+      }
+      const what = t.action === "resolved" ? "resolved" : "still pending";
+      ask = t.ticket_nos.length === 1
+        ? `Mark ${label(t.ticket_nos[0])} ${what}? Reply YES or NO.`
+        : `Which one is ${what}? ${t.ticket_nos.map((n, i) => `${i + 1}) ${label(n)}`).join("  ")}  Reply with the number.`;
+      // Its own conversation, so a report someone was in the middle of picks up again after.
+      await admin.from("sms_conversations").insert({
+        user_id: userId, phone, member_id: member.id,
+        history: [{ from: "staff", text: body }, { from: "assistant", text: ask }],
+        draft: { kind: "ticket", options: t.ticket_nos, action: t.action, note: t.note.slice(0, 500), ready: true },
+      });
+      await sendSms(admin, userId, phone, ask);
+      return finish("processed", userId);
+    }
 
     // A reply to an announcement goes back to whoever sent it.
     if (turn.announcement_reply && ann) {
