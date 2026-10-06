@@ -902,6 +902,13 @@ body.rp-detail-open { overflow: hidden; }
 }
 
 /* RENT TAB (lib/rent.js) */
+.rt-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.5rem 0; font-size: 0.88rem; color: var(--text); }
+.rt-confirm span { flex: 1 1 220px; }
+.rt-actions .rt-remove { margin-left: auto; }
+.rt-removed { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1rem; margin: 0.75rem 0; padding: 0.6rem 0.8rem;
+  border: 1px dashed var(--border); font-size: 0.85rem; color: var(--text-mid); }
+.rt-removed-label { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
+.rt-removed-one { overflow-wrap: anywhere; }
 .rt-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.5rem 0 1rem; }
 .rt-nav { flex: 0 0 auto; min-width: 44px; min-height: 44px; }
 .rt-title { font-family: var(--display); font-size: 1.4rem; letter-spacing: 2px; color: var(--text); min-width: 10ch; text-align: center; }
@@ -1870,8 +1877,26 @@ body.rp-detail-open { overflow: hidden; }
       <span class="rt-bar-gap"></span>
       <button class="rt-link" id="rtToggleAll" type="button">Collapse all</button>
       <button class="rt-link" id="rtHistoryBtn" type="button">History</button>
+      <button class="btn btn-gold tm-btn" id="rtAddBtn" type="button">＋ Add person</button>
     </div>
     <div class="tm-panel rt-history" id="rtHistory" hidden></div>
+    <div class="tm-panel" id="rtAddPanel" hidden>
+      <div class="tm-form-title" id="rtAddTitle">Add a person</div>
+      <div class="tm-grid">
+        <div class="qc-field"><label for="rtAddName">Name</label>
+          <input id="rtAddName" class="tm-input" maxlength="120" autocomplete="off" placeholder="Full name"></div>
+        <div class="qc-field"><label for="rtAddHome">Home</label>
+          <select id="rtAddHome" class="tm-select"></select></div>
+        <div class="qc-field"><label for="rtAddDue">Amount due $</label>
+          <input id="rtAddDue" class="tm-input" type="number" min="0" step="1" inputmode="decimal"></div>
+      </div>
+      <div class="tm-note">For reconciling: this adds them to this month's checklist only. Operations isn't changed.</div>
+      <div class="tm-row" style="margin-top:0.5rem">
+        <button class="btn btn-gold tm-btn" id="rtAddSave" type="button">Add</button>
+        <button class="btn btn-ghost tm-btn" id="rtAddCancel" type="button">Cancel</button>
+        <span class="tm-msg" id="rtAddMsg" aria-live="polite"></span>
+      </div>
+    </div>
     <div class="rt-totals" id="rtTotals"></div>
     <div id="rtBody"></div>
     <div class="tm-note">Staff can text it in too: "Grant paid his rent", "Marcus paid 300", "Who owes rent?"</div>

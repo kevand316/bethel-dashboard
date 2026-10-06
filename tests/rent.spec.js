@@ -261,9 +261,9 @@ test.describe("@rent rent tracker", () => {
     await page.fill("#rtAddName", "Walk In");
     await page.fill("#rtAddDue", "400");
     await page.click("#rtAddSave");
+    await expect(row(page, "Walk In")).toBeVisible({ timeout: 10000 }); // saved; its home opens to show it
     await page.reload();
     await page.getByRole("button", { name: "Rent", exact: true }).click();
-    await page.locator(".rt-home-head", { hasText: "Test House" }).click();
     await expect(page.locator(".rt-row")).toHaveCount(3, { timeout: 10000 });
     await expect(row(page, "Walk In")).toBeVisible();
     // Adding someone already on the month is refused rather than doubled.

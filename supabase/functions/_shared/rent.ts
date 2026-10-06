@@ -53,7 +53,7 @@ export const balance = (c: Charge) => round(Math.max(0, Number(c.due) - (c.rent_
 
 export async function chargesFor(admin: SupabaseClient, userId: string, month: string, homeId: number | null) {
   let q = admin.from("rent_charges").select("id, home_id, home_name, resident_name, due, rent_payments(amount)")
-    .eq("user_id", userId).eq("month", month).order("resident_name");
+    .eq("user_id", userId).eq("month", month).is("removed_at", null).order("resident_name");
   if (homeId != null) q = q.eq("home_id", homeId);
   const { data } = await q;
   return (data || []) as Charge[];
