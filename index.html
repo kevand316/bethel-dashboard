@@ -17,6 +17,7 @@
 <script src="lib/team.js"></script>
 <script src="lib/reports.js"></script>
 <script src="lib/text-log.js"></script>
+<script src="lib/outreach.js"></script>
 <script src="lib/rent.js"></script>
 <script src="lib/ai-edit.js"></script>
 <script src="lib/text-intake.js"></script>
@@ -901,6 +902,54 @@ body.rp-detail-open { overflow: hidden; }
   .rp-print-head { font-family: var(--mono); font-size: 0.75rem; margin-bottom: 1rem; }
 }
 
+/* OUTREACH TAB (lib/outreach.js) */
+.or-intro { color: var(--text); font-size: 0.92rem; line-height: 1.5; max-width: 760px; margin: 0.25rem 0 1rem; }
+.or-box { border: 1px solid var(--border); background: var(--bg2); border-radius: 14px; padding: 0.75rem 0.75rem 0.6rem 1rem; max-width: 820px; }
+.or-box:focus-within { border-color: var(--gold); }
+#orQuery { width: 100%; background: transparent; border: 0; outline: none; resize: none; color: var(--text);
+  font-family: var(--sans); font-size: 1rem; line-height: 1.5; min-height: 1.5em; max-height: 200px; padding: 0.15rem 0; }
+.or-box-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; }
+.or-area { display: flex; align-items: center; gap: 0.4rem; flex: 1 1 auto; min-width: 0; }
+.or-area span { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+.or-area input { flex: 1 1 auto; min-width: 0; max-width: 260px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); font-family: var(--sans); font-size: 0.88rem; padding: 0.4rem 0.6rem; }
+.or-send { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--gold); color: #0a0e14;
+  font-size: 1.2rem; font-weight: 700; cursor: pointer; }
+.or-send:disabled { opacity: 0.5; cursor: wait; }
+.or-guide-wrap { margin: 1rem 0 1.5rem; max-width: 820px; }
+.or-guide { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.4rem 0 0.6rem; }
+.or-chip { font-family: var(--sans); font-size: 0.82rem; color: var(--text); background: transparent; border: 1px solid var(--border);
+  border-radius: 999px; padding: 0.35rem 0.8rem; min-height: 36px; cursor: pointer; }
+.or-chip:hover, .or-chip:focus-visible { border-color: var(--gold); color: var(--gold); outline: none; }
+.or-label { display: block; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); margin: 0.25rem 0; }
+.or-list { border: 1px solid var(--border); background: var(--bg2); margin-bottom: 0.6rem; }
+.or-list-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; width: 100%; text-align: left; background: none;
+  border: 0; color: var(--text); font: inherit; padding: 0.85rem 1rem; cursor: pointer; }
+.or-list-head:hover .or-q { color: var(--gold); }
+.or-q { font-family: var(--display); font-size: 1.15rem; letter-spacing: 1.2px; flex: 1 1 260px; overflow-wrap: anywhere; }
+.or-meta { font-family: var(--mono); font-size: 0.75rem; color: var(--gold); }
+.or-when { font-family: var(--mono); font-size: 0.7rem; color: var(--text-dim); flex-basis: 100%; padding-left: 1.4rem; }
+.or-searching { color: var(--text-mid); }
+.or-failed { color: #ff8a7a; }
+.or-body { padding: 0 1rem 1rem; }
+.or-summary { color: var(--text); line-height: 1.5; margin: 0 0 0.75rem; overflow-wrap: anywhere; }
+.or-org { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 1rem; border-top: 1px solid var(--border); padding: 0.9rem 0; }
+.or-name { font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.or-name .rp-badge { margin-left: 0.4rem; vertical-align: middle; }
+.or-why { font-size: 0.85rem; color: var(--text-mid); margin-top: 0.2rem; }
+.or-facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.3rem 0.75rem; margin: 0.6rem 0 0; font-size: 0.88rem; }
+.or-facts dt { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); padding-top: 0.15rem; }
+.or-facts dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+.or-facts a { color: var(--text); text-decoration: underline; text-decoration-color: var(--gold); }
+.or-sub { color: var(--text-dim); font-size: 0.8rem; }
+.or-missing { color: var(--text-dim); font-style: italic; }
+.or-call .tm-select { width: 100%; }
+.or-call .or-notes { display: block; width: 100%; max-width: none; box-sizing: border-box; min-height: 110px; resize: vertical; font-family: var(--sans); font-size: 0.92rem; }
+.or-save { font-family: var(--mono); font-size: 0.7rem; color: var(--green); min-height: 1.1em; margin-top: 0.25rem; }
+.or-save-bad { color: #ff8a7a; }
+.or-list-actions { margin-top: 0.75rem; flex-wrap: wrap; }
+@media (max-width: 760px) { .or-org { grid-template-columns: 1fr; } }
+
 /* RENT TAB (lib/rent.js) */
 .rt-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.5rem 0; font-size: 0.88rem; color: var(--text); }
 .rt-confirm span { flex: 1 1 220px; }
@@ -1669,6 +1718,7 @@ body.rp-detail-open { overflow: hidden; }
   <button class="tab" onclick="switchTab('quickcalc', event)">Profit Calculator</button>
   <button class="tab" onclick="switchTab('intake', event)">Intake</button>
   <button class="tab" onclick="switchTab('rlog', event)">Reports</button>
+  <button class="tab" onclick="switchTab('outreach', event)">Outreach</button>
   <button class="tab" onclick="switchTab('team', event)">Team</button>
   <button class="no-print" onclick="printOverview()" style="margin-left:auto;font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⬇ Save PDF</button>
 
@@ -1901,6 +1951,32 @@ body.rp-detail-open { overflow: hidden; }
     <div id="rtBody"></div>
     <div class="tm-note">Staff can text it in too: "Grant paid his rent", "Marcus paid 300", "Who owes rent?"</div>
 
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- OUTREACH VIEW: lib/outreach.js. Find organizations that refer clients. -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="view" id="view-outreach">
+    <div class="section-title">Outreach</div>
+    <p class="or-intro">Find organizations that can refer clients. Describe who you're looking for, and Claude searches the web for names, point-of-contact numbers, emails and addresses. Each search is saved below as a call sheet with notes.</p>
+
+    <div class="or-box">
+      <textarea id="orQuery" rows="1" maxlength="300" placeholder="Who should we reach out to? e.g. hospital discharge planners, probation offices" aria-label="What to search for"></textarea>
+      <div class="or-box-row">
+        <label class="or-area"><span>Near</span>
+          <input id="orArea" maxlength="120" autocomplete="off" placeholder="City, State" aria-label="Area"></label>
+        <button class="or-send" id="orSend" type="button" aria-label="Search">↑</button>
+      </div>
+    </div>
+    <div class="tm-msg" id="orMsg" aria-live="polite"></div>
+
+    <div class="or-guide-wrap">
+      <div class="or-label">Who refers clients: tap one to start</div>
+      <div class="or-guide" id="orGuide"></div>
+      <div class="tm-note">Words that find the right person: <b>intake coordinator</b>, <b>case manager</b>, <b>discharge planner</b>, <b>social worker</b>, <b>housing navigator</b>, <b>reentry</b>, <b>referral</b>. Add a city or "near" to narrow it. Up to 25 searches a day.</div>
+    </div>
+
+    <div id="orLists"></div>
   </div>
 
   <!-- ═══════════════════════════════════════ -->
@@ -2617,6 +2693,7 @@ async function initData() {
   window.team.init(session).catch((e) => console.warn('[team] init failed:', e));
   window.reports.init();
   window.textLog.init();
+  window.outreach.init();
   window.rent.init();
   window.aiEdit.init();
   window.textIntake.init();
@@ -3537,6 +3614,7 @@ function switchTab(name, event) {
   if (name === 'team') window.team.open();
   if (name === 'rlog') window.reports.open();
   if (name === 'rent') window.rent.open();
+  if (name === 'outreach') window.outreach.open();
   if (name === 'intake') window.textIntake.render();
 }
 
