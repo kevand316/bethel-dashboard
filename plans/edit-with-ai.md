@@ -1,6 +1,6 @@
 # Edit with AI
 
-Operator asked 2026-10-05: a box (first a tab, then moved to the top of every tab) where a user types what they want changed ("add these
+Operator asked 2026-10-05: a box (tried as a tab, then on every tab; settled on the top of Operations) where a user types what they want changed ("add these
 expenses to 12 Maple", "raise Grant's rate to 800") instead of editing field by field.
 Name chosen: **Edit with AI**.
 

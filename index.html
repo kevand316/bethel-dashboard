@@ -1097,6 +1097,11 @@ body.rp-detail-open { overflow: hidden; }
   gap: 1.25rem;
   margin-top: 1.25rem;
 }
+/* A grid column won't shrink below its widest content, so on a phone the Clients
+   table pushed the whole page sideways. Keep columns to the screen and let a
+   panel scroll inside itself instead (its inline overflow:hidden would clip). */
+.ops-layout-grid > * { min-width: 0; }
+.ops-layout-grid > * > div { overflow-x: auto !important; }
 
 .expense-form-grid {
   padding: 1rem;
@@ -1636,21 +1641,6 @@ body.rp-detail-open { overflow: hidden; }
 
 <div class="main">
 
-  <!-- Edit with AI (lib/ai-edit.js): on every tab, one conversation for the whole
-       dashboard. One line until used; the thread and Apply preview open below it. -->
-  <div class="ai-bar no-print" id="aiBar">
-    <div class="ai-compose">
-      <label class="ai-label" for="aiInput">Edit with AI</label>
-      <input type="text" id="aiInput" autocomplete="off" placeholder="e.g. Add water $90 and trash $40 to 12 Maple">
-      <button class="btn btn-gold tm-btn" id="aiSend" type="button">Send</button>
-    </div>
-    <div class="ai-thread" id="aiThread" hidden>
-      <div class="ai-log" id="aiLog" aria-live="polite"></div>
-      <div class="ai-preview" id="aiPreview" hidden></div>
-      <div class="ai-thread-foot"><button class="rt-link" id="aiClear" type="button">Clear</button></div>
-    </div>
-  </div>
-
   <!-- ═══════════════════════════════════════ -->
   <!-- OCCUPANCY VIEW -->
   <!-- ═══════════════════════════════════════ -->
@@ -1699,6 +1689,21 @@ body.rp-detail-open { overflow: hidden; }
   <!-- CLIENT FINANCIALS VIEW -->
   <!-- ═══════════════════════════════════════ -->
   <div class="view" id="view-ops">
+
+    <!-- Edit with AI (lib/ai-edit.js), top of Operations. One line until used;
+         the thread and Apply preview open below it. -->
+    <div class="ai-bar no-print" id="aiBar">
+      <div class="ai-compose">
+        <label class="ai-label" for="aiInput">Edit with AI</label>
+        <input type="text" id="aiInput" autocomplete="off" placeholder="e.g. Add water $90 and trash $40 to 12 Maple">
+        <button class="btn btn-gold tm-btn" id="aiSend" type="button">Send</button>
+      </div>
+      <div class="ai-thread" id="aiThread" hidden>
+        <div class="ai-log" id="aiLog" aria-live="polite"></div>
+        <div class="ai-preview" id="aiPreview" hidden></div>
+        <div class="ai-thread-foot"><button class="rt-link" id="aiClear" type="button">Clear</button></div>
+      </div>
+    </div>
 
     <!-- Home sub-tabs -->
     <div class="prop-selector" id="cfPropSelector"></div>
