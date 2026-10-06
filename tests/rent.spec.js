@@ -109,6 +109,7 @@ test.describe("@rent rent tracker", () => {
 
   test("paid in full, partial, and removing a payment", async ({ page }) => {
     await openRent(page);
+    await page.locator(".rt-home-head", { hasText: "Test House" }).click(); // homes start closed
     await row(page, "Grant Smith").locator(".rt-paid-full").click();
     await expect(row(page, "Grant Smith").locator(".rt-status")).toHaveText(/^paid$/i, { timeout: 10000 });
 
@@ -129,6 +130,7 @@ test.describe("@rent rent tracker", () => {
 
   test("editing the amount due persists", async ({ page }) => {
     await openRent(page);
+    await page.locator(".rt-home-head", { hasText: "Test House" }).click(); // homes start closed
     const due = row(page, "Grant Smith").locator(".rt-due-input");
     await due.fill("750");
     await due.press("Enter");
@@ -177,24 +179,29 @@ test.describe("@rent rent tracker", () => {
     await expect(page.locator(".rt-row")).toHaveCount(3, { timeout: 10000 });
   });
 
-  test("each home collapses and expands, and the choice is remembered", async ({ page }) => {
+  test("homes start closed, each opens and closes, and the choice is remembered", async ({ page }) => {
     await setRoster([...HOMES(), { id: 2, name: "Second House", address: "", startupCost: 0, catOrder: [], expenses: [],
       beds: [{ id: 1, status: "occupied", name: "Second Person", rate: 500, moveIn: "" }] }]);
     await openRent(page);
-    await expect(page.locator(".rt-row:visible")).toHaveCount(3, { timeout: 10000 });
+    await expect(page.locator(".rt-row")).toHaveCount(3, { timeout: 10000 });
+    await expect(page.locator(".rt-row:visible")).toHaveCount(0);
+    await expect(page.locator("#rtToggleAll")).toHaveText("Expand all");
     const head = page.locator(".rt-home-head", { hasText: "Test House" });
     await expect(head).toContainText("2 unpaid");
-    await head.click();
-    await expect(page.locator(".rt-row:visible")).toHaveCount(1);
     await expect(head).toHaveAttribute("aria-expanded", "false");
+    await head.click();
+    await expect(page.locator(".rt-row:visible")).toHaveCount(2);
+    await expect(head).toHaveAttribute("aria-expanded", "true");
     await page.reload();
     await page.getByRole("button", { name: "Rent", exact: true }).click();
-    await expect(page.locator(".rt-home-head", { hasText: "Test House" })).toHaveAttribute("aria-expanded", "false", { timeout: 10000 });
-    await page.click("#rtToggleAll"); // collapse the rest
+    await expect(page.locator(".rt-home-head", { hasText: "Test House" })).toHaveAttribute("aria-expanded", "true", { timeout: 10000 });
+    await expect(page.locator(".rt-row:visible")).toHaveCount(2);
+    await page.click("#rtToggleAll"); // close the open one
     await expect(page.locator(".rt-row:visible")).toHaveCount(0);
     await expect(page.locator("#rtToggleAll")).toHaveText("Expand all");
     await page.click("#rtToggleAll");
     await expect(page.locator(".rt-row:visible")).toHaveCount(3);
+    await expect(page.locator("#rtToggleAll")).toHaveText("Collapse all");
   });
 
   test("@isolation another account sees none of this", async ({ page }) => {
