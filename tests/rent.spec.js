@@ -204,6 +204,77 @@ test.describe("@rent rent tracker", () => {
     await expect(page.locator("#rtToggleAll")).toHaveText("Collapse all");
   });
 
+  test("removing a name asks first, takes it off this month only, keeps its payments, and can be undone", async ({ page }) => {
+    const { data: prev } = await admin.from("rent_charges").insert({
+      user_id: A, month: PREV, home_id: 1, home_name: "Test House", bed_id: 2, resident_name: "Grant Smith", due: 700,
+    }).select("id").single();
+    await admin.from("rent_payments").insert({ user_id: A, charge_id: prev.id, amount: 700 });
+    await openRent(page);
+    await page.locator(".rt-home-head", { hasText: "Test House" }).click(); // homes start closed
+    await row(page, "Grant Smith").locator(".rt-paid-full").click();
+    await expect(row(page, "Grant Smith").locator(".rt-status")).toHaveText(/^paid$/i, { timeout: 10000 });
+
+    await row(page, "Grant Smith").locator(".rt-remove").click();
+    await expect(row(page, "Grant Smith")).toContainText(/remove grant smith from/i); // asks first
+    await row(page, "Grant Smith").locator(".rt-remove-yes").click();
+    await expect(page.locator(".rt-row", { hasText: "Grant Smith" })).toHaveCount(0, { timeout: 10000 });
+    await expect(page.locator("#rtTotals")).toContainText("$3,200"); // expected: Marcus only
+
+    // Still in a bed in Operations, but reopening the tab doesn't put him back.
+    await page.reload();
+    await page.getByRole("button", { name: "Rent", exact: true }).click();
+    await expect(page.locator(".rt-removed")).toContainText("Grant Smith", { timeout: 10000 });
+    await expect(page.locator(".rt-row", { hasText: "Grant Smith" })).toHaveCount(0);
+
+    const grant = (await charges()).find((x) => x.resident_name === "Grant Smith");
+    expect(grant.removed_at).toBeTruthy();
+    expect(grant.rent_payments.map((p) => Number(p.amount))).toEqual([700]); // payment kept
+    expect((await charges(PREV))[0].removed_at).toBeNull(); // last month untouched
+    expect((await charges(PREV))[0].rent_payments).toHaveLength(1);
+
+    await page.locator(".rt-removed .rt-restore").click();
+    await expect(page.locator(".rt-row", { hasText: "Grant Smith" })).toHaveCount(1, { timeout: 10000 });
+    expect((await charges()).find((x) => x.resident_name === "Grant Smith").removed_at).toBeNull();
+    const { data: ev } = await admin.from("rent_events").select("action").eq("user_id", A);
+    expect(ev.map((e) => e.action)).toEqual(expect.arrayContaining(["resident_removed", "resident_restored"]));
+  });
+
+  test("a person can be added by hand to a past month, and stays on the current month though not in Operations", async ({ page }) => {
+    await admin.from("rent_charges").insert({
+      user_id: A, month: PREV, home_id: 1, home_name: "Test House", bed_id: 2, resident_name: "Grant Smith", due: 700,
+    });
+    await openRent(page);
+    await page.click("#rtPrev");
+    await expect(page.locator(".rt-row")).toHaveCount(1, { timeout: 10000 });
+    await page.click("#rtAddBtn");
+    await page.fill("#rtAddName", "Late Fix");
+    await page.selectOption("#rtAddHome", { label: "Test House" });
+    await page.fill("#rtAddDue", "500");
+    await page.click("#rtAddSave");
+    await expect(page.locator(".rt-home-head", { hasText: "Test House" })).toContainText("$1,200", { timeout: 10000 });
+    const added = (await charges(PREV)).find((x) => x.resident_name === "Late Fix");
+    expect(Number(added.due)).toBe(500);
+    expect(added.home_id).toBe(1);
+
+    await page.click("#rtNext");
+    await page.click("#rtAddBtn");
+    await page.fill("#rtAddName", "Walk In");
+    await page.fill("#rtAddDue", "400");
+    await page.click("#rtAddSave");
+    await page.reload();
+    await page.getByRole("button", { name: "Rent", exact: true }).click();
+    await page.locator(".rt-home-head", { hasText: "Test House" }).click();
+    await expect(page.locator(".rt-row")).toHaveCount(3, { timeout: 10000 });
+    await expect(row(page, "Walk In")).toBeVisible();
+    // Adding someone already on the month is refused rather than doubled.
+    await page.click("#rtAddBtn");
+    await page.fill("#rtAddName", "grant smith");
+    await page.fill("#rtAddDue", "1");
+    await page.click("#rtAddSave");
+    await expect(page.locator("#rtAddMsg")).toContainText(/already/i);
+    expect((await charges()).filter((x) => x.resident_name.toLowerCase() === "grant smith")).toHaveLength(1);
+  });
+
   test("@isolation another account sees none of this", async ({ page }) => {
     await admin.from("rent_charges").insert({ user_id: A, month: THIS, home_id: 1, resident_name: "Secret Tenant", due: 1 });
     await page.route(/accounts\.google\.com/, (r) => r.abort());
@@ -296,6 +367,17 @@ test.describe("@rent rent tracker", () => {
       expect(r).toMatch(/Grant Smith/);
       expect(r).toMatch(/Marcus Lee/);
       expect(r).toMatch(/\$3,900/); // total outstanding
+    });
+
+    test("a name removed from the month isn't listed as owing", async ({ request }) => {
+      await admin.from("rent_charges").insert([
+        { user_id: A, month: THIS, home_id: 1, home_name: "Test House", bed_id: 2, resident_name: "Grant Smith", due: 700 },
+        { user_id: A, month: THIS, home_id: 1, home_name: "Test House", bed_id: 3, resident_name: "Marcus Lee", due: 3200,
+          removed_at: new Date().toISOString() },
+      ]);
+      const reply = await text(request, P.manager, "who owes rent?");
+      expect(reply).toContain("Grant");
+      expect(reply).not.toContain("Marcus");
     });
 
     test("a role without Log rent can't record payments", async ({ request }) => {
