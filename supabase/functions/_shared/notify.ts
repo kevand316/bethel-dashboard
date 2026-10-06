@@ -2,6 +2,7 @@
 // Who hears about a filed report (plans/sms-reports.md, step 4):
 //   - normal report: the sender's supervisor + matching notification rules
 //   - urgent report: the sender's whole chain of command + matching rules
+//   - either way: everyone whose role has "texted about every report" on
 // Active members of the same account only; never the sender; each person once.
 // Every text sent is recorded in `notifications` against the report.
 
@@ -14,17 +15,18 @@ const BUCKET_LABEL: Record<string, string> = {
   announcements: "announcement",
 };
 
-type Member = { id: string; name: string; phone: string; status: string; reports_to: string | null };
+type Member = { id: string; name: string; phone: string; status: string; reports_to: string | null; role_id: string };
 type Report = {
   id: string; bucket: string; urgent: boolean; home_id: number | null; home_name: string | null;
   title: string; sender_member_id: string | null; sender_name: string | null; sender_phone: string | null;
 };
 
 export async function notifyReport(admin: SupabaseClient, userId: string, report: Report) {
-  const [{ data: memberRows }, { data: rules }, { data: org }] = await Promise.all([
-    admin.from("team_members").select("id, name, phone, status, reports_to").eq("user_id", userId),
+  const [{ data: memberRows }, { data: rules }, { data: org }, { data: allRoles }] = await Promise.all([
+    admin.from("team_members").select("id, name, phone, status, reports_to, role_id").eq("user_id", userId),
     admin.from("notification_rules").select("bucket, home_id, member_id").eq("user_id", userId),
     admin.from("org_profiles").select("org_name").eq("user_id", userId).maybeSingle(),
+    admin.from("team_roles").select("id").eq("user_id", userId).eq("notify_all_reports", true),
   ]);
   const members = new Map((memberRows || []).map((m: Member) => [m.id, m]));
   const picked = new Map<string, string>(); // member id -> reason
@@ -45,6 +47,8 @@ export async function notifyReport(admin: SupabaseClient, userId: string, report
       add(r.member_id, "rule");
     }
   }
+  const everyReport = new Set((allRoles || []).map((r: { id: string }) => r.id));
+  for (const m of members.values()) if (everyReport.has(m.role_id)) add(m.id, "role");
 
   const orgName = org?.org_name || "HouseBoss";
   const from = report.sender_name ? ` from ${report.sender_name}` : "";
