@@ -4,6 +4,7 @@
 // Every outbound text is logged to sms_messages.
 
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { isPaid } from "./paid.ts";
 
 const SID = () => Deno.env.get("TWILIO_ACCOUNT_SID")!;
 const TOKEN = () => Deno.env.get("TWILIO_AUTH_TOKEN")!;
@@ -50,6 +51,12 @@ export async function sendSms(
   to: string,
   body: string,
 ): Promise<SendResult> {
+  // Texting is a paid feature. Texts with no account (e.g. "that join code isn't
+  // valid") are only ever replies to someone who texted in.
+  if (userId && !(await isPaid(admin, userId))) {
+    await admin.from("sms_messages").insert({ user_id: userId, direction: "out", phone: to, body, status: "not_sent_free" });
+    return { ok: false, sid: null, status: "not_sent_free", error: "Texting isn't on this account's plan." };
+  }
   if (isTestPhone(to)) {
     await admin.from("sms_messages").insert({ user_id: userId, direction: "out", phone: to, body, status: "test" });
     return { ok: true, sid: null, status: "test" };

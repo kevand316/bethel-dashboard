@@ -6,6 +6,7 @@
 
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { admin, callerId, CORS, json } from "../_shared/http.ts";
+import { isPaid, NOT_ON_PLAN } from "../_shared/paid.ts";
 
 const DAILY_CAP = 100;
 const MAX_BODY = 300_000; // bytes; a large roster is well under this
@@ -80,6 +81,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   const userId = await callerId(req);
   if (!userId) return json({ error: "Not signed in" }, 401);
+  if (!(await isPaid(admin, userId))) return json({ error: NOT_ON_PLAN }, 403);
 
   const raw = await req.text();
   if (raw.length > MAX_BODY) return json({ error: "That's too much to send at once." }, 413);

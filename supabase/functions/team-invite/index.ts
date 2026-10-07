@@ -6,6 +6,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { sendSms } from "../_shared/twilio.ts";
+import { isPaid, NOT_ON_PLAN } from "../_shared/paid.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +26,7 @@ Deno.serve(async (req) => {
   const jwt = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
   const { data: { user } } = await admin.auth.getUser(jwt);
   if (!user) return json({ error: "Not signed in" }, 401);
+  if (!(await isPaid(admin, user.id))) return json({ error: NOT_ON_PLAN }, 403);
 
   const { member_id } = await req.json().catch(() => ({}));
   if (!member_id) return json({ error: "member_id required" }, 400);

@@ -1079,6 +1079,8 @@ body.rp-detail-open { overflow: hidden; }
 .tm-form-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-top: 0.25rem; }
 .tm-foot-note { margin-top: 0; flex: 1 1 260px; }
 .ti-panel { margin-top: 1.5rem; }
+/* Paid features (plans/paid-features.md): hidden until the account is known to be paid. */
+body:not(.paid) .paid-only { display: none !important; }
 .rp-roster { border: 1px solid var(--border); padding: 0.75rem; margin: 0.75rem 0; color: var(--text); }
 .rp-roster-pending { border-color: var(--gold); }
 .rp-roster-applied { border-color: var(--green); }
@@ -1706,7 +1708,7 @@ body.rp-detail-open { overflow: hidden; }
     <div id="save-status"></div>
     <div class="date-display" id="dateDisplay"></div>
     <div class="session-email" id="session-email"></div>
-    <a class="text-number" href="sms:+18882677502" title="Staff text reports to this number">Text 1-888-267-7502</a>
+    <a class="text-number paid-only" href="sms:+18882677502" title="Staff text reports to this number">Text 1-888-267-7502</a>
     <button class="logout-btn" data-action="logout" onclick="logout()">Sign Out</button>
   </div>
 </div>
@@ -1718,8 +1720,8 @@ body.rp-detail-open { overflow: hidden; }
   <button class="tab" onclick="switchTab('quickcalc', event)">Profit Calculator</button>
   <button class="tab" onclick="switchTab('intake', event)">Intake</button>
   <button class="tab" onclick="switchTab('rlog', event)">Reports</button>
-  <button class="tab" onclick="switchTab('outreach', event)">Outreach</button>
-  <button class="tab" onclick="switchTab('team', event)">Team</button>
+  <button class="tab paid-only" onclick="switchTab('outreach', event)">Outreach</button>
+  <button class="tab paid-only" onclick="switchTab('team', event)">Team</button>
   <button class="no-print" onclick="printOverview()" style="margin-left:auto;font-family:var(--mono);font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.25rem;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⬇ Save PDF</button>
 
 </div>
@@ -1777,7 +1779,7 @@ body.rp-detail-open { overflow: hidden; }
 
     <!-- Edit with AI (lib/ai-edit.js), top of Operations. One line until used;
          the thread and Apply preview open below it. -->
-    <div class="ai-bar no-print" id="aiBar">
+    <div class="ai-bar no-print paid-only" id="aiBar">
       <div class="ai-compose">
         <label class="ai-label" for="aiInput">Edit with AI</label>
         <input type="text" id="aiInput" autocomplete="off" placeholder="e.g. Add water $90 and trash $40 to 12 Maple">
@@ -1986,8 +1988,8 @@ body.rp-detail-open { overflow: hidden; }
 
     <div class="rp-toolbar">
       <div class="section-title rp-heading">Reports</div>
-      <button class="btn btn-ghost tm-btn" id="tlBtn" type="button">💬 Texts</button>
-      <button class="btn btn-ghost tm-btn" id="anBtn" type="button">📣 Announce</button>
+      <button class="btn btn-ghost tm-btn paid-only" id="tlBtn" type="button">💬 Texts</button>
+      <button class="btn btn-ghost tm-btn paid-only" id="anBtn" type="button">📣 Announce</button>
       <button class="btn btn-gold tm-btn" id="rpNewBtn" type="button">＋ New</button>
     </div>
 
@@ -2438,7 +2440,7 @@ body.rp-detail-open { overflow: hidden; }
 
       <!-- Texted intakes (lib/text-intake.js): staff text "intake" and get a
            one-time link to this same form on their phone. -->
-      <div class="tm-panel ti-panel">
+      <div class="tm-panel ti-panel paid-only">
         <div class="an-label">Intake by text</div>
         <div class="tm-note" id="tiState"></div>
         <div class="tm-row" style="margin-top:0.5rem">
@@ -2683,6 +2685,8 @@ async function initData() {
   // Populate email display in header — defensive: never show undefined.
   const emailEl = document.getElementById('session-email');
   if (emailEl) emailEl.textContent = session.user?.email || '';
+  // Texting, Outreach and Edit with AI show only for paid accounts (plans/paid-features.md).
+  window.sbIsPaid(session.user.id).then((paid) => document.body.classList.toggle('paid', paid));
 
   // Bring up the Intake tab alongside the dashboard load rather than after it.
   // It talks to Google, not Supabase, so it has no reason to wait on `homes` —

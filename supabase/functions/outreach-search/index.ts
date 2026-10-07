@@ -6,6 +6,7 @@
 
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { admin, callerId, CORS, json } from "../_shared/http.ts";
+import { isPaid, NOT_ON_PLAN } from "../_shared/paid.ts";
 
 const DAILY_CAP = 25;
 const MAX_RESUMES = 4;
@@ -129,6 +130,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   const userId = await callerId(req);
   if (!userId) return json({ error: "Not signed in" }, 401);
+  if (!(await isPaid(admin, userId))) return json({ error: NOT_ON_PLAN }, 403);
 
   const body = await req.json().catch(() => ({}));
   const query = String(body.query || "").trim().slice(0, 300);

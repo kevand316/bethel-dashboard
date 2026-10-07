@@ -5,6 +5,7 @@
 // The audience is resolved inside the caller's own account only.
 
 import { admin, callerId, CORS, json } from "../_shared/http.ts";
+import { isPaid, NOT_ON_PLAN } from "../_shared/paid.ts";
 import { describeRecipients, resolveAudience, sendAnnouncement } from "../_shared/announce.ts";
 
 Deno.serve(async (req) => {
@@ -12,6 +13,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   const userId = await callerId(req);
   if (!userId) return json({ error: "Not signed in" }, 401);
+  if (!(await isPaid(admin, userId))) return json({ error: NOT_ON_PLAN }, 403);
 
   const { message, audience, preview } = await req.json().catch(() => ({}));
   const a = {

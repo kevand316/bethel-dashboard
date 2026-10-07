@@ -12,6 +12,7 @@
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { deleteMedia, fetchMedia, sendSms, validSignature } from "../_shared/twilio.ts";
+import { isPaid } from "../_shared/paid.ts";
 import { type Draft, parseAnnouncement, runTurn } from "../_shared/ai.ts";
 import { describeRecipients, recentAnnouncementFor, relayReply, resolveAudience, sendAnnouncement } from "../_shared/announce.ts";
 import { notifyReport } from "../_shared/notify.ts";
@@ -95,7 +96,10 @@ async function handle(p: Record<string, string>) {
 
   try {
     const { data: rows } = await admin.from("team_members").select("*").eq("phone", phone).order("created_at", { ascending: false });
-    const memberships = (rows || []) as Member[];
+    // Texting is a paid feature: a free account's team is as if it didn't exist.
+    const all = (rows || []) as Member[];
+    const paid = await Promise.all(all.map((m) => isPaid(admin, m.user_id)));
+    const memberships = all.filter((_, i) => paid[i]);
     const pending = memberships.filter((m) => m.status === "pending");
     const active = memberships.filter((m) => m.status === "active");
     const kw = word(body);
@@ -129,7 +133,7 @@ async function handle(p: Record<string, string>) {
       if ((count ?? 0) > 5) return finish("ignored"); // stop code guessing
       const { data: target } = await admin.from("org_profiles").select("user_id, org_name, join_code, join_enabled")
         .ilike("join_code", join[1]).eq("join_enabled", true).maybeSingle();
-      if (!target || target.join_code.toUpperCase() !== join[1].toUpperCase()) {
+      if (!target || target.join_code.toUpperCase() !== join[1].toUpperCase() || !(await isPaid(admin, target.user_id))) {
         await sendSms(admin, null, phone, "That join code isn't valid. Check it with your manager.");
         return finish("processed");
       }
