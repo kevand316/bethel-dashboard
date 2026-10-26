@@ -498,6 +498,27 @@ test.describe("@smoke intake tab", () => {
   // ── Test 10: SSN formatting ───────────────────────────────────────────────
   // Carried over from the original form. Fails if digits are not grouped, or the
   // field accepts more than nine.
+  // plans/phone-intake.md: the two screening questions asked on every intake
+  // call are on the form and survive a save + reopen.
+  test("screening questions save and reopen", async ({ page }) => {
+    await openDashboardConnected(page);
+    await page.locator("#intake-new-btn").click();
+    await fill(page, "firstName", "Screen");
+    await fill(page, "lastName", "Test");
+    await page.locator('#intake-form-fields [name="medCompliant"]').selectOption("No");
+    await page
+      .locator('#intake-form-fields [name="adlIndependent"]')
+      .selectOption("No – Needs Some Help");
+    await expect(savedStatus(page)).toHaveText("SAVED TO DRIVE ✓", { timeout: 10000 });
+
+    await page.locator("#intake-back-btn").click();
+    await page.locator(".intake-row-open").first().click();
+    await expect(page.locator('#intake-form-fields [name="medCompliant"]')).toHaveValue("No");
+    await expect(page.locator('#intake-form-fields [name="adlIndependent"]')).toHaveValue(
+      "No – Needs Some Help"
+    );
+  });
+
   test("formats the SSN as it is typed", async ({ page }) => {
     await openDashboardConnected(page);
     await page.locator("#intake-new-btn").click();

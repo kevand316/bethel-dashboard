@@ -9,6 +9,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { sendSms } from "../_shared/twilio.ts";
+import { notifyReport } from "../_shared/notify.ts";
 
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
   auth: { persistSession: false },
@@ -65,6 +66,28 @@ Deno.serve(async (req) => {
     const tz = org.timezone || "America/Los_Angeles";
     const { date: today, hour } = localParts(now, tz);
     if (hour !== org.reminder_hour && hour !== org.escalation_hour) continue;
+
+    // Day-before move-in reminders for intakes that came in by phone
+    // (plans/phone-intake.md). Same people as the original move-in text.
+    if (hour === org.reminder_hour) {
+      const tomorrow = addDays(today, 1);
+      const { data: upcoming } = await admin.from("reports").select("*")
+        .eq("user_id", org.user_id).eq("bucket", "move_ins_outs")
+        .eq("details->call_intake->>move_in_date", tomorrow)
+        .is("details->call_intake->>reminded_at", null);
+      for (const r of upcoming || []) {
+        const ci = r.details.call_intake;
+        // Claim first so two overlapping runs can't both text.
+        const { data: claimed } = await admin.from("reports")
+          .update({ details: { ...r.details, call_intake: { ...ci, reminded_at: new Date().toISOString() } } })
+          .eq("user_id", org.user_id).eq("id", r.id)
+          .is("details->call_intake->>reminded_at", null).select("id");
+        if (!claimed?.length) continue;
+        await notifyReport(admin, org.user_id, { ...r, title: `${ci.client_label} moves in tomorrow.` },
+          { lead: "Reminder: move-in" });
+        sent.push(`move-in-reminder:${r.id}`);
+      }
+    }
 
     const [{ data: roles }, { data: members }] = await Promise.all([
       admin.from("team_roles").select("id, daily_report_required").eq("user_id", org.user_id),

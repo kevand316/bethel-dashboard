@@ -21,7 +21,14 @@ type Report = {
   title: string; sender_member_id: string | null; sender_name: string | null; sender_phone: string | null;
 };
 
-export async function notifyReport(admin: SupabaseClient, userId: string, report: Report) {
+// opts.lead replaces "New <kind>" in the text, e.g. "Reminder: move-in" for the
+// day-before move-in reminder (plans/phone-intake.md).
+export async function notifyReport(
+  admin: SupabaseClient,
+  userId: string,
+  report: Report,
+  opts: { lead?: string } = {},
+) {
   const [{ data: memberRows }, { data: rules }, { data: org }, { data: allRoles }] = await Promise.all([
     admin.from("team_members").select("id, name, phone, status, reports_to, role_id").eq("user_id", userId),
     admin.from("notification_rules").select("bucket, home_id, member_id").eq("user_id", userId),
@@ -56,7 +63,7 @@ export async function notifyReport(admin: SupabaseClient, userId: string, report
   const what = (BUCKET_LABEL[report.bucket] || "report") + (report.ticket_no ? ` #${report.ticket_no}` : "");
   const body = report.urgent
     ? `[${orgName}] URGENT ${what}${from}${where}: ${report.title}`
-    : `[${orgName}] New ${what}${from}${where}: ${report.title}`;
+    : `[${orgName}] ${opts.lead ?? `New ${what}`}${from}${where}: ${report.title}`;
 
   const sent: { name: string; status: string }[] = [];
   for (const [id, reason] of picked) {
