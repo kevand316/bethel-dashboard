@@ -585,18 +585,38 @@ test.describe("@smoke intake tab", () => {
   test("renames the old Bethel Intake Forms folder and keeps its intakes", async ({ page }) => {
     await openDashboard(page);
     await page.evaluate(() => {
-      const put = (f) => window.__drive.files.set(f.id, {
-        parents: [], appProperties: {}, trashed: false, content: "", version: "1",
-        headRevisionId: "rev-old-" + f.id, modifiedTime: new Date().toISOString(), ...f,
+      const put = (f) =>
+        window.__drive.files.set(f.id, {
+          parents: [],
+          appProperties: {},
+          trashed: false,
+          content: "",
+          version: "1",
+          headRevisionId: "rev-old-" + f.id,
+          modifiedTime: new Date().toISOString(),
+          ...f,
+        });
+      put({
+        id: "legacy-folder",
+        name: "Bethel Intake Forms",
+        mimeType: "application/vnd.google-apps.folder",
       });
-      put({ id: "legacy-folder", name: "Bethel Intake Forms", mimeType: "application/vnd.google-apps.folder" });
-      put({ id: "old-intake", name: "Doe, Jane.json", mimeType: "application/json", parents: ["legacy-folder"],
-        appProperties: { clientName: "Jane Doe" }, content: JSON.stringify({ firstName: "Jane", lastName: "Doe" }) });
+      put({
+        id: "old-intake",
+        name: "Doe, Jane.json",
+        mimeType: "application/json",
+        parents: ["legacy-folder"],
+        appProperties: { clientName: "Jane Doe" },
+        content: JSON.stringify({ firstName: "Jane", lastName: "Doe" }),
+      });
     });
     await connectDrive(page);
     await expect(page.locator("#intake-list-body")).toContainText("Jane Doe", { timeout: 10000 });
-    const folders = await page.evaluate(() => [...window.__drive.files.values()]
-      .filter((f) => f.mimeType === "application/vnd.google-apps.folder").map((f) => [f.id, f.name]));
+    const folders = await page.evaluate(() =>
+      [...window.__drive.files.values()]
+        .filter((f) => f.mimeType === "application/vnd.google-apps.folder")
+        .map((f) => [f.id, f.name])
+    );
     expect(folders).toEqual([["legacy-folder", "HouseBoss Intake Forms"]]);
   });
 
@@ -692,13 +712,19 @@ test.describe("intake assessment boxes", () => {
 
     await page.locator("#intake-back-btn").click();
     await page.locator(".intake-row-open").first().click();
-    await expect(page.locator('#intake-form-fields [name="gateIncome"][value="Yes"]')).toBeChecked();
+    await expect(
+      page.locator('#intake-form-fields [name="gateIncome"][value="Yes"]')
+    ).toBeChecked();
     await expect(f("adlIndependent")).toHaveValue("No – Needs Some Help");
     await expect(f("lastUse")).toHaveValue("6 to 12 months ago");
     await expect(f("medCompliant")).toHaveValue("No");
     await expect(f("mediCalPlan")).toHaveValue("IEHP");
-    await expect(page.locator('#intake-form-fields [name="recupLast12"][value="No"]')).toBeChecked();
-    await expect(page.locator('#intake-form-fields [name="stayNeeds"][value="Rides"]')).toBeChecked();
+    await expect(
+      page.locator('#intake-form-fields [name="recupLast12"][value="No"]')
+    ).toBeChecked();
+    await expect(
+      page.locator('#intake-form-fields [name="stayNeeds"][value="Rides"]')
+    ).toBeChecked();
     await expect(f("med1Name")).toHaveValue("Sertraline");
     await expect(f("bed")).toHaveValue("2");
     // No "approved" box: passing the gates on the transcript is the decision.
@@ -712,14 +738,35 @@ test.describe("intake assessment boxes", () => {
   test("answers with no box on the form survive a save", async ({ page }) => {
     await openDashboard(page);
     await page.evaluate(() => {
-      const put = (f) => window.__drive.files.set(f.id, {
-        parents: [], appProperties: {}, trashed: false, content: "", version: "1",
-        headRevisionId: "rev-old-" + f.id, modifiedTime: new Date().toISOString(), ...f,
+      const put = (f) =>
+        window.__drive.files.set(f.id, {
+          parents: [],
+          appProperties: {},
+          trashed: false,
+          content: "",
+          version: "1",
+          headRevisionId: "rev-old-" + f.id,
+          modifiedTime: new Date().toISOString(),
+          ...f,
+        });
+      put({
+        id: "legacy-folder",
+        name: "Bethel Intake Forms",
+        mimeType: "application/vnd.google-apps.folder",
       });
-      put({ id: "legacy-folder", name: "Bethel Intake Forms", mimeType: "application/vnd.google-apps.folder" });
-      put({ id: "old-intake", name: "Doe, Jane.json", mimeType: "application/json", parents: ["legacy-folder"],
+      put({
+        id: "old-intake",
+        name: "Doe, Jane.json",
+        mimeType: "application/json",
+        parents: ["legacy-folder"],
         appProperties: { clientName: "Jane Doe" },
-        content: JSON.stringify({ firstName: "Jane", lastName: "Doe", placementDecision: "Approved", retiredBox: "keep me" }) });
+        content: JSON.stringify({
+          firstName: "Jane",
+          lastName: "Doe",
+          placementDecision: "Approved",
+          retiredBox: "keep me",
+        }),
+      });
     });
     await connectDrive(page);
     await page.locator(".intake-row-open").first().click();
