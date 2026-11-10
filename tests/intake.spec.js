@@ -661,3 +661,73 @@ test.describe("@smoke intake tab", () => {
     await expect(savedStatus(page)).toHaveText("SAVE FAILED", { timeout: 40000 });
   });
 });
+
+// ── Client Intake Assessment (Nov 2026) ─────────────────────────────────────
+// The Intake tab has the same boxes as the 5-page Client Intake Assessment:
+// Part 1 (five gates, health plan / recuperative care question, background) and
+// Part 2 (the intake, with the recuperative care assessment folded in).
+test.describe("intake assessment boxes", () => {
+  // Fails if: a gate, the recuperative care question or a recuperative care
+  // assessment box is missing from the form, or does not survive save + reopen.
+  test("the five gates and recuperative care boxes save and reopen", async ({ page }) => {
+    await openDashboardConnected(page);
+    await page.locator("#intake-new-btn").click();
+    await fill(page, "firstName", "Gate");
+    await fill(page, "lastName", "Test");
+    const f = (name) => page.locator(`#intake-form-fields [name="${name}"]`);
+    await page.locator('#intake-form-fields [name="gateIncome"][value="Yes"]').check();
+    await f("gateRentFirstMonth").first().check();
+    await f("adlIndependent").selectOption("No – Needs Some Help");
+    await page.locator('#intake-form-fields [name="programAgrees"][value="Yes"]').check();
+    await f("lastUse").selectOption("6 to 12 months ago");
+    await page.locator('#intake-form-fields [name="gateDiagnosis"][value="Yes"]').check();
+    await f("medCompliant").selectOption("No");
+    await f("mediCalPlan").selectOption("IEHP");
+    await page.locator('#intake-form-fields [name="recupLast12"][value="No"]').check();
+    await page.locator('#intake-form-fields [name="recoveringFromIllness"][value="Yes"]').check();
+    await page.locator('#intake-form-fields [name="stayNeeds"][value="Rides"]').check();
+    await fill(page, "med1Name", "Sertraline");
+    await fill(page, "bed", "2");
+    await expect(savedStatus(page)).toHaveText("SAVED TO DRIVE ✓", { timeout: 10000 });
+
+    await page.locator("#intake-back-btn").click();
+    await page.locator(".intake-row-open").first().click();
+    await expect(page.locator('#intake-form-fields [name="gateIncome"][value="Yes"]')).toBeChecked();
+    await expect(f("adlIndependent")).toHaveValue("No – Needs Some Help");
+    await expect(f("lastUse")).toHaveValue("6 to 12 months ago");
+    await expect(f("medCompliant")).toHaveValue("No");
+    await expect(f("mediCalPlan")).toHaveValue("IEHP");
+    await expect(page.locator('#intake-form-fields [name="recupLast12"][value="No"]')).toBeChecked();
+    await expect(page.locator('#intake-form-fields [name="stayNeeds"][value="Rides"]')).toBeChecked();
+    await expect(f("med1Name")).toHaveValue("Sertraline");
+    await expect(f("bed")).toHaveValue("2");
+    // No "approved" box: passing the gates on the transcript is the decision.
+    await expect(f("placementDecision")).toHaveCount(0);
+  });
+
+  // Removing a box from the form must never erase what an older intake already
+  // holds under that name.
+  //
+  // Fails if: saving an older intake drops an answer that has no box any more.
+  test("answers with no box on the form survive a save", async ({ page }) => {
+    await openDashboard(page);
+    await page.evaluate(() => {
+      const put = (f) => window.__drive.files.set(f.id, {
+        parents: [], appProperties: {}, trashed: false, content: "", version: "1",
+        headRevisionId: "rev-old-" + f.id, modifiedTime: new Date().toISOString(), ...f,
+      });
+      put({ id: "legacy-folder", name: "Bethel Intake Forms", mimeType: "application/vnd.google-apps.folder" });
+      put({ id: "old-intake", name: "Doe, Jane.json", mimeType: "application/json", parents: ["legacy-folder"],
+        appProperties: { clientName: "Jane Doe" },
+        content: JSON.stringify({ firstName: "Jane", lastName: "Doe", placementDecision: "Approved", retiredBox: "keep me" }) });
+    });
+    await connectDrive(page);
+    await page.locator(".intake-row-open").first().click();
+    await fill(page, "phone", "9095550100");
+    await expect(savedStatus(page)).toHaveText("SAVED TO DRIVE ✓", { timeout: 10000 });
+    const stored = await page.evaluate(() => window.__drive.contentOf("old-intake"));
+    expect(stored.phone).toContain("909");
+    expect(stored.placementDecision).toBe("Approved");
+    expect(stored.retiredBox).toBe("keep me");
+  });
+});
