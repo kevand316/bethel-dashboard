@@ -186,8 +186,8 @@ test.describe("@smoke intake tab", () => {
     await fill(page, "dob", "1979-04-12");
     await page.locator('#intake-form-fields [name="gender"]').selectOption("Male");
     await page.locator('#intake-form-fields [name="currentSituation"][value="Shelter"]').check();
-    await page.locator('#intake-form-fields [name="income"][value="SSI"]').check();
-    await page.locator('#intake-form-fields [name="benefits"][value="CalFresh"]').check();
+    await page.locator('#intake-form-fields [name="substanceUse"][value="Alcohol"]').check();
+    await page.locator('#intake-form-fields [name="clientNeeds"][value="CalFresh"]').check();
     await page.locator('#intake-form-fields [name="mhDx"][value="PTSD"]').check();
     await page.locator('#intake-form-fields [name="intakeNotes"]').fill("Needs ground floor bed.");
 
@@ -207,12 +207,14 @@ test.describe("@smoke intake tab", () => {
     await expect(
       page.locator('#intake-form-fields [name="currentSituation"][value="Shelter"]')
     ).toBeChecked();
-    await expect(page.locator('#intake-form-fields [name="income"][value="SSI"]')).toBeChecked();
     await expect(
-      page.locator('#intake-form-fields [name="benefits"][value="CalFresh"]')
+      page.locator('#intake-form-fields [name="substanceUse"][value="Alcohol"]')
     ).toBeChecked();
     await expect(
-      page.locator('#intake-form-fields [name="income"][value="SSDI"]')
+      page.locator('#intake-form-fields [name="clientNeeds"][value="CalFresh"]')
+    ).toBeChecked();
+    await expect(
+      page.locator('#intake-form-fields [name="substanceUse"][value="Meth"]')
     ).not.toBeChecked();
     await expect(page.locator('#intake-form-fields [name="mhDx"][value="PTSD"]')).toBeChecked();
     await expect(page.locator('#intake-form-fields [name="intakeNotes"]')).toHaveValue(
@@ -705,7 +707,7 @@ test.describe("intake assessment boxes", () => {
     await f("mediCalPlan").selectOption("IEHP");
     await page.locator('#intake-form-fields [name="recupLast12"][value="No"]').check();
     await page.locator('#intake-form-fields [name="recoveringFromIllness"][value="Yes"]').check();
-    await page.locator('#intake-form-fields [name="stayNeeds"][value="Rides"]').check();
+    await page.locator('#intake-form-fields [name="clientNeeds"][value="Transportation"]').check();
     await fill(page, "med1Name", "Sertraline");
     await fill(page, "bed", "2");
     await expect(savedStatus(page)).toHaveText("SAVED TO DRIVE ✓", { timeout: 10000 });
@@ -723,12 +725,43 @@ test.describe("intake assessment boxes", () => {
       page.locator('#intake-form-fields [name="recupLast12"][value="No"]')
     ).toBeChecked();
     await expect(
-      page.locator('#intake-form-fields [name="stayNeeds"][value="Rides"]')
+      page.locator('#intake-form-fields [name="clientNeeds"][value="Transportation"]')
     ).toBeChecked();
     await expect(f("med1Name")).toHaveValue("Sertraline");
     await expect(f("bed")).toHaveValue("2");
     // No "approved" box: passing the gates on the transcript is the decision.
     await expect(f("placementDecision")).toHaveCount(0);
+  });
+
+  // The online form is the same form as the printed Client Intake Assessment
+  // (bethel-client-intake skill, assets/intake_fields.json, regenerated with
+  // scripts/gen-intake-form.js).
+  //
+  // Fails if: the online form drifts from the printed one (old boxes still
+  // there, the Needs section or the current program script missing).
+  test("matches the printed Client Intake Assessment", async ({ page }) => {
+    await openDashboardConnected(page);
+    await page.locator("#intake-new-btn").click();
+    const form = page.locator("#intake-form-fields");
+    const f = (name) => form.locator(`[name="${name}"]`);
+    await expect(form).toContainText("three meals per day for an additional $250 per month");
+    await expect(form).toContainText("Are you interested in participating in our housing program?");
+    await expect(form).toContainText("Prosper House");
+    for (const title of [
+      "Income & benefits",
+      "Living history",
+      "Emergency contact & support",
+      "Short-term goals",
+      "Document readiness",
+      "Needs",
+    ]) {
+      await expect(form.locator(".if-section-title", { hasText: title }).first()).toBeAttached();
+    }
+    await expect(form.locator('[name="clientNeeds"][value="Cell phone"]')).toBeAttached();
+    await expect(form.locator('[name="clientNeeds"][value="SUD outpatient"]')).toBeAttached();
+    await expect(f("callerName")).toHaveCount(0);
+    await expect(f("clientStrengths")).toHaveCount(0);
+    await expect(f("income")).toHaveCount(0);
   });
 
   // Removing a box from the form must never erase what an older intake already
