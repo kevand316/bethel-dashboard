@@ -100,7 +100,7 @@ test.describe("@smoke intake tab", () => {
     await page.locator("#intake-new-btn").click();
     await expect(page.locator("#intake-form")).toHaveClass(/active/);
 
-    await expect(page.locator("#intake-form-fields .if-section")).toHaveCount(8);
+    await expect(page.locator("#intake-form-fields .if-section")).toHaveCount(20);
     await expect(page.locator('#intake-form-fields [name="ssn"]')).toBeVisible();
 
     const files = await page.evaluate(() => window.__drive.intakeFiles().length);
@@ -444,7 +444,7 @@ test.describe("@smoke intake tab", () => {
       ["lastName", "Operator"],
       ["phone", "9095550100"],
       ["dob", "1985-02-02"],
-      ["lastAddress", "Riverside, CA"],
+      ["primaryDoctor", "Riverside clinic"],
       ["ec1Name", "Pat Operator"],
     ]) {
       await page.evaluate(() => {
@@ -464,7 +464,7 @@ test.describe("@smoke intake tab", () => {
     });
     expect(stored.lastName).toBe("Operator");
     expect(stored.ec1Name).toBe("Pat Operator");
-    expect(stored.lastAddress).toBe("Riverside, CA");
+    expect(stored.primaryDoctor).toBe("Riverside clinic");
   });
 
   // ── Test 9: consecutive saves keep working ────────────────────────────────
@@ -482,7 +482,7 @@ test.describe("@smoke intake tab", () => {
       ["firstName", "Ana"],
       ["lastName", "Duarte"],
       ["phone", "9095550143"],
-      ["lastAddress", "Riverside, CA"],
+      ["primaryDoctor", "Riverside clinic"],
     ]) {
       await fill(page, field, value);
       await expect(savedStatus(page)).toHaveText("SAVED TO DRIVE ✓", { timeout: 10000 });
@@ -494,7 +494,7 @@ test.describe("@smoke intake tab", () => {
       return window.__drive.contentOf(f.id);
     });
     expect(stored.lastName).toBe("Duarte");
-    expect(stored.lastAddress).toBe("Riverside, CA");
+    expect(stored.primaryDoctor).toBe("Riverside clinic");
   });
 
   // ── Test 10: SSN formatting ───────────────────────────────────────────────
@@ -642,7 +642,7 @@ test.describe("@smoke intake tab", () => {
 
     // Keep editing — the date must not be dropped by later saves.
     await fill(page, "phone", "9095550100");
-    await fill(page, "lastAddress", "Riverside, CA");
+    await fill(page, "primaryDoctor", "Riverside clinic");
     await expect(savedStatus(page)).toHaveText("SAVED TO DRIVE ✓", { timeout: 10000 });
 
     const file = await page.evaluate(() => {
